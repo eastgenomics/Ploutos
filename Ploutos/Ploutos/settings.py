@@ -11,10 +11,12 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
-from config import *
+import os
 import json
 
-with open('/CREDENTIALS.json') as c:
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+
+with open(os.path.join(os.path.dirname(BASE_DIR), 'Ploutos/Ploutos/CREDENTIALS.json')) as c:
     CREDENTIALS = json.load(c)
 
 # now we need to assign SECRET_KEY to data from the file
