@@ -23,10 +23,12 @@ class Command(BaseCommand):
                 user_name = row['created_by'],
             )
 
+            # Add project created dates to Dates table to make IDs
             a_new_date, created = Dates.objects.get_or_create(
                 date = row['created'],
             )
             
+            # Filtering for updating existing project names in table in case they have been changed in DNAnexus
             # Get all the project objects
             projects_data = Projects.objects.all()
 
@@ -59,7 +61,7 @@ class Command(BaseCommand):
                 created = a_new_date,
             )
 
-            # For second totals csv 
+        # For second totals csv 
         for index, row in running_tots_df.iterrows():
             # Add to dates table and create ids for each date
             new_date, created = Dates.objects.get_or_create(

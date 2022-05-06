@@ -25,7 +25,7 @@ class Projects(models.Model):
 
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
-    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True)
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True, related_name = "totals")
     storage_charges = models.FloatField()
     compute_charges = models.FloatField()
     egress_charges = models.FloatField()

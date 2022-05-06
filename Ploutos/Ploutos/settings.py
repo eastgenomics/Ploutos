@@ -67,7 +67,7 @@ ROOT_URLCONF = 'Ploutos.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [f'{BASE_DIR}/dashboard/templates/dashboard/'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
