@@ -8,6 +8,11 @@ class Users(models.Model):
     def __str__(self):
         return self.user_name
 
+class Dates(models.Model):
+    """Model representing a date.
+    N.B. date has to be in YYYY-MM-DD format"""
+    date = models.DateField()
+
 class Projects(models.Model):
     """Model representing a project."""
     dx_id = models.CharField(max_length=35, unique=True)
@@ -17,11 +22,6 @@ class Projects(models.Model):
 
     def __str__(self):
         return self.dx_id
-
-class Dates(models.Model):
-    """Model representing a date.
-    N.B. date has to be in YYYY-MM-DD format"""
-    date = models.DateField()
 
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
