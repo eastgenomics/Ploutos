@@ -20,8 +20,8 @@ def index(request):
     totals = DailyOrgRunningTotal.objects.all()
 
     # Filter totals based on the dates provided in start and end (foreign key)
-    # if start:
-    #     totals = totals.filter(date__id__in = (Dates.objects.filter(date__range=[start,end]).values_list('id',flat=True)))
+    if start:
+        totals = totals.filter(date__id__in = (Dates.objects.filter(date__range=[start,end]).values_list('id',flat=True)))
 
     # Stuff to work out delta of storage compared to day before
     # my_date = "2022-04-25"
@@ -38,7 +38,7 @@ def index(request):
     fig = px.line(
         x= [x.date.date for x in totals],
         #x=[Dates.objects.get(id = c.id).date for c in totals],
-        y=[c.storage_charges for c in totals],
+        y=[c.compute_charges for c in totals],
         title = "Running storage charge total",
         labels = {'x':'Date', 'y':'Storage charge'}
     )

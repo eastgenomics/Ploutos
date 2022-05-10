@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal
 from django.apps import apps
 import pandas as pd
-import os.path as path
+from pathlib import Path
 
 
 class Command(BaseCommand):
@@ -10,11 +10,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         
-        BASE_DIR =  path.abspath(path.join(__file__ ,"../../../.."))
-        with open(path.join(path.dirname(BASE_DIR), 'projects.csv')) as f:
+        BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
+        
+        with open(f"{BASE_DIR}/projects.csv") as f:
             projects_df = pd.read_csv(f, sep='\t')
 
-        with open(path.join(path.dirname(BASE_DIR), 'running_totals.csv')) as totals:
+        with open(f"{BASE_DIR}/running_totals.csv") as totals:
             running_tots_df = pd.read_csv(totals, sep='\t')
 
         for index, row in projects_df.iterrows():
