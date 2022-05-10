@@ -14,7 +14,7 @@ import datetime as dt
 from pathlib import Path
 
 class Command(BaseCommand):
-    help = "Loads projects and project storage from CSV file and imports them into the database."
+    help = "Gets data from the API and puts it into csvs."
 
     def handle(self, *args, **options):
         BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
