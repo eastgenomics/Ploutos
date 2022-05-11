@@ -3,4 +3,6 @@
 *.csv
 *.pyc
 /Ploutos/Ploutos/pycashe/*
+/Ploutos/Ploutos/dashboard/migrations/*.py
+/Ploutos/Ploutos/dashboard/migrations/pycashe/*
 /Ploutos/Ploutos/dashboard/pycashe/*
