@@ -1,6 +1,11 @@
 """
 This script contains functions for querying DNAnexus API for files, projects
 and other data to be stored in MariaDB for the DNAnexus monitoring app.
+
+Changes to make:
+ - Add standard naming use get instead of find.
+ -
+
 """
 
 import json
@@ -52,7 +57,7 @@ def get_all_projects(org):
     return project_list_all
 
 
-def find_all_data_objs():
+def get_all_data_objs():
     """
     Args:
         org (string)
@@ -79,7 +84,7 @@ def find_all_data_objs():
 
     return data_objs_list
 
-def find_dups(files):
+def get_dups(files):
     """
     Solution:
     This takes all the file ids and sorts them depending on if they are unique
@@ -126,44 +131,44 @@ def find_dups(files):
     return dup_data_objs, dup_data_objs_projects
 
 
-def find_dups2(files):
-    """
-    Solution:
-    This takes all the file ids and sorts them depending on if they are unique
-    or a duplicate. This could be incorporated into another function to allow
-    for sorting while processing files by project to calculate storage costs.
-
-    Returns:
-        dup_data_objs: list of duplicate data objects (i.e. seen twice or seen2)
-    Credit: JohnLaRooy - StackOverflow
-    """
-    values = []
-    for item in files:
-        values.append(item['id'])
-    values = tuple(values)
-    seen = set()
-    seen2 = set()
-    seen_add = seen.add
-    seen2_add = seen2.add
-    for item in values:
-        if item in seen:
-            seen2_add(item)
-        else:
-            seen_add(item)
-    return list(seen2)
-
-
-
-# def find_dups():
+# def get_dups2(files):
 #     """
-#     Function: find_dups()
+#     Solution:
+#     This takes all the file ids and sorts them depending on if they are unique
+#     or a duplicate. This could be incorporated into another function to allow
+#     for sorting while processing files by project to calculate storage costs.
+
+#     Returns:
+#         dup_data_objs: list of duplicate data objects (i.e. seen twice or seen2)
+#     Credit: JohnLaRooy - StackOverflow
+#     """
+#     values = []
+#     for item in files:
+#         values.append(item['id'])
+#     values = tuple(values)
+#     seen = set()
+#     seen2 = set()
+#     seen_add = seen.add
+#     seen2_add = seen2.add
+#     for item in values:
+#         if item in seen:
+#             seen2_add(item)
+#         else:
+#             seen_add(item)
+#     return list(seen2)
+
+
+
+# def get_dups():
+#     """
+#     Function: get_dups()
 #     What it does? This finds all the files in DNAnexus for org given.
 #     And then finds all files which are present in multiple projects,
 #     and therefore require special treatment to calculate costs.
 #     Args: ORG- The id for your organisation
 #     Returns: list of file ids?
 #     """
-#     print("find_dups Starting")
+#     print("get_dups Starting")
 
 
 
@@ -188,10 +193,10 @@ def main():
     print('\nToday is: ', time.ctime(start_time))
     projects = get_all_projects('org-emee_1')
     print(len(projects))
-    all_objects = find_all_data_objs()
+    all_objects = get_all_data_objs()
     print(len(all_objects))
-    #list_files = find_dups(all_objects)
-    list_files, list_pros = find_dups(all_objects)
+    #list_files = get_dups(all_objects)
+    list_files, list_pros = get_dups(all_objects)
     print(len(list_files))
     # print(list_files)
     print(len(list_pros))
