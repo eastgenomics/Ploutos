@@ -158,7 +158,6 @@ def get_dups(files):
 #     return list(seen2)
 
 
-
 # def get_dups():
 #     """
 #     Function: get_dups()
