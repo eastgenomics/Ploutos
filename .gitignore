@@ -1,2 +1,6 @@
 *.json
 /home/rswilson1/Documents/Programming/cost_monitoring/Ploutos/Ploutos/Ploutos/*.json
+*.csv
+*.pyc
+/Ploutos/Ploutos/pycashe/*
+/Ploutos/Ploutos/dashboard/pycashe/*
