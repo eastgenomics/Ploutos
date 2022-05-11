@@ -128,6 +128,10 @@ def get_dups(files):
     dup_data_objs = list(seen2)
     dup_data_objs_projects = seen2_project
 
+    json_object = json.dumps(dup_data_objs_projects, indent=4)
+    with open("dups_data_objs.json", "a") as outfile:
+        outfile.write(json_object)
+
     return dup_data_objs, dup_data_objs_projects
 
 
