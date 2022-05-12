@@ -43,13 +43,8 @@ class Command(BaseCommand):
                 created = dt.datetime.fromtimestamp((project['describe']['created']) / 1000).strftime('%Y-%m-%d')
                 all_projects[project_id]['created'] = created
 
+            # Reformat dict so each entry is one dictionary
             projects_dict = [value for value in all_projects.values()]
-
-            # Transform into pandas df
-            projects_df = pd.DataFrame.from_dict(all_projects.values())
-
-            # Save as csv in main dir
-            projects_df.to_csv(f'{settings.BASE_DIR}/Ploutos/projects.csv',sep='\t', index=False)
 
             return projects_dict
 
