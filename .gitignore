@@ -6,3 +6,44 @@
 /Ploutos/Ploutos/dashboard/migrations/*.py
 /Ploutos/Ploutos/dashboard/migrations/pycashe/*
 /Ploutos/Ploutos/dashboard/pycashe/*
+
+# Git Hub Boiler plate .gitignore
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+
+# Django stuff:
+*.log
+*.pot
+
