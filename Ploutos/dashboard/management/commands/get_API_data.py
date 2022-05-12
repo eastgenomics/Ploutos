@@ -7,6 +7,7 @@ from django.conf import settings
 from collections import defaultdict
 import pandas as pd
 import datetime as dt
+import json
 import dxpy as dx
 
 class Command(BaseCommand):
@@ -45,6 +46,11 @@ class Command(BaseCommand):
 
             # Reformat dict so each entry is one dictionary
             projects_dict = [value for value in all_projects.values()]
+
+            #Make json dump for debugging
+            json_obj = json.dumps(projects_dict, indent=4)
+            with open("project_data.json", "w") as outfile:
+                outfile.write(json_obj)
 
             return projects_dict
 

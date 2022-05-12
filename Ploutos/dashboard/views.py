@@ -35,13 +35,22 @@ def index(request):
 
     # Plot the date and storage charges as line graph
     
+    compute = [c.compute_charges for c in totals]
+    storage = [c.storage_charges for c in totals]
+    egress = [c.egress_charges for c in totals]
     fig = px.line(
         x= [x.date.date for x in totals],
         #x=[Dates.objects.get(id = c.id).date for c in totals],
-        y=[[c.compute_charges for c in totals],[c.storage_charges for c in totals],[c.egress_charges for c in totals]],
-        title = "Running compute charge total",
-        labels = {'x':'Date', 'y':'Compute charge'}
+        y=compute,
+        title = "Running charges total",
+        labels = {'x':'Date', 'y':'Charges ($)'}
     )
+
+    # Legend labels weren't working so added new traces with names
+    fig.data[0].name = "Compute"
+    fig.update_traces(showlegend=True)
+    fig.add_scatter(x=[x.date.date for x in totals], y=storage, mode='lines', name="Storage")
+    fig.add_scatter(x=[x.date.date for x in totals], y=egress, mode='lines', name="Egress")
 
     # Change formatting of title
     fig.update_layout(
@@ -56,7 +65,7 @@ def index(request):
     return render(request, 'index.html', context)
 
 def bar_chart(request):
-    """Testing a bar chart simply from count of different project types"""
+    """Testing a bar chart with a simple count of different project types"""
     proj_types = ["001", "002", "003", "004"]
     count = [Projects.objects.filter(name__startswith=type).count() for type in proj_types]
 
