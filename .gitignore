@@ -1,3 +1,6 @@
 *.json
 *.csv
 *.pyc
+*.csv#
+_migrations/*
+!_migrations/__init__.py

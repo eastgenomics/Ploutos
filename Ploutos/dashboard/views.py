@@ -10,7 +10,7 @@ import datetime
 
 def index(request):
     """ 
-    View to display storage charges via Plotly 
+    View to display running total charges via Plotly 
     """
     # Get start and end from form
     start = request.GET.get('start')
@@ -38,9 +38,9 @@ def index(request):
     fig = px.line(
         x= [x.date.date for x in totals],
         #x=[Dates.objects.get(id = c.id).date for c in totals],
-        y=[c.compute_charges for c in totals],
-        title = "Running storage charge total",
-        labels = {'x':'Date', 'y':'Storage charge'}
+        y=[[c.compute_charges for c in totals],[c.storage_charges for c in totals],[c.egress_charges for c in totals]],
+        title = "Running compute charge total",
+        labels = {'x':'Date', 'y':'Compute charge'}
     )
 
     # Change formatting of title
@@ -53,4 +53,16 @@ def index(request):
 
     chart = fig.to_html()
     context = {'chart': chart, 'form': DateForm()}
+    return render(request, 'index.html', context)
+
+def bar_chart(request):
+    """Testing a bar chart simply from count of different project types"""
+    proj_types = ["001", "002", "003", "004"]
+    count = [Projects.objects.filter(name__startswith=type).count() for type in proj_types]
+
+    fig = px.bar(x=proj_types,y=count)
+    fig.update_layout(title_text ="Test")
+
+    chart = fig.to_html()
+    context = {'chart': chart}
     return render(request, 'index.html', context)

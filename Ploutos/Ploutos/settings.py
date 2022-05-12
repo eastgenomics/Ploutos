@@ -14,19 +14,20 @@ from pathlib import Path
 import os
 import json
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-
-with open(os.path.join(os.path.dirname(BASE_DIR), 'Ploutos/Ploutos/CREDENTIALS.json')) as c:
-    CREDENTIALS = json.load(c)
-
-# now we need to assign SECRET_KEY to data from the file
-DB_USERNAME = CREDENTIALS['DB_USERNAME']
-DB_PASSWORD = CREDENTIALS['DB_PASSWORD']
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Read in credentials file in same directory
+
+datafile = BASE_DIR  / "Ploutos" / "CREDENTIALS.json"
+with open(datafile, 'r') as credentials_file:
+    CREDENTIALS = json.load(credentials_file)
+
+# Assign keys to data from the file
+DB_USERNAME = CREDENTIALS['DB_USERNAME']
+DB_PASSWORD = CREDENTIALS['DB_PASSWORD']
 SECRET_KEY = CREDENTIALS["SECRET_KEY"]
+DX_TOKEN = CREDENTIALS['DNANEXUS_TOKEN']
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
