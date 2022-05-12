@@ -10,7 +10,7 @@ import datetime as dt
 import dxpy as dx
 
 class Command(BaseCommand):
-    help = "Gets data from the API and puts it into csvs."
+    help = "Gets data from the API as dicts and puts it into the database."
 
     # Define org of interest
     ORG = 'org-emee_1'
@@ -139,6 +139,4 @@ class Command(BaseCommand):
         login()
         populate_projects()
         populate_running_total()
-
-
 
