@@ -12,7 +12,7 @@ class Users(models.Model):
 class Dates(models.Model):
     """Model representing a date.
     N.B. date has to be in YYYY-MM-DD format"""
-    date = models.DateField()
+    date = models.DateField(unique=True)
 
     def __str__(self):
         return self.date
