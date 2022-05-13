@@ -11,21 +11,21 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
-import os
 import json
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-with open(os.path.join(os.path.dirname(BASE_DIR), 'Ploutos/Ploutos/CREDENTIALS.json')) as c:
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+#Add Creds
+
+with open(os.path.join(os.path.dirname(BASE_DIR), 'Ploutos/CREDENTIALS.json')) as c:
     CREDENTIALS = json.load(c)
 
 # now we need to assign SECRET_KEY to data from the file
 DB_USERNAME = CREDENTIALS['DB_USERNAME']
 DB_PASSWORD = CREDENTIALS['DB_PASSWORD']
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
 SECRET_KEY = CREDENTIALS["SECRET_KEY"]
 
 # Quick-start development settings - unsuitable for production
@@ -40,6 +40,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'dashboard.apps.DashboardConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
