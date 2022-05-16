@@ -4,10 +4,6 @@ from dashboard.forms import DateForm
 from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal
 import datetime
 
-# Create your views here.
-
-# Create your views here.
-
 def index(request):
     """ 
     View to display running total charges via Plotly 
@@ -50,7 +46,7 @@ def index(request):
     fig.data[0].name = "Compute"
     fig.update_traces(showlegend=True)
     fig.add_scatter(x=[x.date.date for x in totals], y=storage, mode='lines', name="Storage")
-    fig.add_scatter(x=[x.date.date for x in totals], y=egress, mode='lines', name="Egress")
+    #fig.add_scatter(x=[x.date.date for x in totals], y=egress, mode='lines', name="Egress")
 
     # Change formatting of title
     fig.update_layout(
