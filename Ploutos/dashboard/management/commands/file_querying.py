@@ -1,5 +1,6 @@
 """This script is testing queries for file searching in DNAnexus
-It currently gets all files in DNAnexus, puts info into a dict grouped by project, then sums size values per project for live/archival and archived files and saves it to a json"""
+It currently gets all files in DNAnexus, puts info into a dict grouped by project, 
+then sums size values per project for live/archival and archived files and saves it to a json"""
 
 from django.core.management.base import BaseCommand, CommandError
 from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal
@@ -63,7 +64,8 @@ class Command(BaseCommand):
 
             for d in files:
                 proj = d['project']
-                file_dct[proj]["data"].append({"file_id": d["id"], "name": d["describe"]['name'], "size": d.get('describe',{}).get('size',0), "state": d['describe']['archivalState']})
+                file_dct[proj]["data"].append({"file_id": d["id"], "name": d["describe"]['name'], 
+                "size": d.get('describe',{}).get('size',0), "state": d['describe']['archivalState']})
             
             return file_dct
 
