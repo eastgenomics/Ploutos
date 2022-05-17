@@ -1,6 +1,5 @@
 """This script is testing queries for file searching in DNAnexus
-It currently gets all file IDs in DNAnexus, works out which are duplicates (in multiple projects)
-It then loops over each project to calculate total size of non-duplicate live and archived files and adds this to a dict which is saved to a json"""
+It currently gets all files in DNAnexus, puts info into a dict grouped by project, then sums size values per project for live/archival and archived files and saves it to a json"""
 
 from django.core.management.base import BaseCommand, CommandError
 from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal
@@ -16,7 +15,7 @@ import dxpy as dx
 from calendar import monthrange
 
 class Command(BaseCommand):
-    help = "Gets data from the API as dicts and puts it into the database."
+    help = "Gets file info from the API and calculates storage costs."
 
     # Define org of interest
     ORG = 'org-emee_1'
@@ -45,13 +44,14 @@ class Command(BaseCommand):
             seen = set()
             seen_add = seen.add
             # Add all elements it doesn't know yet to seen and all others to seen_twice
-            seen_twice = set( x for x in file_ids if x in seen or seen_add(x) )
+            seen_twice = set(x for x in file_ids if x in seen or seen_add(x))
             return list(seen_twice)
 
 
         def get_files():
             """Gets all files and their info and puts into a nested dict"""
 
+            # This takes like 1.9 hours
             print("Starting to look for all files in DNAnexus")
             start = time.time()
             files = list(dx.search.find_data_objects(classname='file', describe=True))
@@ -68,7 +68,7 @@ class Command(BaseCommand):
             return file_dct
 
         def calculate_total():
-            """Calculates total cost per project (not taking into account duplicates)"""
+            """Calculates total cost per project (not taking into account duplicates) currently"""
             # Cost per GB per month from DNAnexus
             live_storage_cost_month = 0.0257
             # This is an arbitrary number until Wook provides it
@@ -83,8 +83,8 @@ class Command(BaseCommand):
             files_dict = {}
             list_of_files_dicts = []
             for k, v in file_info_dict.items():
-                total_size_live = sum([x['size'] for x in v['data'] if x['state'] == "live"])
-                total_size_archived = sum([x['size'] for x in v['data'] if x['state'] != "live"])
+                total_size_live = sum([x['size'] for x in v['data'] if x['state'] != "archived"])
+                total_size_archived = sum([x['size'] for x in v['data'] if x['state'] == "archived"])
                 total_cost_live = (((total_size_live / (2**30)) * live_storage_cost_month) / days_in_month)
                 total_cost_archived = (((total_size_archived / (2**30)) / archived_storage_cost_month) / days_in_month)
                 
