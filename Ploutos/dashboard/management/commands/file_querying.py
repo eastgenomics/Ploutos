@@ -5,6 +5,8 @@ import datetime as dt
 import json
 import pandas as pd
 import time
+from time import localtime, strftime
+import sys
 import dxpy as dx
 
 from calendar import monthrange
@@ -41,6 +43,7 @@ class Command(BaseCommand):
                 print("DNAnexus login successful")
             except:
                 print("Error with DNAnexus login")
+                sys.exit(1)
 
         def no_of_days_in_month(year, month):
             """Get the number of days in a month by the year and month"""
@@ -80,6 +83,7 @@ class Command(BaseCommand):
 
             files_per_proj_dict = defaultdict(lambda: {"files": []})
             for proj in project_list:
+                print(f"Searching in {proj}")
                 files = list(dx.search.find_data_objects(classname='file', project = proj, describe={'fields':{'archivalState': True, 'size': True, 'name': True}}))
                 for file in files:
                     #file_id_list.append(d['id'])
@@ -130,6 +134,7 @@ class Command(BaseCommand):
             with open("files_proj_totals.json", "w") as outfile:
                 outfile.write(files_totals)
                 
+        print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
         start=time.time()
         login()
         get_files()
@@ -137,3 +142,4 @@ class Command(BaseCommand):
         end=time.time()
         total = end - start
         print(f"Total time was {total} seconds")
+        print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
