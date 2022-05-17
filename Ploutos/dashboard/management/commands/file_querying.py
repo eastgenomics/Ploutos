@@ -1,11 +1,11 @@
 """This script is testing queries for file searching in DNAnexus
 It currently gets all files in DNAnexus, puts info into a dict grouped by project, 
 then sums size values per project for live/archival and archived files and saves it to a json"""
+import concurrent.futures
 import datetime as dt
 import json
 import pandas as pd
-import time
-from time import localtime, strftime
+from time import time, localtime, strftime
 import sys
 import dxpy as dx
 
@@ -75,28 +75,23 @@ class Command(BaseCommand):
             return all_projects, project_ids_list
 
 
-        def get_files():
+        def get_files(proj):
             """Gets files per proj and their info and puts into a nested dict"""
-            project_list = get_projects()[1]
-            print("Starting to look for all files in DNAnexus")
-            start = time.time()
 
-            files_per_proj_dict = defaultdict(lambda: {"files": []})
-            for proj in project_list:
-                print(f"Searching in {proj}")
-                files = list(dx.search.find_data_objects(classname='file', project = proj, describe={'fields':{'archivalState': True, 'size': True, 'name': True}}))
-                for file in files:
-                    #file_id_list.append(d['id'])
-                    proj = file['project']
-                    files_per_proj_dict[proj]["files"].append({"id": file["id"], "name": file["describe"]['name'], "size": file.get('describe',{}).get('size',0), "state": file['describe']['archivalState']})
+            # Find files in each project, only returning specified fields
+            # Per project, create dict with info per file and add this to 'file' list
+            # .get handles files with no size (e.g. .snapshot files) and sets this to zero
+            project_files_dict = defaultdict(lambda: {"files": []})
+            files = list(dx.search.find_data_objects(classname='file', project = proj, describe={'fields':{'archivalState': True, 'size': True, 'name': True}}))
+            for file in files:
+                proj = file['project']
+                project_files_dict[proj]["files"].append({"id": file["id"], "name": file["describe"]['name'], "size": file.get('describe',{}).get('size',0), "state": file['describe']['archivalState']})
+            
+            return project_files_dict
 
-            end = time.time()
-            total_time = end - start
-            print(f"Total time to get all files was {total_time}")
 
-            return files_per_proj_dict
 
-        def calculate_total():
+        def calculate_total(list_of_project_file_dicts):
             """Calculates total cost per project (not taking into account duplicates) currently"""
             # Cost per GB per month from DNAnexus
             live_storage_cost_month = settings.STORAGE_COST_MONTH
@@ -107,39 +102,49 @@ class Command(BaseCommand):
             days_in_month = no_of_days_in_month(self.year, self.month)
             today_date = self.today_date
 
-            # Get the files into a dict
-            files_per_proj_dict = get_files()
-
             # For each project, total the sizes of the files 
             # Then convert to GB, multiply by cost per month and divide by days in month to get daily charge estimate
 
             files_dict = {}
             list_of_files_dicts = []
-            for k, v in files_per_proj_dict.items():
-                total_size_live = sum([x['size'] for x in v['files'] if x['state'] == "live"])
-                total_size_archived = sum([x['size'] for x in v['files'] if x['state'] != "live"])
-                total_cost_live = (((total_size_live / (2**30)) * live_storage_cost_month) / days_in_month)
-                total_cost_archived = (((total_size_archived / (2**30)) * archived_storage_cost_month) / days_in_month)
+            for dct in list_of_project_file_dicts:
+                for k, v in dct.items():
+                    total_size_live = sum([x['size'] for x in v['files'] if x['state'] == "live"])
+                    total_size_archived = sum([x['size'] for x in v['files'] if x['state'] != "live"])
+                    total_cost_live = (((total_size_live / (2**30)) * live_storage_cost_month) / days_in_month)
+                    total_cost_archived = (((total_size_archived / (2**30)) * archived_storage_cost_month) / days_in_month)
 
-                files_dict = {"project": k, "total_size_live": total_size_live, "total_size_archived": total_size_archived, 
-                            "total_cost_live": total_cost_live, "total_cost_archived": total_cost_archived, 'date':today_date}
+                    files_dict = {"project": k, "total_size_live": total_size_live, "total_size_archived": total_size_archived, 
+                                "total_cost_live": total_cost_live, "total_cost_archived": total_cost_archived, 'date':today_date}
 
-                list_of_files_dicts.append(files_dict)
+                    list_of_files_dicts.append(files_dict)
 
             return list_of_files_dicts
 
-        def jsonify():
-            files_dicts = calculate_total()
-            files_totals = json.dumps(files_dicts,indent=4)
-            with open("files_proj_totals.json", "w") as outfile:
+        def jsonify(totals_dict):
+            files_totals = json.dumps(totals_dict,indent=4)
+            with open("files_proj_totals_test.json", "w") as outfile:
                 outfile.write(files_totals)
-                
+
+
         print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
-        start=time.time()
+        start=time()
         login()
-        get_files()
-        jsonify()
-        end=time.time()
-        total = end - start
-        print(f"Total time was {total} seconds")
+
+        project_list = get_projects()[1]
+        list_of_project_file_dicts = []
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = []
+            for project in project_list:
+                futures.append(executor.submit(get_files, proj = project))
+            for future in concurrent.futures.as_completed(futures):
+                list_of_project_file_dicts.append(future.result())
+
+        totals_dict = calculate_total(list_of_project_file_dicts)
+
+        jsonify(totals_dict)
+        end=time()
+        total = (end - start) / 60
+        print(f"Total time was {total} minutes")
         print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
