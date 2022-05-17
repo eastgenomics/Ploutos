@@ -28,6 +28,8 @@ DB_USERNAME = CREDENTIALS['DB_USERNAME']
 DB_PASSWORD = CREDENTIALS['DB_PASSWORD']
 SECRET_KEY = CREDENTIALS["SECRET_KEY"]
 DX_TOKEN = CREDENTIALS['DNANEXUS_TOKEN']
+ORG = CREDENTIALS['ORG']
+STORAGE_COST_MONTH = CREDENTIALS['STORAGE_COST_MONTH']
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/

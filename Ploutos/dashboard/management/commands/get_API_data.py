@@ -14,7 +14,7 @@ class Command(BaseCommand):
     help = "Gets data from the API as dicts and puts it into the database."
 
     # Define org of interest
-    ORG = 'org-emee_1'
+    ORG = settings.ORG
 
     def handle(self, *args, **options):
 
