@@ -55,6 +55,7 @@ class Command(BaseCommand):
             seen_add = seen.add
             # Add all elements it doesn't know yet to seen and all others to seen_twice
             seen_twice = set(x for x in file_ids if x in seen or seen_add(x))
+
             return list(seen_twice)
 
         def get_projects():
@@ -72,6 +73,7 @@ class Command(BaseCommand):
                 all_projects[project_id]['created_by'] = project['describe']['createdBy']['user']
                 all_projects[project_id]['created_epoch'] = project['describe']['created']
                 all_projects[project_id]['created'] = dt.datetime.fromtimestamp((project['describe']['created']) / 1000).strftime('%Y-%m-%d')
+                
             return all_projects, project_ids_list
 
 
@@ -88,10 +90,20 @@ class Command(BaseCommand):
                 project_files_dict[proj]["files"].append({"id": file["id"], "name": file["describe"]['name'], "size": file.get('describe',{}).get('size',0), "state": file['describe']['archivalState']})
             
             return project_files_dict
+        
+        def threadify(project_list, my_function):
+            list_of_project_file_dicts = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                futures = []
+                for project in project_list:
+                    futures.append(executor.submit(my_function, proj = project))
+                for future in concurrent.futures.as_completed(futures):
+                    list_of_project_file_dicts.append(future.result())
+            
+            return list_of_project_file_dicts
 
 
-
-        def calculate_total(list_of_project_file_dicts):
+        def calculate_total(project_file_dicts_list):
             """Calculates total cost per project (not taking into account duplicates) currently"""
             # Cost per GB per month from DNAnexus
             live_storage_cost_month = settings.STORAGE_COST_MONTH
@@ -107,7 +119,7 @@ class Command(BaseCommand):
 
             files_dict = {}
             list_of_files_dicts = []
-            for dct in list_of_project_file_dicts:
+            for dct in project_file_dicts_list:
                 for k, v in dct.items():
                     total_size_live = sum([x['size'] for x in v['files'] if x['state'] == "live"])
                     total_size_archived = sum([x['size'] for x in v['files'] if x['state'] != "live"])
@@ -123,27 +135,19 @@ class Command(BaseCommand):
 
         def jsonify(totals_dict):
             files_totals = json.dumps(totals_dict,indent=4)
-            with open("files_proj_totals_test.json", "w") as outfile:
+            with open("files_proj_totals_test2.json", "w") as outfile:
                 outfile.write(files_totals)
 
 
         print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
         start=time()
-        login()
-
-        project_list = get_projects()[1]
-        list_of_project_file_dicts = []
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = []
-            for project in project_list:
-                futures.append(executor.submit(get_files, proj = project))
-            for future in concurrent.futures.as_completed(futures):
-                list_of_project_file_dicts.append(future.result())
-
-        totals_dict = calculate_total(list_of_project_file_dicts)
-
+        login()
+        proj_list = get_projects()[1]
+        project_file_dicts_list = threadify(proj_list, get_files)
+        totals_dict = calculate_total(project_file_dicts_list)
         jsonify(totals_dict)
+
         end=time()
         total = (end - start) / 60
         print(f"Total time was {total} minutes")

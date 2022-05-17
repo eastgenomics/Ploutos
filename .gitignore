@@ -5,3 +5,4 @@
 _migrations/*
 !_migrations/__init__.py
 *.Rhistory
+__pycache__/*
