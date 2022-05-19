@@ -18,33 +18,6 @@ from django.apps import apps
 from django.conf import settings
 from time import time, localtime, strftime
 
-
-def run():
-    """Essentially a main function"""
-
-    start = time()
-
-    login(settings.DX_TOKEN)
-    all_projects, proj_list = get_projects()
-    project_file_dicts_list = threadify(proj_list, get_files)
-    file_df = make_file_df(project_file_dicts_list)
-    unique_without_empty_projs, empty_projs = count_how_many_lost(file_df, proj_list)
-    proj_df = make_proj_df(all_projects)
-    merged_df = merge_files_and_proj_dfs(file_df, proj_df)
-    unique_df = remove_duplicates(merged_df, unique_without_empty_projs)
-    unique_grouped_df = group_by_project_and_rename(unique_df, 'unique')
-    total_grouped_df = group_by_project_and_rename(merged_df, 'total')
-    unique_sum_df = calculate_totals(unique_grouped_df, 'unique')
-    total_sum_df = calculate_totals(total_grouped_df, 'total')
-    merged_total_df = merge_together_add_empty_rows(unique_sum_df, total_sum_df)
-    final_all_projs_df = add_empty_projs_back_in(empty_projs, merged_total_df)
-    final_dict = put_into_dict_write_to_file(final_all_projs_df)
-
-    end = time()
-    total = end - start
-    print(f"Total time was {total}")
-    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
-
 def login(token):
     """
         Logs into DNAnexus
@@ -129,33 +102,7 @@ def get_files(proj):
     -------
      project_files_dict : collections.defaultdict
         dictionary with all the files per project
-    e.g. 
-    [ {"project-X": 
-     {"files": 
-      [
-          {
-        'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803, 
-      'archivalState': 'live'
-    }, 
-    {
-        'file_id': 'file-2', 'name': "IamFile2.json", 'size': 702, 
-      'archivalState': 'archived'
-    }
-      ]
-     }},
-    {'project-Y': 
-     {"files": 
-      [{
-        'file_id': 'file-4', 'name': "IamFile4.json", 'size': 3281, 
-      'archivalState': 'live'
-      },
-        {
-            'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803, 
-      'archivalState': 'live'
-        }
-      ]
-    }}
-      ]
+
     """
 
     # Find files in each project, only returning specified fields
@@ -186,6 +133,33 @@ def threadify(project_list, get_files_function):
     -------
      list_of_project_file_dicts : list
         list of dictionaries with all the files per project in each dict
+    e.g. 
+    [ {"project-X": 
+     {"files": 
+      [
+          {
+        'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803, 
+      'archivalState': 'live'
+    }, 
+    {
+        'file_id': 'file-2', 'name': "IamFile2.json", 'size': 702, 
+      'archivalState': 'archived'
+    }
+      ]
+     }},
+    {'project-Y': 
+     {"files": 
+      [{
+        'file_id': 'file-4', 'name': "IamFile4.json", 'size': 3281, 
+      'archivalState': 'live'
+      },
+        {
+            'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803, 
+      'archivalState': 'live'
+        }
+      ]
+    }}
+      ]
     """
     list_of_project_file_dicts = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
@@ -445,7 +419,7 @@ def put_into_dict_write_to_file(final_all_projs_df):
     -------
     all_proj_dict : dict
         final dictionary with key project and nested keys total_live, total_archived, unique_live, unique_archived (and nested size and cost within) for all projects
-    e.g. "project-XYZ": {
+    e.g. {"project-XYZ": {
         "total_live": {
             "cost": 0.875400299678058,
             "size": 1133796550572
@@ -475,3 +449,29 @@ def put_into_dict_write_to_file(final_all_projs_df):
         outfile.write(final_project_storage_totals)
 
     return all_proj_dict
+
+def run():
+    """Essentially a main function"""
+
+    start = time()
+
+    login(settings.DX_TOKEN)
+    all_projects, proj_list = get_projects()
+    project_file_dicts_list = threadify(proj_list, get_files)
+    file_df = make_file_df(project_file_dicts_list)
+    unique_without_empty_projs, empty_projs = count_how_many_lost(file_df, proj_list)
+    proj_df = make_proj_df(all_projects)
+    merged_df = merge_files_and_proj_dfs(file_df, proj_df)
+    unique_df = remove_duplicates(merged_df, unique_without_empty_projs)
+    unique_grouped_df = group_by_project_and_rename(unique_df, 'unique')
+    total_grouped_df = group_by_project_and_rename(merged_df, 'total')
+    unique_sum_df = calculate_totals(unique_grouped_df, 'unique')
+    total_sum_df = calculate_totals(total_grouped_df, 'total')
+    merged_total_df = merge_together_add_empty_rows(unique_sum_df, total_sum_df)
+    final_all_projs_df = add_empty_projs_back_in(empty_projs, merged_total_df)
+    final_dict = put_into_dict_write_to_file(final_all_projs_df)
+
+    end = time()
+    total = end - start
+    print(f"Total time was {total}")
+    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
