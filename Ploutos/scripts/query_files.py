@@ -75,6 +75,10 @@ def get_projects():
     -------
      all_projects : collections.defaultdict
         dictionary with project as key and relevant info
+    projects_ids_list : list
+        all the project IDs in a lsit
+    projects_df : pd.DataFrame
+        dataframe with a row for each project
     """
     project_response = list(dx.find_projects(
         billed_to= settings.ORG, level='VIEW', describe=True))
@@ -88,7 +92,10 @@ def get_projects():
         all_projects[project_id]['project'] = project['describe']['id']
         all_projects[project_id]['created_epoch'] = project['describe']['created']
 
-    return all_projects, project_ids_list
+    # Create a df with a row for each project from the dict 
+    projects_df = pd.DataFrame.from_dict(all_projects.values())
+
+    return all_projects, project_ids_list, projects_df
 
 def get_files(proj):
     """
@@ -152,17 +159,13 @@ def threadify(project_list, get_files_function):
       [{
         'file_id': 'file-4', 'name': "IamFile4.json", 'size': 3281, 
       'archivalState': 'live'
-      },
-        {
-            'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803, 
-      'archivalState': 'live'
-        }
+      }
       ]
     }}
       ]
     """
     list_of_project_file_dicts = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
         futures = []
         for project in project_list:
             futures.append(executor.submit(get_files_function, proj=project))
@@ -238,26 +241,6 @@ def count_how_many_lost(df_of_files, projs_list):
     how_many_empty = len(empty_projs)
     print(f"There are {how_many_empty} projects where no files were found and so they have not been added to the df")
     return unique_after_empty_projs_removed, empty_projs
-
-def make_proj_df(proj_dict):
-    """
-    Make a project dataframe with project and its created for merging
-
-    Parameters
-    ----------
-    proj_dict : collections.defaultdict
-        project dictionary from earlier
-
-    Returns
-    -------
-    projects_df : pd.DataFrame
-        a dataframe with project ID and its epoch created time
-    """
-
-    # Create a df with a row for each project from the dict 
-    projects_df = pd.DataFrame.from_dict(proj_dict.values())
-
-    return projects_df
 
 def merge_files_and_proj_dfs(file_df, proj_df):
     """
@@ -456,11 +439,10 @@ def run():
     start = time()
 
     login(settings.DX_TOKEN)
-    all_projects, proj_list = get_projects()
+    all_projects, proj_list, proj_df = get_projects()
     project_file_dicts_list = threadify(proj_list, get_files)
     file_df = make_file_df(project_file_dicts_list)
     unique_without_empty_projs, empty_projs = count_how_many_lost(file_df, proj_list)
-    proj_df = make_proj_df(all_projects)
     merged_df = merge_files_and_proj_dfs(file_df, proj_df)
     unique_df = remove_duplicates(merged_df, unique_without_empty_projs)
     unique_grouped_df = group_by_project_and_rename(unique_df, 'unique')
