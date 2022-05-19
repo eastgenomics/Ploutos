@@ -1,5 +1,7 @@
 """
-This script gets all files from DNAnexus into a dict grouped by project, then inserts all files into a df to calculates total size and cost for unique projects and total projects (with dups) per file state (live or archived)
+This script gets all files from DNAnexus into a dict grouped by project, 
+then inserts all files into a df to calculates total size and cost for unique
+projects and total projects (with dups) per file state (live or archived)
 Finally saves to a json
 """
 
@@ -99,7 +101,8 @@ def get_projects():
 
 def get_files(proj):
     """
-    Get all files for the project in DNAnexus, storing each file and its size, name and archival state. Is used with ThreadExecutorPool
+    Get all files for the project in DNAnexus, storing each file and its size, name and archival state. 
+    Used with ThreadExecutorPool
 
     Parameters
     ----------
@@ -349,7 +352,8 @@ def merge_together_add_empty_rows(df1, df2):
     Returns
     -------
     total_merged_df : pd.DataFrame
-        merged dataframe with project, all file states (total_live, total_archived, unique_live, unique_archived), cost and size with zeros if did not exist
+        merged dataframe with project, all file states (total_live, total_archived, unique_live, unique_archived), 
+        cost and size with zeros if did not exist
     """
     # Merge the two together to have unique and total costs in one df
     total_merged_df = pd.concat([df1, df2], ignore_index=True, sort=True)
@@ -401,7 +405,8 @@ def put_into_dict_write_to_file(final_all_projs_df):
     Returns
     -------
     all_proj_dict : dict
-        final dictionary with key project and nested keys total_live, total_archived, unique_live, unique_archived (and nested size and cost within) for all projects
+        final dictionary with key project and nested keys total_live, total_archived, unique_live, unique_archived
+         (and nested size and cost within) for all projects
     e.g. {"project-XYZ": {
         "total_live": {
             "cost": 0.875400299678058,
@@ -424,7 +429,8 @@ def put_into_dict_write_to_file(final_all_projs_df):
     }
 
     """
-    all_proj_dict = {n: grp.loc[n].to_dict('index') for n, grp in final_all_projs_df.set_index(['project', 'state']).groupby(level='project')}
+    all_proj_dict = {n: grp.loc[n].to_dict('index') for n, grp in 
+    final_all_projs_df.set_index(['project', 'state']).groupby(level='project')}
 
     final_project_storage_totals = json.dumps(all_proj_dict, indent=4)
 

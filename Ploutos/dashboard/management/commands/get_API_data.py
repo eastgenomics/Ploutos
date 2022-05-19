@@ -13,7 +13,7 @@ import dxpy as dx
 class Command(BaseCommand):
     help = "Gets data from the API as dicts and puts it into the database."
 
-    # Define org of interest
+    # Define org of interest from Django settings
     ORG = settings.ORG
 
     def handle(self, *args, **options):
@@ -27,6 +27,11 @@ class Command(BaseCommand):
             }
 
             dx.set_security_context(DX_SECURITY_CONTEXT)
+
+            try:
+                dx.api.system_whoami()
+            except:
+                print("Error with DNAnexus login")
 
         def get_projects():
             """Get project data and put into a dictionary"""

@@ -43,7 +43,7 @@ class StorageCosts(models.Model):
     unique_cost_archived = models.FloatField()
     total_cost_live = models.FloatField()
     total_cost_archived = models.FloatField()
-    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True)
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
 ########
 
