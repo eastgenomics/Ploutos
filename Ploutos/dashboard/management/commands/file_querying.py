@@ -5,7 +5,6 @@ import concurrent.futures
 import datetime as dt
 import json
 import pandas as pd
-from time import time, localtime, strftime
 import sys
 import dxpy as dx
 
@@ -15,7 +14,7 @@ from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal
 from django.apps import apps
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-
+from time import time, localtime, strftime
 
 class Command(BaseCommand):
     help = "Gets file info from the API and calculates storage costs."
