@@ -15,7 +15,7 @@ import dxpy as dx
 
 from calendar import monthrange
 from collections import defaultdict
-from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal
+from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal,StorageCosts
 from django.apps import apps
 from django.conf import settings
 from time import time, localtime, strftime
@@ -63,7 +63,7 @@ def no_of_days_in_month():
     year, month = int(today_date.split("-")[0]), int(today_date.split("-")[1])
     day_count = monthrange(year, month)[1]
 
-    return day_count
+    return today_date, day_count
 
 def get_projects():
     """
@@ -329,7 +329,7 @@ def calculate_totals(my_grouped_df, type):
     grouped_df : pd.DataFrame
         dataframe with calculated daily storage cost grouped by project and state with columns project, state, size, cost
     """
-    days_in_month = no_of_days_in_month()
+    days_in_month = no_of_days_in_month()[1]
     # If the state of the file is live, convert total size to GB and times by storage cost per month
     # Then divide by the number of days in current month
     # Else if state not live (archived) then times by archived storage cost price
@@ -439,6 +439,37 @@ def put_into_dict_write_to_file(final_all_projs_df):
 
     return all_proj_dict
 
+def populate_database_files(all_projects_dict):
+    """
+    Puts the storage data into the db
+    ----------
+    empty_projs : dict
+        final dictionary from put_into_dict_write_to_file function
+
+    Returns
+    -------
+    none 
+    """
+    
+    today_date = no_of_days_in_month()[0]
+
+    for key, value in all_projects_dict.items():
+        new_storage, created = StorageCosts.objects.get_or_create(
+            # Get the project ID from the projects table by project dx id
+            project = Projects.objects.get(dx_id=key),
+            unique_size_live = value['unique_live']['size'],
+            unique_cost_live = value['unique_live']['cost'],
+            unique_size_archived = value['unique_archived']['size'],
+            unique_cost_archived = value['unique_archived']['cost'],
+
+            total_size_live = value['total_live']['size'],
+            total_cost_live = value['total_live']['cost'],
+            total_size_archived = value['total_archived']['size'],
+            total_cost_archived = value['total_archived']['cost'],
+            # Get date object from the dates table 
+            date = Dates.objects.get(date=today_date),
+            )
+
 def run():
     """Essentially a main function"""
 
@@ -458,6 +489,7 @@ def run():
     merged_total_df = merge_together_add_empty_rows(unique_sum_df, total_sum_df)
     final_all_projs_df = add_empty_projs_back_in(empty_projs, merged_total_df)
     final_dict = put_into_dict_write_to_file(final_all_projs_df)
+    populate_database_files(final_dict)
 
     end = time()
     total = end - start
