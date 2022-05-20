@@ -34,7 +34,7 @@ class DailyOrgRunningTotal(models.Model):
 
 class StorageCosts(models.Model):
     """Model representing storage costs per project"""
-    project = models.ForeignKey(Projects, on_delete=models.CASCADE, unique=True)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
     unique_size_live = models.FloatField()
     unique_size_archived = models.FloatField()
     total_size_live = models.FloatField()

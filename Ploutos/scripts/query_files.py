@@ -78,7 +78,7 @@ def get_projects():
      all_projects : collections.defaultdict
         dictionary with project as key and relevant info
     projects_ids_list : list
-        all the project IDs in a lsit
+        all the project IDs in a list
     projects_df : pd.DataFrame
         dataframe with a row for each project
     """
@@ -253,17 +253,19 @@ def merge_files_and_proj_dfs(file_df, proj_df):
     file_df : pd.DataFrame
         dataframe of the files
     proj_df : pd.DataFrame
-        dataframe of the projects and their created
+        dataframe of the projects and their epoch time created
     Returns
     -------
     files_with_proj_created : pd.DataFrame
-        merged dataframe with each file including the associated project's created
+        merged dataframe with each file including its associated project's created time
     """
 
     files_with_proj_created = pd.merge(file_df, proj_df, on=["project"])
 
     # Replace the state 'archival' to live for easy grouping later as they're technically charged as live
     files_with_proj_created['state'] = files_with_proj_created['state'].str.replace('archival', 'live')
+    # Replace unarchivin with archived so adding missing rows works
+    files_with_proj_created['state'] = files_with_proj_created['state'].str.replace('unarchiving', 'archived')
 
     return files_with_proj_created
 
@@ -474,6 +476,7 @@ def run():
     """Essentially a main function"""
 
     start = time()
+    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
 
     login(settings.DX_TOKEN)
     all_projects, proj_list, proj_df = get_projects()
@@ -492,6 +495,6 @@ def run():
     populate_database_files(final_dict)
 
     end = time()
-    total = end - start
-    print(f"Total time was {total}")
+    total = (end - start) / 60
+    print(f"Total time was {total} minutes")
     print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
