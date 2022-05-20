@@ -2,8 +2,7 @@
 *.csv
 *.pyc
 *.csv#
-_migrations/*
-!_migrations/__init__.py
 *.Rhistory
-__pycache__/*
+_dashboard/__pycache__/*
 *.ipynb
+_migrations/__pycache__/*
