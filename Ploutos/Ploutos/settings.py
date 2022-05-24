@@ -13,20 +13,23 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 from pathlib import Path
 import json
 
-
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-#Add Creds
+# Read in credentials file in same directory
 
-with open(os.path.join(os.path.dirname(BASE_DIR), 'Ploutos/CREDENTIALS.json')) as c:
-    CREDENTIALS = json.load(c)
+datafile = BASE_DIR  / "Ploutos" / "CREDENTIALS.json"
+with open(datafile, 'r') as credentials_file:
+    CREDENTIALS = json.load(credentials_file)
 
-# now we need to assign SECRET_KEY to data from the file
+# Assign keys to data from the file
 DB_USERNAME = CREDENTIALS['DB_USERNAME']
 DB_PASSWORD = CREDENTIALS['DB_PASSWORD']
 SECRET_KEY = CREDENTIALS["SECRET_KEY"]
+DX_TOKEN = CREDENTIALS['DNANEXUS_TOKEN']
+ORG = CREDENTIALS['ORG']
+LIVE_STORAGE_COST_MONTH = CREDENTIALS['LIVE_STORAGE_COST_MONTH']
+ARCHIVED_STORAGE_COST_MONTH = CREDENTIALS['ARCHIVED_STORAGE_COST_MONTH']
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -67,7 +70,7 @@ ROOT_URLCONF = 'Ploutos.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [f'{BASE_DIR}/dashboard/templates/dashboard/'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -129,7 +132,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'GMT'
 
 USE_I18N = True
 

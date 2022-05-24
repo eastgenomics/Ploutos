@@ -1,14 +1,18 @@
-*.json
-/home/rswilson1/Documents/Programming/cost_monitoring/Ploutos/Ploutos/Ploutos/*.json
 *.csv
+*.csv#
 *.pyc
+*.json
+*.Rhistory
+_dashboard/__pycache__/*
+*.ipynb
+_migrations/__pycache__/*
 /Ploutos/Ploutos/pycashe/*
-/Ploutos/Ploutos/dashboard/migrations/*.py
+/Ploutos/Ploutos/dashboard/migrations/*
+!/Ploutos/Ploutos/dashboard/migrations/__init__.py
 /Ploutos/Ploutos/dashboard/migrations/pycashe/*
 /Ploutos/Ploutos/dashboard/pycashe/*
 
 # Git Hub Boiler plate .gitignore
-
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -46,4 +50,3 @@ coverage.xml
 # Django stuff:
 *.log
 *.pot
-

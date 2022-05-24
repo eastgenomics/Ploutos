@@ -1,0 +1,13 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<form method="GET" action="{% url 'index' %}">
+    {{ form.as_p }}
+
+    <button>Submit</button>
+</form>
+{{ chart|safe }}
+
+{% endblock content %}
+
+
