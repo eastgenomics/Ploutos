@@ -20,7 +20,7 @@ from django.apps import apps
 from django.conf import settings
 from time import time, localtime, strftime
 
-def login(token):
+def login():
     """
         Logs into DNAnexus
         Parameters
@@ -35,7 +35,7 @@ def login(token):
 
     DX_SECURITY_CONTEXT = {
         "auth_token_type": "Bearer",
-        "auth_token": token
+        "auth_token": settings.DX_TOKEN
     }
 
     dx.set_security_context(DX_SECURITY_CONTEXT)
@@ -597,7 +597,7 @@ def run():
     start = time()
     print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
 
-    login(settings.DX_TOKEN)
+    login()
     all_projects, proj_list, proj_df = get_projects()
     populate_projects(all_projects)
     populate_running_totals()
