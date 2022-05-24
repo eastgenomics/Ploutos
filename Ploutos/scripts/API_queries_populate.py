@@ -1,8 +1,9 @@
 """
-This script gets all files from DNAnexus into a dict grouped by project, 
-then inserts all files into a df to calculates total size and cost for unique
-projects and total projects (with dups) per file state (live or archived)
-Finally saves to a json
+This script gets all projects and their info from DNAnexus 
+into a list of dictionaries. It then finds files per projects and 
+inserts all files into a df to calculate total size 
+and cost per project both for files unique to that project and 
+with duplicates per file state (live or archived).
 """
 
 import concurrent.futures
@@ -564,7 +565,7 @@ def populate_database_files(all_projects_dict):
     """
     Puts the storage data into the db
     ----------
-    empty_projs : dict
+    all_projects_dict : dict
         final dictionary from put_into_dict_write_to_file function
 
     Returns
