@@ -85,19 +85,138 @@ def get_projects():
     project_response = list(dx.find_projects(
         billed_to= settings.ORG, level='VIEW', describe=True))
 
+    # Put each into dict, turn epoch time into datetime YYYY-MM-DD
     project_ids_list = []
-
-    all_projects = defaultdict(dict)
+    list_projects_dicts = []
     for project in project_response:
-        project_id = project['id']
-        project_ids_list.append(project_id)
-        all_projects[project_id]['project'] = project['describe']['id']
-        all_projects[project_id]['created_epoch'] = project['describe']['created']
+        project_ids_list.append(project['id'])
+        item = {
+            'dx_id': project['describe']['id'], 
+            'name': project['describe']['name'],
+            'created_by': project['describe']['createdBy']['user'], 
+            'created_epoch': project['describe']['created'],
+            'created': dt.datetime.fromtimestamp((project['describe']['created']) / 1000).strftime('%Y-%m-%d') }
+        list_projects_dicts.append(item)
+
+    #Make and write json dump for checking
+    json_obj = json.dumps(list_projects_dicts, indent=4)
+    with open("project_data.json", "w") as outfile:
+        outfile.write(json_obj)
 
     # Create a df with a row for each project from the dict 
-    projects_df = pd.DataFrame.from_dict(all_projects.values())
+    projects_df = pd.DataFrame(list_projects_dicts)
+    # Drop unnecessary fields to only get project and created_epoch
+    projects_df = projects_df.drop(columns=['name', 'created_by', 'created'])
+    # Rename projects column for easier merging with file df
+    projects_df.columns = ['project', 'created_epoch']
 
-    return all_projects, project_ids_list, projects_df
+    return list_projects_dicts, project_ids_list, projects_df
+
+def get_running_totals():
+    """
+    Gets running totals for the org from the API, storing
+    -Storage, compute, egress charges
+    -Estimated remaining balance
+
+    Parameters
+    ----------
+    none
+
+    Returns
+    -------
+    running_total_dict : dict
+        dictionary with the type of charge and its running total for that day
+
+    """
+
+    # Get today's date in YYY-MM-DD format
+    today_date = no_of_days_in_month()[0]
+
+    # Describe the org to get running totals
+    org = dx.api.org_describe(settings.ORG)
+
+    # Put values into dict
+    running_total_dict = {}
+    running_total_dict['storage_charges'] = org['storageCharges']
+    running_total_dict['compute_charges'] = org['computeCharges']
+    running_total_dict['egress_charges'] = org['dataEgressCharges']
+    running_total_dict['estimated_balance'] = org['estSpendingLimitLeft']
+    running_total_dict['date'] = today_date
+    
+    return running_total_dict
+
+def populate_projects(all_projects):
+    """
+    Checks whether user exists or creates it to get ID
+    Checks whether date exists or creates it to get ID
+    Checks whether project exists already and updates name if needed
+    Adds data into the Projects table
+
+    """
+    # In case project names have been changed in DX
+    # Get all project objects in db to filter on later
+    projects_data = Projects.objects.all()
+
+    # Iterate over list of project dicts
+    for entry in all_projects:
+        # Add users to users table to create IDs
+        user, created = Users.objects.get_or_create(
+            user_name = entry['created_by'],
+        )
+
+        # Add project created dates to Dates table to create IDs
+        a_new_date, created = Dates.objects.get_or_create(
+            date = entry['created'],
+        )
+
+        # Get names of projects from our dict
+        new_name = entry['name']
+
+        # Filter on dx_id
+        filter_dict = {
+            "dx_id": entry['dx_id'],
+        }
+
+        # Filter the projects
+        found_entry = projects_data.filter(**filter_dict)
+
+        # If already in db, get the name
+        if found_entry:
+            existing_project = found_entry.values_list(
+                "name", flat=True
+            ).get()
+        
+            if existing_project != new_name:
+                found_entry.update(name=new_name)
+        
+        # Get or create objs in Projects with attributes from other tables
+        project, created = Projects.objects.get_or_create(
+            dx_id = entry['dx_id'],
+            name = entry['name'],
+            created_by = user,
+            created = a_new_date,
+        )
+
+def populate_running_totals():
+    """
+    Adds org running totals into the db, getting the date IDs or creating them first
+    """
+    # Create dict with previous function
+    running_tots_dict = get_running_totals()
+        
+    # Make date entry
+    new_date, created = Dates.objects.get_or_create(
+        date = running_tots_dict['date'],
+    )
+
+    # Add running totals to totals table with date foreign key
+    total, created = DailyOrgRunningTotal.objects.get_or_create(
+        date = new_date,
+        storage_charges = running_tots_dict['storage_charges'],
+        compute_charges = running_tots_dict['compute_charges'],
+        egress_charges = running_tots_dict['egress_charges'],
+        estimated_balance = running_tots_dict['estimated_balance'],
+    )
 
 def get_files(proj):
     """
@@ -480,6 +599,8 @@ def run():
 
     login(settings.DX_TOKEN)
     all_projects, proj_list, proj_df = get_projects()
+    populate_projects(all_projects)
+    populate_running_totals()
     project_file_dicts_list = threadify(proj_list, get_files)
     file_df = make_file_df(project_file_dicts_list)
     unique_without_empty_projs, empty_projs = count_how_many_lost(file_df, proj_list)
