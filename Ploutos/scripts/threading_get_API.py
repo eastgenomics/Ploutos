@@ -1,5 +1,5 @@
 """
-This script gets all files from DNAnexus into a dict grouped by project, 
+This script gets all files from DNAnexus into a dict grouped by project,
 then inserts all files into a df to calculates total size and cost for unique
 projects and total projects (with dups) per file state (live or archived)
 Finally saves to a json

@@ -318,10 +318,11 @@ def make_file_df(list_project_files_dictionary):
      file_df : pd.DataFrame
         dataframe with row for each file including project, file ID, size and state
 
-    >>> get_dups_and_parents(all_files, all_projects)
-
-    list_project_files_dictionary : list
+    >>> make_file_df(all_files, all_projects)
     -------------------------------------------------------------------
+    List of files with describe data
+    -------------------------------------------------------------------
+     e.g.
     [ {"project-X":
      {"files":
       [
@@ -344,29 +345,15 @@ def make_file_df(list_project_files_dictionary):
       ]
     }}
       ]
-
-    [{"project": "project-GB1g5QQ4y2kxF85Z6vgX1GQZ",
-      "id": "file-GB2PG8j4QVGZk2BX4Z2kQzb5",
-      "describe": {"id": "file-GB2PG8j4QVGZk2BX4Z2kQzb5",
-                   "name": "R104.1_Skeletal_dysplasia_P_b37.bed",
-                   "created": 1652880931000, "archivalState": "live",
-                   "size": 180657}},
-    {"project": "project-GB1g5QQ4y2kxF85Z6vgX1GQZ",
-     "id": "file-GB1gP904B6gz4xPy60PFGybG",
-     "describe": {
-                  "id": "file-GB1gP904B6gz4xPy60PFGybG",
-                  "name": "R224.1_Inherited_renal_cancer_P_50bp_b37.bed",
-                  "created": 1652783012000, "archivalState": "archived",
-                  "size": 2388}}]
     --------------------------------------------------------------------
                                       |
                                       |
                                       ▼
                                   DataFrame
-project       id           name         State    size     created_epoch
-project-G9G1  file-GB2Px   GCF_00.tsv   live     33130640 1649941566
-project-G9G1  file-GB2P8   220518.tsv   archived 3952903  1649941566
-
+        project       id           name    archivalState  size
+        project-X  file-1   IamFile1.json  live           4803
+        project-X  file-2   IamFile2.json  archived       702
+        project-Y  file-4   IamFile4.json  live           3281
     """
 
     rows = []
@@ -437,7 +424,37 @@ def merge_files_and_proj_dfs(file_df, proj_df):
     Returns
     -------
     files_with_proj_created : pd.DataFrame
-        merged dataframe with each file including its associated project's created time
+        merged dataframe with each file including
+        its associated project's created time.
+
+    >>> merge_files_and_proj_dfs(all_files, all_projects)
+    -------------------------------------------------------------------
+    Data frame with all files. + Data frame with all projects and created_epoch
+    -------------------------------------------------------------------
+     e.g.
+                            DataFrame
+        project       id           name    archivalState  size
+        project-X  file-1   IamFile1.json  live           4803
+        project-X  file-2   IamFile2.json  archived       702
+        project-Y  file-4   IamFile4.json  live           3281
+
+                                +
+
+                            DataFrame
+        project     created_epoch
+        project-X   1649941566
+        project-Y   1659899291
+
+    --------------------------------------------------------------------
+                                      |
+                                      |
+                                      ▼
+
+                                  DataFrame
+    project       id           name    archivalState  size  created_epoch
+    project-X  file-1   IamFile1.json  live           4803  1649941566
+    project-X  file-2   IamFile2.json  archived       702   1649941566
+    project-Y  file-4   IamFile4.json  live           3281  1659899291
     """
 
     files_with_proj_created = pd.merge(file_df, proj_df, on=["project"])
