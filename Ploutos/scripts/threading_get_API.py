@@ -47,6 +47,7 @@ def login(token):
         print("Error with DNAnexus login")
         sys.exit(1)
 
+
 def no_of_days_in_month():
     """
     Get days in the month for calculations later
@@ -64,6 +65,7 @@ def no_of_days_in_month():
 
     return day_count
 
+
 def get_projects():
     """
     Get all projects in DNAnexus, stores their id and time they were created (epoch - int)
@@ -80,7 +82,7 @@ def get_projects():
         dataframe with a row for each project
     """
     project_response = list(dx.find_projects(
-        billed_to= settings.ORG, level='VIEW', describe=True))
+        billed_to=settings.ORG, level='VIEW', describe=True))
 
     project_ids_list = []
 
@@ -95,6 +97,7 @@ def get_projects():
     projects_df = pd.DataFrame.from_dict(all_projects.values())
 
     return all_projects, project_ids_list, projects_df
+
 
 def get_files(proj):
     """
@@ -114,13 +117,14 @@ def get_files(proj):
     # .get handles files with no size (e.g. .snapshot files) and sets this to zero
     project_files_dict = defaultdict(lambda: {"files": []})
     files = list(dx.search.find_data_objects(classname='file', project=proj, describe={
-                    'fields': {'archivalState': True, 'size': True, 'name': True}}))
+        'fields': {'archivalState': True, 'size': True, 'name': True}}))
     for file in files:
         proj = file['project']
         project_files_dict[proj]["files"].append({"id": file["id"], "name": file["describe"]['name'], "size": file.get(
             'describe', {}).get('size', 0), "state": file['describe']['archivalState']})
 
     return project_files_dict
+
 
 def threadify(project_list, get_files_function):
     """
@@ -135,24 +139,24 @@ def threadify(project_list, get_files_function):
     -------
      list_of_project_file_dicts : list
         list of dictionaries with all the files per project in each dict
-    e.g. 
-    [ {"project-X": 
-     {"files": 
+    e.g.
+    [ {"project-X":
+     {"files":
       [
           {
-        'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803, 
+        'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803,
       'archivalState': 'live'
-    }, 
+    }
     {
-        'file_id': 'file-2', 'name': "IamFile2.json", 'size': 702, 
+        'file_id': 'file-2', 'name': "IamFile2.json", 'size': 702,
       'archivalState': 'archived'
     }
       ]
      }},
-    {'project-Y': 
-     {"files": 
+    {'project-Y':
+     {"files":
       [{
-        'file_id': 'file-4', 'name': "IamFile4.json", 'size': 3281, 
+        'file_id': 'file-4', 'name': "IamFile4.json", 'size': 3281,
       'archivalState': 'live'
       }
       ]
@@ -168,6 +172,7 @@ def threadify(project_list, get_files_function):
             list_of_project_file_dicts.append(future.result())
 
     return list_of_project_file_dicts
+
 
 def make_file_df(list_project_files_dictionary):
     """
@@ -224,7 +229,7 @@ def make_file_df(list_project_files_dictionary):
     # For each project dictionary with its associated files
     for project_dict in list_project_files_dictionary:
         # For the project and its associated files
-        for k, v  in project_dict.items():
+        for k, v in project_dict.items():
             # Get the file info
             data_row = v['files']
             # Assign the project as the parent key
@@ -243,6 +248,7 @@ def make_file_df(list_project_files_dictionary):
 
     return file_df
 
+
 def count_how_many_lost(df_of_files, projs_list):
     """
     Count how many projects are lost when making the file df because they have no files
@@ -259,7 +265,7 @@ def count_how_many_lost(df_of_files, projs_list):
     empty_projs : list
         a list of the projects which do not have any files
     """
-    how_many_unique  = list(df_of_files.project.unique())
+    how_many_unique = list(df_of_files.project.unique())
     unique_after_empty_projs_removed = len(how_many_unique)
     #print(f"There are {unique_after_empty_projs_removed} unique projects in the df")
 
@@ -268,8 +274,10 @@ def count_how_many_lost(df_of_files, projs_list):
 
     empty_projs = [i for i in projs_list if i not in how_many_unique]
     how_many_empty = len(empty_projs)
-    print(f"There are {how_many_empty} projects where no files were found and so they have not been added to the df")
+    print(
+        f"There are {how_many_empty} projects where no files were found and so they have not been added to the df")
     return unique_after_empty_projs_removed, empty_projs
+
 
 def merge_files_and_proj_dfs(file_df, proj_df):
     """
@@ -318,9 +326,11 @@ def merge_files_and_proj_dfs(file_df, proj_df):
     files_with_proj_created = pd.merge(file_df, proj_df, on=["project"])
 
     # Replace the state 'archival' to live for easy grouping later as they're technically charged as live
-    files_with_proj_created['state'] = files_with_proj_created['state'].str.replace('archival', 'live')
+    files_with_proj_created['state'] = files_with_proj_created['state'].str.replace(
+        'archival', 'live')
 
     return files_with_proj_created
+
 
 def remove_duplicates(merged_df, unique_without_empty_projs):
     """
@@ -339,7 +349,8 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     """
     # Sort rows by lowest epoch created time (oldest), drop those with duplicate file IDs
     # Keeping only the file in the oldest project
-    unique_df = merged_df.sort_values('created_epoch', ascending=True).drop_duplicates('id').sort_index()
+    unique_df = merged_df.sort_values(
+        'created_epoch', ascending=True).drop_duplicates('id').sort_index()
 
     unique_projects_after_dups_removed = len(unique_df.project.unique())
 
@@ -363,13 +374,17 @@ def group_by_project_and_rename(df_name, string_to_replace):
         dataframe grouped by project, state (e.g. total_live) which gives the aggregated size
     """
     # Group by project and file state and sum the size column to get total size (with duplicates)
-    grouped_df = df_name.groupby(['project','state']).agg(size=('size', 'sum')).reset_index()
+    grouped_df = df_name.groupby(['project', 'state']).agg(
+        size=('size', 'sum')).reset_index()
 
     # Replace the values with unique_ as it makes it easier to merge later
-    grouped_df['state'] = grouped_df['state'].str.replace('live', string_to_replace+"_live")
-    grouped_df['state'] = grouped_df['state'].str.replace('archived', string_to_replace+"_archived")
+    grouped_df['state'] = grouped_df['state'].str.replace(
+        'live', string_to_replace+"_live")
+    grouped_df['state'] = grouped_df['state'].str.replace(
+        'archived', string_to_replace+"_archived")
 
     return grouped_df
+
 
 def calculate_totals(my_grouped_df, type):
     """
@@ -391,10 +406,12 @@ def calculate_totals(my_grouped_df, type):
     # Else if state not live (archived) then times by archived storage cost price
 
     my_grouped_df['cost'] = np.where(my_grouped_df['state'] == type+"_live",
-                                            my_grouped_df['size'] / (2**30) * settings.LIVE_STORAGE_COST_MONTH / days_in_month,
-                                            my_grouped_df['size'] / (2**30) * settings.ARCHIVED_STORAGE_COST_MONTH / days_in_month)
+                                     my_grouped_df['size'] / (
+                                         2**30) * settings.LIVE_STORAGE_COST_MONTH / days_in_month,
+                                     my_grouped_df['size'] / (2**30) * settings.ARCHIVED_STORAGE_COST_MONTH / days_in_month)
 
     return my_grouped_df
+
 
 def merge_together_add_empty_rows(df1, df2):
     """
@@ -416,11 +433,14 @@ def merge_together_add_empty_rows(df1, df2):
 
     # If there isn't a particular file state for a project
     # Add missing rows for each file state and set the size and cost to zero
-    iterables = [total_merged_df['project'].unique(),total_merged_df['state'].unique()]
-    total_merged_df = total_merged_df.set_index(['project','state'])
-    total_merged_df = total_merged_df.reindex(index=pd.MultiIndex.from_product(iterables, names=['project', 'state']), fill_value=0).reset_index()
+    iterables = [total_merged_df['project'].unique(
+    ), total_merged_df['state'].unique()]
+    total_merged_df = total_merged_df.set_index(['project', 'state'])
+    total_merged_df = total_merged_df.reindex(index=pd.MultiIndex.from_product(
+        iterables, names=['project', 'state']), fill_value=0).reset_index()
 
     return total_merged_df
+
 
 def add_empty_projs_back_in(empty_projs, total_merged_df):
     """
@@ -434,22 +454,28 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
     Returns
     -------
     final_all_projs_df : pd.DataFrame
-        final dataframe with project, file state, total size and cost for all projects 
+        final dataframe with project, file state, total size and cost for all projects
     """
     # For the projects that were removed at the beginning because they are empty
     # Create a list of dictionaries with all the fields as zero
     empty_project_rows = []
 
     for proj in empty_projs:
-        empty_project_rows.append({'project': proj, 'state': 'total_live', 'cost':0, 'size': 0})
-        empty_project_rows.append({'project': proj, 'state': 'total_archived', 'cost':0, 'size': 0})
-        empty_project_rows.append({'project': proj, 'state': 'unique_live', 'cost':0, 'size': 0})
-        empty_project_rows.append({'project': proj, 'state': 'unique_archived', 'cost':0, 'size': 0})
+        empty_project_rows.append(
+            {'project': proj, 'state': 'total_live', 'cost': 0, 'size': 0})
+        empty_project_rows.append(
+            {'project': proj, 'state': 'total_archived', 'cost': 0, 'size': 0})
+        empty_project_rows.append(
+            {'project': proj, 'state': 'unique_live', 'cost': 0, 'size': 0})
+        empty_project_rows.append(
+            {'project': proj, 'state': 'unique_archived', 'cost': 0, 'size': 0})
 
     # Append the projects with no files to the final merged dataframe
-    final_all_projs_df = total_merged_df.append(empty_project_rows, ignore_index=True, sort=False)
+    final_all_projs_df = total_merged_df.append(
+        empty_project_rows, ignore_index=True, sort=False)
 
     return final_all_projs_df
+
 
 def put_into_dict_write_to_file(final_all_projs_df):
     """
@@ -485,7 +511,7 @@ def put_into_dict_write_to_file(final_all_projs_df):
     }
     """
     all_proj_dict = {n: grp.loc[n].to_dict('index') for n, grp in
-    final_all_projs_df.set_index(['project', 'state']).groupby(level='project')}
+                     final_all_projs_df.set_index(['project', 'state']).groupby(level='project')}
 
     final_project_storage_totals = json.dumps(all_proj_dict, indent=4)
 
@@ -493,6 +519,7 @@ def put_into_dict_write_to_file(final_all_projs_df):
         outfile.write(final_project_storage_totals)
 
     return all_proj_dict
+
 
 def run():
     """Essentially a main function"""
@@ -503,16 +530,18 @@ def run():
     all_projects, proj_list, proj_df = get_projects()
     project_file_dicts_list = threadify(proj_list, get_files)
     file_df = make_file_df(project_file_dicts_list)
-    unique_without_empty_projs, empty_projs = count_how_many_lost(file_df, proj_list)
+    unique_without_empty_projs, empty_projs = count_how_many_lost(
+        file_df, proj_list)
     merged_df = merge_files_and_proj_dfs(file_df, proj_df)
     unique_df = remove_duplicates(merged_df, unique_without_empty_projs)
     unique_grouped_df = group_by_project_and_rename(unique_df, 'unique')
     total_grouped_df = group_by_project_and_rename(merged_df, 'total')
-    #unique_sum_df = calculate_totals(unique_grouped_df, 'unique')
-    #total_sum_df = calculate_totals(total_grouped_df, 'total')
-    #merged_total_df = merge_together_add_empty_rows(unique_sum_df, total_sum_df)
-    #final_all_projs_df = add_empty_projs_back_in(empty_projs, merged_total_df)
-    #final_dict = put_into_dict_write_to_file(final_all_projs_df)
+    unique_sum_df = calculate_totals(unique_grouped_df, 'unique')
+    total_sum_df = calculate_totals(total_grouped_df, 'total')
+    merged_total_df = merge_together_add_empty_rows(
+        unique_sum_df, total_sum_df)
+    final_all_projs_df = add_empty_projs_back_in(empty_projs, merged_total_df)
+    final_dict = put_into_dict_write_to_file(final_all_projs_df)
 
     end = time()
     total = end - start
