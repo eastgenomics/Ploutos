@@ -4,6 +4,10 @@ then inserts all analyses into a df to calculates total cost.
 It will have a 24-48hr lag to allow for jobs to finish so cost is not calculated
 until it has finished.
 This can then be imported and used with populate_db.py to insert data into the DB.
+
+Changes to make:
+- Combine functions across queries to make them generic and pass in args.
+- One script for queries and one for populating DB which imports queries.
 """
 
 import concurrent.futures
@@ -121,7 +125,8 @@ def get_analyses(proj):
     -------
      project_files_dict : collections.defaultdict
         dictionary with all the files per project
-    Example data:
+
+    Example data (rm or shorten for production):
     {'id': 'stage-Fyq5yy0433GXxz691bKyvjPJ',
      'execution': {'id': 'job-GB3kx704vyJ7Yj3v0V66YgK5',
      'region': 'aws:eu-central-1', 'name': 'generate_bed_for_athena',
@@ -165,70 +170,109 @@ def get_analyses(proj):
 
     """
 
-    # Find files in each project, only returning specified fields
-    # Per project, create dict with info per file and add this to 'file' list
-    # .get handles files with no size (e.g. .snapshot files) and sets this to zero
+    # Find analyses in each project, only returning specified fields in item
     project_analyses_dict = defaultdict(lambda: {"analysis": []})
     jobs = dx.bindings.search.find_executions(classname="analysis",
-                                                project=proj,
-                                                state="done",
-                                                # no_parent_job=False,
-                                                # parent_analysis="null",
-                                                no_parent_analysis=True,
-                                                # root_execution=None,
-                                                created_after="-1d",
-                                                # created_before="-1d",
-                                                describe=True,
-    # {'fields': {'id': True, 'execution': True, 'name': True, 'class': True, 'created': True, 'totalPrice': True}},
-                                                limit=1)
+                                              project=proj,
+                                              state="done",
+                                              # no_parent_job=False,
+                                              # parent_analysis="null",
+                                              no_parent_analysis=True,
+                                              # root_execution=None,
+                                              created_after="-1d",
+                                              # created_before="-1d",
+                                              describe=True)
+
     # jobs = list(dx.search.find_data_objects(classname='analyses', project=proj, describe={
     #     'fields': {'archivalState': True, 'size': True, 'name': True}}))
     for job in jobs:
         proj = job['describe']['project']
-        #print(job)
-        project_analyses_dict[proj]["analysis"].append(
-                                    {"id": job["id"],
-                                    "name": job['describe']['name'],
-                                    "cost": job['describe']['totalPrice'],
-                                    "class": job['describe']['class'],
-                                    "executable": job['describe']['executable'],
-                                    #"totalEgress": job['describe']['totalEgress'],
-                                    "state": job['describe']['state'],
-                                    "created": job['describe']['created'],
-                                    "launchedBy": job['describe']['launchedBy'],
-                                    "WorkflowID": job['describe']['workflow']['id'],
-                                    "createdBy": job['describe']['workflow']['createdBy'],
-                                    #"instanceType": job['describe']['instanceType']
-                                    #"cost": job['describe']['totalPrice'],
-                                    #"size": job.get('describe', {}).get('size', 0),
-                                    #"state": job['describe']['archivalState']}
-                                    })
+        # print(job)
+        # item = {"id": job["id"],
+        #         "name": job['describe']['name'],
+        #         "cost": job['describe']['totalPrice'],
+        #         "class": job['describe']['class'],
+        #         "executable": job['describe']['executable'],
+        #         # "totalEgress": job['describe']['totalEgress'],
+        #         "state": job['describe']['state'],
+        #         "created": job['describe']['created'],
+        #         "launchedBy": job['describe']['launchedBy'],
+        #         "WorkflowID": job['describe']['workflow']['id'],
+        #         "createdBy": job['describe']['workflow']['createdBy'],
+        #         }
+        project_analyses_dict[proj]["analysis"].append({"id": job["id"],
+                "name": job['describe']['name'],
+                "cost": job['describe']['totalPrice'],
+                "class": job['describe']['class'],
+                "executable": job['describe']['executable'],
+                # "totalEgress": job['describe']['totalEgress'],
+                "state": job['describe']['state'],
+                "created": job['describe']['created'],
+                "launchedBy": job['describe']['launchedBy'],
+                "WorkflowID": job['describe']['workflow']['id'],
+                "createdBy": job['describe']['workflow']['createdBy']})
     return project_analyses_dict
 
 
-def threadify(project_list, get_analyses_function):
+def threadify(project_list, get_function):
     """
     Use ThreadPoolExecutor on get_analyses() function
 
     Parameters
     ----------
+    project_list: list of all projects for given ORG
+    get_function: the function that is to be run in parallel
 
     Returns
     -------
-      : list
-
-    e.g.
+    list_of_project_analyses_dicts: list
+        list of dictionaries for analyses for each project.
     """
-    list_of_project_file_dicts = []
+    list_of_project_analyses_dicts = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
         futures = []
         for project in project_list:
-            futures.append(executor.submit(get_analyses_function, proj=project))
+            futures.append(executor.submit(get_function, proj=project))
         for future in concurrent.futures.as_completed(futures):
-            list_of_project_file_dicts.append(future.result())
+            list_of_project_analyses_dicts.append(future.result())
 
-    return list_of_project_file_dicts
+    return list_of_project_analyses_dicts
 
+
+def make_analyses_df(list_project_analyses_dictionary):
+    """
+    Get all analyses from the list of analyses per proj dict
+    and add it into a df.
+    Parameters
+    ----------
+    list_project_analyses_dictionary: list of all analyses for each project.
+
+    Returns
+    -------
+    list_of_project_analyses_dicts: list
+        list of dictionaries for analyses for each project.
+    """
+
+    rows = []
+    # For each project dictionary with its associated files
+    for project_dict in list_project_analyses_dictionary:
+        # For the project and its associated files
+        for k, v in project_dict.items():
+            # Get the file info
+            data_row = v['analysis']
+            # Assign the project as the parent key
+            project = k
+
+            # Add the project name to the row 'project'
+            for row in data_row:
+                row['project'] = project
+                # Append each file's info as info to the other columns
+                rows.append(row)
+
+    # Convert to data frame
+    analysis_df = pd.DataFrame(rows)
+
+    return analysis_df
 
 
 def run():
@@ -241,21 +285,12 @@ def run():
     all_analyses = []
     for proj in proj_list:
         analyses = get_analyses(proj)
-        # print(analyses)
-        # for job in analyses:
-        #     #print(job)
-        #     all_analyses.append(job)
         all_analyses.append(analyses)
-    #print(all_analyses)
-    #print(len(all_analyses))
-
-    # project_file_dicts_list = threadify(proj_list, get_files)
-
+    df = make_file_df(all_analyses)
+    print(df)
+    # for index, row in df.iterrows():
+    #     print(row)
     end = time()
     total = (end - start) / 60
     print(f"Total time was {total} minutes")
     print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
-
-
-# if __name__ == "__main__":
-#     run()
