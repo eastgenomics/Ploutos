@@ -11,7 +11,10 @@ class Users(models.Model):
 class Dates(models.Model):
     """Model representing a date.
     N.B. date has to be in YYYY-MM-DD format"""
-    date = models.DateField()
+    date = models.DateField(unique=True)
+
+    def __str__(self):
+        return self.date
 
 class Projects(models.Model):
     """Model representing a project."""
@@ -25,7 +28,7 @@ class Projects(models.Model):
 
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
-    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True, related_name = "totals")
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True)
     storage_charges = models.FloatField()
     compute_charges = models.FloatField()
     egress_charges = models.FloatField()
@@ -45,9 +48,10 @@ class StorageCosts(models.Model):
     total_cost_archived = models.FloatField()
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
+
 ########
 
-# class compute_costs(models.Model):
+# class ComputeCosts(models.Model):
 #     executable_id = models.IntegerField()
 #     project_id = models.IntegerField()
 #     # intstance_id = models.IntegerField(blank = True, null = True)
@@ -59,7 +63,7 @@ class StorageCosts(models.Model):
 #     def __str__(self):
 #         return self.name
 
-# class executables(models.Model):
+# class Executables(models.Model):
 #     executable_id = models.IntegerField()
 #     dx_id = models.CharField(max_length=200, blank = False, null = False)
 #     excutable_name = models.CharField(max_length=200, blank = False, null = False)
