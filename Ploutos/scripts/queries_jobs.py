@@ -10,7 +10,7 @@ Changes to make:
 - One script for queries and one for populating DB which imports queries.
 """
 
-import concurrent.futures
+#import concurrent.futures
 import datetime as dt
 # import json
 import numpy as np
@@ -53,25 +53,6 @@ def login(token):
     except:
         print("Error with DNAnexus login")
         sys.exit(1)
-
-def no_of_days_in_month():
-    """
-    Get days in the month for calculations later
-    Parameters
-    ----------
-    none
-
-    Returns
-    -------
-     day_count : int
-        number of days in current month
-    """
-    today_date = dt.datetime.now().strftime("%Y/%m/%d").replace("/", "-")
-    year, month = int(today_date.split("-")[0]), int(today_date.split("-")[1])
-    day_count = monthrange(year, month)[1]
-
-    return today_date, day_count
-
 
 
 def get_projects():
@@ -119,7 +100,7 @@ def get_analyses(proj):
 
     Parameters
     ----------
-    proj : entry in list
+    proj : project_id for the DNAnexus project
 
     Returns
     -------
@@ -200,6 +181,8 @@ def get_analyses(proj):
         #         "WorkflowID": job['describe']['workflow']['id'],
         #         "createdBy": job['describe']['workflow']['createdBy'],
         #         }
+        #print(job)
+
         project_analyses_dict[proj]["analysis"].append({"id": job["id"],
                 "name": job['describe']['name'],
                 "cost": job['describe']['totalPrice'],
@@ -208,35 +191,13 @@ def get_analyses(proj):
                 # "totalEgress": job['describe']['totalEgress'],
                 "state": job['describe']['state'],
                 "created": job['describe']['created'],
+                "modified": job['describe']['modified'],
                 "launchedBy": job['describe']['launchedBy'],
-                "WorkflowID": job['describe']['workflow']['id'],
+                #"WorkflowID": job['describe']['workflow']['id'],
+                #'startedRunning': job['describe']['startedRunning'],
+                #'stoppedRunning': job['describe']['stoppedRunning'],
                 "createdBy": job['describe']['workflow']['createdBy']})
     return project_analyses_dict
-
-
-def threadify(project_list, get_function):
-    """
-    Use ThreadPoolExecutor on get_analyses() function
-
-    Parameters
-    ----------
-    project_list: list of all projects for given ORG
-    get_function: the function that is to be run in parallel
-
-    Returns
-    -------
-    list_of_project_analyses_dicts: list
-        list of dictionaries for analyses for each project.
-    """
-    list_of_project_analyses_dicts = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-        futures = []
-        for project in project_list:
-            futures.append(executor.submit(get_function, proj=project))
-        for future in concurrent.futures.as_completed(futures):
-            list_of_project_analyses_dicts.append(future.result())
-
-    return list_of_project_analyses_dicts
 
 
 def make_analyses_df(list_project_analyses_dictionary):
@@ -272,25 +233,28 @@ def make_analyses_df(list_project_analyses_dictionary):
     # Convert to data frame
     analysis_df = pd.DataFrame(rows)
 
+    # sum_column = (
+    #     (analysis_df["stoppedRunning"] + analysis_df["startedRunning"])/60
+    #     )
+    # analysis_df["RunTime"] = sum_column
+
     return analysis_df
 
 
 def run():
     "Main function for script"
-    start = time()
-    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
+    # start = time()
+    # print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
 
     login(settings.DX_TOKEN)
-    all_projects, proj_list, proj_df = get_projects()
-    all_analyses = []
-    for proj in proj_list:
-        analyses = get_analyses(proj)
-        all_analyses.append(analyses)
-    df = make_file_df(all_analyses)
-    print(df)
-    # for index, row in df.iterrows():
-    #     print(row)
-    end = time()
-    total = (end - start) / 60
-    print(f"Total time was {total} minutes")
-    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
+    # all_projects, proj_list, proj_df = get_projects()
+    # all_analyses = []
+    # for proj in proj_list:
+    #     analyses = get_analyses(proj)
+    #     all_analyses.append(analyses)
+    # df = make_file_df(all_analyses)
+
+    # end = time()
+    # total = (end - start) / 60
+    # print(f"Total time was {total} minutes")
+    # print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
