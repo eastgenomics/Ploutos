@@ -70,7 +70,7 @@ class ComputeCosts(models.Model):
     total_cost = models.FloatField()
     launched_by = models.ForeignKey(Users, on_delete=models.CASCADE)
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
-    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
+    # project = models.ForeignKey(Projects, on_delete=models.CASCADE)
 
 #    def __str__(self):
 #        return self.name
