@@ -10,7 +10,7 @@ class Users(models.Model):
 
 class Dates(models.Model):
     """Model representing a date.
-    N.B. date has to be in YYYY-MM-DD format"""
+    N.B. date has to be in YYYY-MM-DD format """
     date = models.DateField(unique=True)
 
     def __str__(self):
@@ -35,6 +35,7 @@ class DailyOrgRunningTotal(models.Model):
     estimated_balance = models.FloatField()
 
 
+
 class StorageCosts(models.Model):
     """Model representing storage costs per project"""
     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
@@ -48,29 +49,34 @@ class StorageCosts(models.Model):
     total_cost_archived = models.FloatField()
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
+#    def __str__(self):
+#        return self.name
 
-########
+class Executables(models.Model):
+    executable_id = models.AutoField(primary_key=True)
+    dx_id = models.CharField(max_length=200)
+    excutable_name = models.CharField(max_length=200)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
+    #version = models.CharField(max_length=30)
 
-# class ComputeCosts(models.Model):
-#     executable_id = models.IntegerField()
-#     project_id = models.IntegerField()
-#     # intstance_id = models.IntegerField(blank = True, null = True)
-#     runtime = models.IntegerField()
-#     total_cost = models.FloatField()
-#     launched_by = models.IntegerField()
-#     date_id = models.IntegerField()
+#    def __str__(self):
+#        return self.name
 
-#     def __str__(self):
-#         return self.name
 
-# class Executables(models.Model):
-#     executable_id = models.IntegerField()
-#     dx_id = models.CharField(max_length=200, blank = False, null = False)
-#     excutable_name = models.CharField(max_length=200, blank = False, null = False)
-#     version = models.CharField(max_length=30, blank = False, null = False)
+class ComputeCosts(models.Model):
+    executable_id = models.ForeignKey(Executables, on_delete=models.CASCADE)
+    # intstance_id = models.IntegerField(blank = True, null = True)
+    # runtime = models.IntegerField()
+    total_cost = models.FloatField()
+    launched_by = models.ForeignKey(Users, on_delete=models.CASCADE)
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
 
-#     def __str__(self):
-#         return self.name
+#    def __str__(self):
+#        return self.name
+
+
+# Models in progress
 
 # class Egress(models.Model):
 #     project = models.ForeignKey(Projects,on_delete=models.CASCADE)

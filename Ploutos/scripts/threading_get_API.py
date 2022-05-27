@@ -1,9 +1,8 @@
 """
-This script gets all projects and their info from DNAnexus
-into a list of dictionaries. It then finds files per projects and
-inserts all files into a df to calculate total size
-and cost per project both for files unique to that project and
-with duplicates per file state (live or archived).
+This script gets all files from DNAnexus into a dict grouped by project,
+then inserts all files into a df to calculates total size and cost for unique
+projects and total projects (with dups) per file state (live or archived)
+Finally saves to a json
 """
 
 import concurrent.futures
@@ -16,20 +15,19 @@ import dxpy as dx
 
 from calendar import monthrange
 from collections import defaultdict
-from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal, StorageCosts
+from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal
 from django.apps import apps
 from django.conf import settings
 from time import time, localtime, strftime
 
 
-def login():
+def login(token):
     """
         Logs into DNAnexus
         Parameters
         ----------
         token : str
             authorisation token for DNAnexus, from settings.py
-
         Returns
         -------
         None
@@ -37,7 +35,7 @@ def login():
 
     DX_SECURITY_CONTEXT = {
         "auth_token_type": "Bearer",
-        "auth_token": settings.DX_TOKEN
+        "auth_token": token
     }
 
     dx.set_security_context(DX_SECURITY_CONTEXT)
@@ -56,7 +54,6 @@ def no_of_days_in_month():
     Parameters
     ----------
     none
-
     Returns
     -------
      day_count : int
@@ -66,197 +63,65 @@ def no_of_days_in_month():
     year, month = int(today_date.split("-")[0]), int(today_date.split("-")[1])
     day_count = monthrange(year, month)[1]
 
-    return today_date, day_count
+    return day_count
 
 
 def get_projects():
     """
     Get all projects in DNAnexus, stores their id and time they were created (epoch - int)
-
     Parameters
     ----------
     none
-
     Returns
     -------
      all_projects : collections.defaultdict
         dictionary with project as key and relevant info
     projects_ids_list : list
-        all the project IDs in a list
+        all the project IDs in a lsit
     projects_df : pd.DataFrame
         dataframe with a row for each project
     """
     project_response = list(dx.find_projects(
         billed_to=settings.ORG, level='VIEW', describe=True))
 
-    # Put each into dict, turn epoch time into datetime YYYY-MM-DD
     project_ids_list = []
-    list_projects_dicts = []
-    for project in project_response:
-        project_ids_list.append(project['id'])
-        item = {
-            'dx_id': project['describe']['id'],
-            'name': project['describe']['name'],
-            'created_by': project['describe']['createdBy']['user'],
-            'created_epoch': project['describe']['created'],
-            'created': dt.datetime.fromtimestamp(
-                (project['describe']['created']) / 1000).strftime('%Y-%m-%d')}
-        list_projects_dicts.append(item)
 
-    # Make and write json dump for checking
-    json_obj = json.dumps(list_projects_dicts, indent=4)
-    with open("project_data.json", "w") as outfile:
-        outfile.write(json_obj)
+    all_projects = defaultdict(dict)
+    for project in project_response:
+        project_id = project['id']
+        project_ids_list.append(project_id)
+        all_projects[project_id]['project'] = project['describe']['id']
+        all_projects[project_id]['created_epoch'] = project['describe']['created']
 
     # Create a df with a row for each project from the dict
-    projects_df = pd.DataFrame(list_projects_dicts)
-    # Drop unnecessary fields to only get project and created_epoch
-    projects_df = projects_df.drop(columns=['name', 'created_by', 'created'])
-    # Rename projects column for easier merging with file df
-    projects_df.columns = ['project', 'created_epoch']
+    projects_df = pd.DataFrame.from_dict(all_projects.values())
 
-    return list_projects_dicts, project_ids_list, projects_df
-
-
-def get_running_totals():
-    """
-    Gets running totals for the org from the API, storing
-    -Storage, compute, egress charges
-    -Estimated remaining balance
-
-    Parameters
-    ----------
-    none
-
-    Returns
-    -------
-    running_total_dict : dict
-        dictionary with the type of charge and its running total for that day
-
-    """
-
-    # Get today's date in YYY-MM-DD format
-    today_date = no_of_days_in_month()[0]
-
-    # Describe the org to get running totals
-    org = dx.api.org_describe(settings.ORG)
-
-    # Put values into dict
-    running_total_dict = {}
-    running_total_dict['storage_charges'] = org['storageCharges']
-    running_total_dict['compute_charges'] = org['computeCharges']
-    running_total_dict['egress_charges'] = org['dataEgressCharges']
-    running_total_dict['estimated_balance'] = org['estSpendingLimitLeft']
-    running_total_dict['date'] = today_date
-
-    return running_total_dict
-
-
-def populate_projects(all_projects):
-    """
-    Checks whether user exists or creates it to get ID
-    Checks whether date exists or creates it to get ID
-    Checks whether project exists already and updates name if needed
-    Adds data into the Projects table
-
-    """
-    # In case project names have been changed in DX
-    # Get all project objects in db to filter on later
-    projects_data = Projects.objects.all()
-
-    # Iterate over list of project dicts
-    for entry in all_projects:
-        # Add users to users table to create IDs
-        user, created = Users.objects.get_or_create(
-            user_name=entry['created_by'],
-        )
-
-        # Add project created dates to Dates table to create IDs
-        a_new_date, created = Dates.objects.get_or_create(
-            date=entry['created'],
-        )
-
-        # Get names of projects from our dict
-        new_name = entry['name']
-
-        # Filter on dx_id
-        filter_dict = {
-            "dx_id": entry['dx_id'],
-        }
-
-        # Filter the projects
-        found_entry = projects_data.filter(**filter_dict)
-
-        # If already in db, get the name
-        if found_entry:
-            existing_project = found_entry.values_list(
-                "name", flat=True
-            ).get()
-
-            if existing_project != new_name:
-                found_entry.update(name=new_name)
-
-        # Get or create objs in Projects with attributes from other tables
-        project, created = Projects.objects.get_or_create(
-            dx_id=entry['dx_id'],
-            name=entry['name'],
-            created_by=user,
-            created=a_new_date,
-        )
-
-
-def populate_running_totals():
-    """
-    Adds org running totals into the db, getting the date IDs or creating them first
-    """
-    # Create dict with previous function
-    running_tots_dict = get_running_totals()
-
-    # Make date entry
-    new_date, created = Dates.objects.get_or_create(
-        date=running_tots_dict['date'],
-    )
-
-    # Add running totals to totals table with date foreign key
-    total, created = DailyOrgRunningTotal.objects.get_or_create(
-        date=new_date,
-        storage_charges=running_tots_dict['storage_charges'],
-        compute_charges=running_tots_dict['compute_charges'],
-        egress_charges=running_tots_dict['egress_charges'],
-        estimated_balance=running_tots_dict['estimated_balance'],
-    )
+    return all_projects, project_ids_list, projects_df
 
 
 def get_files(proj):
     """
     Get all files for the project in DNAnexus, storing each file and its size, name and archival state. 
     Used with ThreadExecutorPool
-
     Parameters
     ----------
     proj : entry in list
-
     Returns
     -------
      project_files_dict : collections.defaultdict
         dictionary with all the files per project
-
     """
 
     # Find files in each project, only returning specified fields
     # Per project, create dict with info per file and add this to 'file' list
     # .get handles files with no size (e.g. .snapshot files) and sets this to zero
     project_files_dict = defaultdict(lambda: {"files": []})
-    files = list(dx.search.find_data_objects(classname='file', project=proj,
-                                             describe={
-                                                 'fields': {'archivalState': True, 'size': True, 'name': True}
-                                             }))
+    files = list(dx.search.find_data_objects(classname='file', project=proj, describe={
+        'fields': {'archivalState': True, 'size': True, 'name': True}}))
     for file in files:
         proj = file['project']
-        project_files_dict[proj]["files"].append({"id": file["id"],
-                                                  "name": file["describe"]['name'], "size": file.get(
-            'describe', {}).get('size', 0),
-            "state": file['describe']['archivalState']})
+        project_files_dict[proj]["files"].append({"id": file["id"], "name": file["describe"]['name'], "size": file.get(
+            'describe', {}).get('size', 0), "state": file['describe']['archivalState']})
 
     return project_files_dict
 
@@ -264,14 +129,12 @@ def get_files(proj):
 def threadify(project_list, get_files_function):
     """
     Use ThreadPoolExecutor on get_files() function
-
     Parameters
     ----------
     project_list : list
         list of all the projects in DNAnexus
     get_files_function: function
         the function which gets files per project
-
     Returns
     -------
      list_of_project_file_dicts : list
@@ -283,7 +146,7 @@ def threadify(project_list, get_files_function):
           {
         'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803,
       'archivalState': 'live'
-    },
+    }
     {
         'file_id': 'file-2', 'name': "IamFile2.json", 'size': 702,
       'archivalState': 'archived'
@@ -314,12 +177,10 @@ def threadify(project_list, get_files_function):
 def make_file_df(list_project_files_dictionary):
     """
     Get all files from the list of files per proj dict and put into a df
-
     Parameters
     ----------
     list_project_files_dictionary : list
         list of dictionaries with all the files per project in each dict
-
     Returns
     -------
      file_df : pd.DataFrame
@@ -361,6 +222,7 @@ def make_file_df(list_project_files_dictionary):
         project-X  file-1   IamFile1.json  live           4803
         project-X  file-2   IamFile2.json  archived       702
         project-Y  file-4   IamFile4.json  live           3281
+
     """
 
     rows = []
@@ -390,14 +252,12 @@ def make_file_df(list_project_files_dictionary):
 def count_how_many_lost(df_of_files, projs_list):
     """
     Count how many projects are lost when making the file df because they have no files
-
     Parameters
     ----------
     df_of_files : pd.DataFrame
         dataframe with row for each file including project, file ID, size and state
     projs_list : list
         list of all projects in DNAnexus
-
     Returns
     -------
     unique_after_empty_projs_removed : int
@@ -427,12 +287,11 @@ def merge_files_and_proj_dfs(file_df, proj_df):
     file_df : pd.DataFrame
         dataframe of the files
     proj_df : pd.DataFrame
-        dataframe of the projects and their epoch time created
+        dataframe of the projects and their created
     Returns
     -------
     files_with_proj_created : pd.DataFrame
-        merged dataframe with each file including
-        its associated project's created time.
+        merged dataframe with each file including the associated project's created
 
     >>> merge_files_and_proj_dfs(all_files, all_projects)
     -------------------------------------------------------------------
@@ -469,11 +328,6 @@ def merge_files_and_proj_dfs(file_df, proj_df):
     # Replace the state 'archival' to live for easy grouping later as they're technically charged as live
     files_with_proj_created['state'] = files_with_proj_created['state'].str.replace(
         'archival', 'live')
-    # Replace unarchiving with archived so adding missing rows works
-    # See - https://documentation.dnanexus.com/user/objects/archiving-files
-    # This explains the archiving process - unarchiving files are still currently archived.
-    files_with_proj_created['state'] = files_with_proj_created['state'].str.replace(
-        'unarchiving', 'archived')
 
     return files_with_proj_created
 
@@ -534,22 +388,19 @@ def group_by_project_and_rename(df_name, string_to_replace):
 
 def calculate_totals(my_grouped_df, type):
     """
-    Calculate the total cost of storing per project
-    by file state through rates defined in CREDENTIALS.json
+    Calculate the total cost of storing per project by file state through rates defined in CREDENTIALS.json
     ----------
     my_grouped_df : pd.DataFrame
-        the dataframe which is grouped by project
-        and state with aggregated total size
+        the dataframe which is grouped by project and state with aggregated total size
     type : str
         'unique' or 'total'
 
     Returns
     -------
     grouped_df : pd.DataFrame
-        dataframe with calculated daily storage cost
-        grouped by project and state with columns project, state, size, cost
+        dataframe with calculated daily storage cost grouped by project and state with columns project, state, size, cost
     """
-    days_in_month = no_of_days_in_month()[1]
+    days_in_month = no_of_days_in_month()
     # If the state of the file is live, convert total size to GB and times by storage cost per month
     # Then divide by the number of days in current month
     # Else if state not live (archived) then times by archived storage cost price
@@ -603,7 +454,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
     Returns
     -------
     final_all_projs_df : pd.DataFrame
-        final dataframe with project, file state, total size and cost for all projects 
+        final dataframe with project, file state, total size and cost for all projects
     """
     # For the projects that were removed at the beginning because they are empty
     # Create a list of dictionaries with all the fields as zero
@@ -658,11 +509,9 @@ def put_into_dict_write_to_file(final_all_projs_df):
     }, "project-ABC": {
     ...
     }
-
     """
     all_proj_dict = {n: grp.loc[n].to_dict('index') for n, grp in
-                     final_all_projs_df.set_index(
-                         ['project', 'state']).groupby(level='project')}
+                     final_all_projs_df.set_index(['project', 'state']).groupby(level='project')}
 
     final_project_storage_totals = json.dumps(all_proj_dict, indent=4)
 
@@ -672,49 +521,13 @@ def put_into_dict_write_to_file(final_all_projs_df):
     return all_proj_dict
 
 
-def populate_database_files(all_projects_dict):
-    """
-    Puts the storage data into the db
-    ----------
-    all_projects_dict : dict
-        final dictionary from put_into_dict_write_to_file function
-
-    Returns
-    -------
-    none
-    N.B. Move this to new script and import other query script.
-    """
-
-    today_date = no_of_days_in_month()[0]
-
-    for key, value in all_projects_dict.items():
-        new_storage, created = StorageCosts.objects.get_or_create(
-            # Get the project ID from the projects table by project dx id
-            project=Projects.objects.get(dx_id=key),
-            unique_size_live=value['unique_live']['size'],
-            unique_cost_live=value['unique_live']['cost'],
-            unique_size_archived=value['unique_archived']['size'],
-            unique_cost_archived=value['unique_archived']['cost'],
-
-            total_size_live=value['total_live']['size'],
-            total_cost_live=value['total_live']['cost'],
-            total_size_archived=value['total_archived']['size'],
-            total_cost_archived=value['total_archived']['cost'],
-            # Get date object from the dates table
-            date=Dates.objects.get_or_create(date=today_date),
-        )
-
-
 def run():
     """Essentially a main function"""
 
     start = time()
-    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
 
-    login()
+    login(settings.DX_TOKEN)
     all_projects, proj_list, proj_df = get_projects()
-    populate_projects(all_projects)
-    populate_running_totals()
     project_file_dicts_list = threadify(proj_list, get_files)
     file_df = make_file_df(project_file_dicts_list)
     unique_without_empty_projs, empty_projs = count_how_many_lost(
@@ -729,9 +542,8 @@ def run():
         unique_sum_df, total_sum_df)
     final_all_projs_df = add_empty_projs_back_in(empty_projs, merged_total_df)
     final_dict = put_into_dict_write_to_file(final_all_projs_df)
-    populate_database_files(final_dict)
 
     end = time()
-    total = (end - start) / 60
-    print(f"Total time was {total} minutes")
+    total = end - start
+    print(f"Total time was {total}")
     print(strftime("%Y-%m-%d %H:%M:%S", localtime()))

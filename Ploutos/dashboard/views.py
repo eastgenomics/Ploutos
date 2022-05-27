@@ -5,7 +5,7 @@ from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal
 import datetime
 
 def index(request):
-    """ 
+    """
     View to display running total charges via Plotly 
     """
     # Get start and end from form
@@ -30,7 +30,7 @@ def index(request):
     #DailyOrgRunningTotal.objects.filter(date__id__in=(Dates.objects.filter(date__month=month).values_list('id',flat=True))).aggregate(avg=Avg('storage_charges'))
 
     # Plot the date and storage charges as line graph
-    
+
     compute = [c.compute_charges for c in totals]
     storage = [c.storage_charges for c in totals]
     egress = [c.egress_charges for c in totals]

@@ -11,6 +11,12 @@ _migrations/__pycache__/*
 !/Ploutos/Ploutos/dashboard/migrations/__init__.py
 /Ploutos/Ploutos/dashboard/migrations/pycashe/*
 /Ploutos/Ploutos/dashboard/pycashe/*
+*.sqlite3
+
+#ignore migrations except the folder and __init__.py
+**/migrations/**
+!**/migrations
+!**/migrations/__init__.py
 
 # Git Hub Boiler plate .gitignore
 
