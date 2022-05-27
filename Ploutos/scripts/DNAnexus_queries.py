@@ -1,9 +1,5 @@
 """
-This script gets all projects and their info from DNAnexus
-into a list of dictionaries. It then finds files per projects and
-inserts all files into a df to calculate total size
-and cost per project both for files unique to that project and
-with duplicates per file state (live or archived).
+DNAnexus queries script
 """
 
 import concurrent.futures
@@ -20,6 +16,9 @@ from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal, Stora
 from django.apps import apps
 from django.conf import settings
 from time import time, localtime, strftime
+
+
+
 
 
 def login():
@@ -50,28 +49,10 @@ def login():
         sys.exit(1)
 
 
-def no_of_days_in_month():
-    """
-    Get days in the month for calculations later
-    Parameters
-    ----------
-    none
-
-    Returns
-    -------
-     day_count : int
-        number of days in current month
-    """
-    today_date = dt.datetime.now().strftime("%Y/%m/%d").replace("/", "-")
-    year, month = int(today_date.split("-")[0]), int(today_date.split("-")[1])
-    day_count = monthrange(year, month)[1]
-
-    return today_date, day_count
-
-
 def get_projects():
     """
-    Get all projects in DNAnexus, stores their id and time they were created (epoch - int)
+    Get all projects in DNAnexus,
+    stores their id and time they were created (epoch - int)
 
     Parameters
     ----------
@@ -103,11 +84,6 @@ def get_projects():
                 (project['describe']['created']) / 1000).strftime('%Y-%m-%d')}
         list_projects_dicts.append(item)
 
-    # Make and write json dump for checking
-    json_obj = json.dumps(list_projects_dicts, indent=4)
-    with open("project_data.json", "w") as outfile:
-        outfile.write(json_obj)
-
     # Create a df with a row for each project from the dict
     projects_df = pd.DataFrame(list_projects_dicts)
     # Drop unnecessary fields to only get project and created_epoch
@@ -116,115 +92,6 @@ def get_projects():
     projects_df.columns = ['project', 'created_epoch']
 
     return list_projects_dicts, project_ids_list, projects_df
-
-
-def get_running_totals():
-    """
-    Gets running totals for the org from the API, storing
-    -Storage, compute, egress charges
-    -Estimated remaining balance
-
-    Parameters
-    ----------
-    none
-
-    Returns
-    -------
-    running_total_dict : dict
-        dictionary with the type of charge and its running total for that day
-
-    """
-
-    # Get today's date in YYY-MM-DD format
-    today_date = no_of_days_in_month()[0]
-
-    # Describe the org to get running totals
-    org = dx.api.org_describe(settings.ORG)
-
-    # Put values into dict
-    running_total_dict = {}
-    running_total_dict['storage_charges'] = org['storageCharges']
-    running_total_dict['compute_charges'] = org['computeCharges']
-    running_total_dict['egress_charges'] = org['dataEgressCharges']
-    running_total_dict['estimated_balance'] = org['estSpendingLimitLeft']
-    running_total_dict['date'] = today_date
-
-    return running_total_dict
-
-
-def populate_projects(all_projects):
-    """
-    Checks whether user exists or creates it to get ID
-    Checks whether date exists or creates it to get ID
-    Checks whether project exists already and updates name if needed
-    Adds data into the Projects table
-
-    """
-    # In case project names have been changed in DX
-    # Get all project objects in db to filter on later
-    projects_data = Projects.objects.all()
-
-    # Iterate over list of project dicts
-    for entry in all_projects:
-        # Add users to users table to create IDs
-        user, created = Users.objects.get_or_create(
-            user_name=entry['created_by'],
-        )
-
-        # Add project created dates to Dates table to create IDs
-        a_new_date, created = Dates.objects.get_or_create(
-            date=entry['created'],
-        )
-
-        # Get names of projects from our dict
-        new_name = entry['name']
-
-        # Filter on dx_id
-        filter_dict = {
-            "dx_id": entry['dx_id'],
-        }
-
-        # Filter the projects
-        found_entry = projects_data.filter(**filter_dict)
-
-        # If already in db, get the name
-        if found_entry:
-            existing_project = found_entry.values_list(
-                "name", flat=True
-            ).get()
-
-            if existing_project != new_name:
-                found_entry.update(name=new_name)
-
-        # Get or create objs in Projects with attributes from other tables
-        project, created = Projects.objects.get_or_create(
-            dx_id=entry['dx_id'],
-            name=entry['name'],
-            created_by=user,
-            created=a_new_date,
-        )
-
-
-def populate_running_totals():
-    """
-    Adds org running totals into the db, getting the date IDs or creating them first
-    """
-    # Create dict with previous function
-    running_tots_dict = get_running_totals()
-
-    # Make date entry
-    new_date, created = Dates.objects.get_or_create(
-        date=running_tots_dict['date'],
-    )
-
-    # Add running totals to totals table with date foreign key
-    total, created = DailyOrgRunningTotal.objects.get_or_create(
-        date=new_date,
-        storage_charges=running_tots_dict['storage_charges'],
-        compute_charges=running_tots_dict['compute_charges'],
-        egress_charges=running_tots_dict['egress_charges'],
-        estimated_balance=running_tots_dict['estimated_balance'],
-    )
 
 
 def get_files(proj):
@@ -386,7 +253,6 @@ def make_file_df(list_project_files_dictionary):
 
     return file_df
 
-
 def count_how_many_lost(df_of_files, projs_list):
     """
     Count how many projects are lost when making the file df because they have no files
@@ -415,9 +281,10 @@ def count_how_many_lost(df_of_files, projs_list):
     empty_projs = [i for i in projs_list if i not in how_many_unique]
     how_many_empty = len(empty_projs)
     print(
-        f"There are {how_many_empty} projects where no files were found and so they have not been added to the df")
+        f"""There are {how_many_empty}
+        projects where no files were found
+        and so they have not been added to the df""")
     return unique_after_empty_projs_removed, empty_projs
-
 
 def merge_files_and_proj_dfs(file_df, proj_df):
     """
@@ -477,7 +344,6 @@ def merge_files_and_proj_dfs(file_df, proj_df):
 
     return files_with_proj_created
 
-
 def remove_duplicates(merged_df, unique_without_empty_projs):
     """
     Remove the duplicate files which are found in >1 project by oldest project
@@ -504,7 +370,6 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     print(f"{total_removed} projects are no longer in the table as they only contained duplicate files")
     return unique_df
 
-
 def group_by_project_and_rename(df_name, string_to_replace):
     """
     Group the dataframe by project to get total size per file state
@@ -530,7 +395,6 @@ def group_by_project_and_rename(df_name, string_to_replace):
         'archived', string_to_replace+"_archived")
 
     return grouped_df
-
 
 def calculate_totals(my_grouped_df, type):
     """
@@ -561,7 +425,6 @@ def calculate_totals(my_grouped_df, type):
 
     return my_grouped_df
 
-
 def merge_together_add_empty_rows(df1, df2):
     """
     Merge together the two dataframes to easily make dict at end and add zeros for any file state categories which don't exist
@@ -589,7 +452,6 @@ def merge_together_add_empty_rows(df1, df2):
         iterables, names=['project', 'state']), fill_value=0).reset_index()
 
     return total_merged_df
-
 
 def add_empty_projs_back_in(empty_projs, total_merged_df):
     """
@@ -624,7 +486,6 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
         empty_project_rows, ignore_index=True, sort=False)
 
     return final_all_projs_df
-
 
 def put_into_dict_write_to_file(final_all_projs_df):
     """
@@ -671,50 +532,125 @@ def put_into_dict_write_to_file(final_all_projs_df):
 
     return all_proj_dict
 
-
-def populate_database_files(all_projects_dict):
+def get_analyses(proj):
     """
-    Puts the storage data into the db
+    Get all analyses for the project in DNAnexus,
+    storing each file and its size, name and archival state.
+    Used with ThreadExecutorPool
+
+    Parameters
     ----------
-    all_projects_dict : dict
-        final dictionary from put_into_dict_write_to_file function
+    proj : project_id for the DNAnexus project
 
     Returns
     -------
-    none
-    N.B. Move this to new script and import other query script.
+     project_files_dict : collections.defaultdict
+        dictionary with all the files per project
+
     """
 
-    today_date = no_of_days_in_month()[0]
+    # Find analyses in each project, only returning specified fields in item
+    project_analyses_dict = defaultdict(lambda: {"analysis": []})
+    jobs = dx.bindings.search.find_executions(classname="analysis",
+                                              project=proj,
+                                              state="done",
+                                              # no_parent_job=False,
+                                              # parent_analysis="null",
+                                              no_parent_analysis=True,
+                                              # root_execution=None,
+                                              created_after="-1d",
+                                              # created_before="-1d",
+                                              describe=True)
 
-    for key, value in all_projects_dict.items():
-        new_storage, created = StorageCosts.objects.get_or_create(
-            # Get the project ID from the projects table by project dx id
-            project=Projects.objects.get(dx_id=key),
-            unique_size_live=value['unique_live']['size'],
-            unique_cost_live=value['unique_live']['cost'],
-            unique_size_archived=value['unique_archived']['size'],
-            unique_cost_archived=value['unique_archived']['cost'],
+    # jobs = list(dx.search.find_data_objects(classname='analyses', project=proj, describe={
+    #     'fields': {'archivalState': True, 'size': True, 'name': True}}))
+    for job in jobs:
+        proj = job['describe']['project']
+        # print(job)
+        # item = {"id": job["id"],
+        #         "name": job['describe']['name'],
+        #         "cost": job['describe']['totalPrice'],
+        #         "class": job['describe']['class'],
+        #         "executable": job['describe']['executable'],
+        #         # "totalEgress": job['describe']['totalEgress'],
+        #         "state": job['describe']['state'],
+        #         "created": job['describe']['created'],
+        #         "launchedBy": job['describe']['launchedBy'],
+        #         "WorkflowID": job['describe']['workflow']['id'],
+        #         "createdBy": job['describe']['workflow']['createdBy'],
+        #         }
+        #print(job)
 
-            total_size_live=value['total_live']['size'],
-            total_cost_live=value['total_live']['cost'],
-            total_size_archived=value['total_archived']['size'],
-            total_cost_archived=value['total_archived']['cost'],
-            # Get date object from the dates table
-            date=Dates.objects.get_or_create(date=today_date),
-        )
+        project_analyses_dict[proj]["analysis"].append({"id": job["id"],
+                "name": job['describe']['name'],
+                "cost": job['describe']['totalPrice'],
+                "class": job['describe']['class'],
+                "executable": job['describe']['executable'],
+                # "totalEgress": job['describe']['totalEgress'],
+                "state": job['describe']['state'],
+                "created": job['describe']['created'],
+                "modified": job['describe']['modified'],
+                "launchedBy": job['describe']['launchedBy'],
+                #"WorkflowID": job['describe']['workflow']['id'],
+                #'startedRunning': job['describe']['startedRunning'],
+                #'stoppedRunning': job['describe']['stoppedRunning'],
+                "createdBy": job['describe']['workflow']['createdBy']})
+    return project_analyses_dict
 
 
-def run():
-    """Essentially a main function"""
+def make_analyses_df(list_project_analyses_dictionary):
+    """
+    Get all analyses from the list of analyses per proj dict
+    and add it into a df.
+    Parameters
+    ----------
+    list_project_analyses_dictionary: list of all analyses for each project.
 
-    start = time()
-    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
+    Returns
+    -------
+    list_of_project_analyses_dicts: list
+        list of dictionaries for analyses for each project.
+    """
 
-    login()
-    all_projects, proj_list, proj_df = get_projects()
-    populate_projects(all_projects)
-    populate_running_totals()
+    rows = []
+    # For each project dictionary with its associated files
+    for project_dict in list_project_analyses_dictionary:
+        # For the project and its associated files
+        for k, v in project_dict.items():
+            # Get the file info
+            data_row = v['analysis']
+            # Assign the project as the parent key
+            project = k
+
+            # Add the project name to the row 'project'
+            for row in data_row:
+                row['project'] = project
+                # Append each file's info as info to the other columns
+                rows.append(row)
+
+    # Convert to data frame
+    analysis_df = pd.DataFrame(rows)
+
+    # sum_column = (
+    #     (analysis_df["stoppedRunning"] + analysis_df["startedRunning"])/60
+    #     )
+    # analysis_df["RunTime"] = sum_column
+
+    return analysis_df
+
+
+
+def orchestrate_get_files(proj_list, proj_df):
+    """
+    Orchestates all the functions for getting API data for files and returning
+    only files with unique parent projects.
+    paramaters
+    ----------
+    proj_list: list
+        all the project IDs in a list
+    proj_df: dataframe
+        dataframe with a row for each project
+    """
     project_file_dicts_list = threadify(proj_list, get_files)
     file_df = make_file_df(project_file_dicts_list)
     unique_without_empty_projs, empty_projs = count_how_many_lost(
@@ -729,9 +665,6 @@ def run():
         unique_sum_df, total_sum_df)
     final_all_projs_df = add_empty_projs_back_in(empty_projs, merged_total_df)
     final_dict = put_into_dict_write_to_file(final_all_projs_df)
-    populate_database_files(final_dict)
 
-    end = time()
-    total = (end - start) / 60
-    print(f"Total time was {total} minutes")
-    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
+    return final_dict
+

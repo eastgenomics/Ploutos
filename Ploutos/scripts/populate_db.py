@@ -1,13 +1,10 @@
 """
-    Script to add data to MariaDB.
+    Script to add API data to MariaDB Database.
 """
 
 from dashboard.models import ComputeCosts, Users, Dates, Projects, Executables
-from scripts import queries as q
-from scripts import queries_jobs as qa
-from scripts import API_queries_populate as apq
+from scripts import DNAnexus_queries as q
 import datetime as dt
-
 from calendar import monthrange
 from collections import defaultdict
 from django.apps import apps
@@ -16,37 +13,116 @@ from time import time, localtime, strftime
 import pandas as pd
 
 
-def populate_projects():
+def populate_projects(all_projects):
     """
-    Populate database with data from API query.
-    Summary:
-    This function requests all projects in given ORG and populates the tables.
-    - This is to be merged with populate_projects() in API_queries_populate.py
+    Checks whether user exists or creates it to get ID
+    Checks whether date exists or creates it to get ID
+    Checks whether project exists already and updates name if needed
+    Adds data into the Projects table
 
     """
+    # In case project names have been changed in DX
+    # Get all project objects in db to filter on later
+    # projects_data = Projects.objects.all()
 
-    # all_data_objs = q.find_all_data_objs()
-    all_projects = apq.get_projects()
-    for project in all_projects:
-        # print(project_dict)
-        # Adding Users to table
+    # Iterate over list of project dicts
+    for entry in all_projects:
+        # Add users to users table to create IDs
         user, created = Users.objects.get_or_create(
-            user_name=project_dict['createdBy']['user'],)
+            user_name=entry['created_by'],
+        )
 
-        # Adding dates to table
+        # Add project created dates to Dates table to create IDs
         a_new_date, created = Dates.objects.get_or_create(
-            date=dt.datetime.fromtimestamp(
-                project_dict['created']/1000).strftime('%Y-%m-%d'),)
+            date=entry['created'],
+        )
 
-        # Adding project details to table
-        # update_or_create allows for changes in project data.
+        # # Get names of projects from our dict
+        # new_name = entry['name']
+
+        # # Filter on dx_id
+        # filter_dict = {
+        #     "dx_id": entry['dx_id'],
+        # }
+
+        # # Filter the projects
+        # found_entry = projects_data.filter(**filter_dict)
+
+        # # If already in db, get the name
+        # if found_entry:
+        #     existing_project = found_entry.values_list(
+        #         "name", flat=True
+        #     ).get()
+
+        #     if existing_project != new_name:
+        #         found_entry.update(name=new_name)
+
+        # Get or create objs in Projects with attributes from other tables
         project, created = Projects.objects.update_or_create(
-            dx_id=project_dict['id'],
-            name=project_dict['name'],
+            dx_id=entry['dx_id'],
+            name=entry['name'],
             created_by=user,
             created=a_new_date,
         )
-    return all_projects
+
+
+def populate_running_totals():
+    """
+    Adds org running totals into the db, getting the date IDs or creating them first
+    """
+
+    # Get today's date in YYY-MM-DD format
+    today_date = q.no_of_days_in_month()[0]
+
+    # Describe the org to get running totals
+    org_totals = dx.api.org_describe(settings.ORG)
+
+    # Make date entry
+    new_date, created = Dates.objects.get_or_create(
+        date=today_date,
+    )
+
+    # Add running totals to totals table with date foreign key
+    total, created = DailyOrgRunningTotal.objects.get_or_create(
+        date=new_date,
+        storage_charges = org_totals['storage_charges'],
+        compute_charges = org_totals['compute_charges'],
+        egress_charges = org_totals['egress_charges'],
+        estimated_balance = org_totals['estimated_balance'],
+    )
+
+
+def populate_database_files(all_projects_dict):
+    """
+    Puts the storage data into the db
+    ----------
+    all_projects_dict : dict
+        final dictionary from put_into_dict_write_to_file function
+
+    Returns
+    -------
+    none
+    N.B. Move this to new script and import other query script.
+    """
+
+    today_date = q.no_of_days_in_month()[0]
+
+    for key, value in all_projects_dict.items():
+        new_storage, created = StorageCosts.objects.get_or_create(
+            # Get the project ID from the projects table by project dx id
+            project=Projects.objects.get(dx_id=key),
+            unique_size_live=value['unique_live']['size'],
+            unique_cost_live=value['unique_live']['cost'],
+            unique_size_archived=value['unique_archived']['size'],
+            unique_cost_archived=value['unique_archived']['cost'],
+
+            total_size_live=value['total_live']['size'],
+            total_cost_live=value['total_live']['cost'],
+            total_size_archived=value['total_archived']['size'],
+            total_cost_archived=value['total_archived']['cost'],
+            # Get date object from the dates table
+            date=Dates.objects.get_or_create(date=today_date),
+        )
 
 
 def populate_analyses(all_projects):
@@ -84,11 +160,13 @@ def populate_analyses(all_projects):
         )
 
         # Add data to DB - Executables Table
+        project_row_id = Projects.objects.get(dx_id=row['project'])
+        project_row_id = project_row_id.values()
         new_analysis, created = Executables.objects.get_or_create(
             dx_id=row['executable'],
-            excutable_name=row['name']
+            excutable_name=row['name'],
+            project_id=project_row_id['project']
         )
-
         #Add date for analysis started.
         user, created = Users.objects.get_or_create(
             user_name=row['launchedBy'],)
@@ -98,7 +176,6 @@ def populate_analyses(all_projects):
             # Get the project ID from the projects table by project dx id
             # project=Projects.objects.get(dx_id=key),
             executable_id=new_analysis,
-            project_id=Projects.objects.get(dx_id=row['project']),
             # instance_id = row['']
             # runtime = row['']
             total_cost = row['cost'],
@@ -114,8 +191,17 @@ def run():
     """
     Main function to orchestrate population of the database with API data.
     """
+    start = time()
+    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
 
     q.DNAnexus_login()
-    all_projects, proj_list, proj_df = apq.get_projects()
-    apq.populate_projects(all_projects)
-    populate_analyses(all_projects)
+    all_projects, proj_list, proj_df = q.get_projects()
+    populate_projects(all_projects)
+    populate_running_totals()
+    final_dict = q.orchestrate_get_files(proj_list, proj_df)
+    populate_database_files(final_dict)
+    # populate_analyses(all_projects)
+    end = time()
+    total = (end - start) / 60
+    print(f"Total time was {total} minutes")
+    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
