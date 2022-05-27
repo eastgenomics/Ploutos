@@ -28,7 +28,6 @@ def populate_projects():
     # all_data_objs = q.find_all_data_objs()
     all_projects = apq.get_projects()
     for project in all_projects:
-        project_dict = project.describe()
         # print(project_dict)
         # Adding Users to table
         user, created = Users.objects.get_or_create(
