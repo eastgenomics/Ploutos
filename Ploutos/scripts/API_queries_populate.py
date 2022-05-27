@@ -95,20 +95,20 @@ def get_projects():
     for project in project_response:
         project_ids_list.append(project['id'])
         item = {
-            'dx_id': project['describe']['id'], 
+            'dx_id': project['describe']['id'],
             'name': project['describe']['name'],
-            'created_by': project['describe']['createdBy']['user'], 
+            'created_by': project['describe']['createdBy']['user'],
             'created_epoch': project['describe']['created'],
-            'created': dt.datetime.fromtimestamp((project['describe']['created']) / 1000).strftime('%Y-%m-%d') }
+            'created': dt.datetime.fromtimestamp(
+                (project['describe']['created']) / 1000).strftime('%Y-%m-%d')}
         list_projects_dicts.append(item)
 
-    #Make and write json dump for checking
+    # Make and write json dump for checking
     json_obj = json.dumps(list_projects_dicts, indent=4)
     with open("project_data.json", "w") as outfile:
         outfile.write(json_obj)
 
-
-    # Create a df with a row for each project from the dict 
+    # Create a df with a row for each project from the dict
     projects_df = pd.DataFrame(list_projects_dicts)
     # Drop unnecessary fields to only get project and created_epoch
     projects_df = projects_df.drop(columns=['name', 'created_by', 'created'])
@@ -116,6 +116,7 @@ def get_projects():
     projects_df.columns = ['project', 'created_epoch']
 
     return list_projects_dicts, project_ids_list, projects_df
+
 
 def get_running_totals():
     """
@@ -150,6 +151,7 @@ def get_running_totals():
 
     return running_total_dict
 
+
 def populate_projects(all_projects):
     """
     Checks whether user exists or creates it to get ID
@@ -166,12 +168,12 @@ def populate_projects(all_projects):
     for entry in all_projects:
         # Add users to users table to create IDs
         user, created = Users.objects.get_or_create(
-            user_name = entry['created_by'],
+            user_name=entry['created_by'],
         )
 
         # Add project created dates to Dates table to create IDs
         a_new_date, created = Dates.objects.get_or_create(
-            date = entry['created'],
+            date=entry['created'],
         )
 
         # Get names of projects from our dict
@@ -196,11 +198,12 @@ def populate_projects(all_projects):
 
         # Get or create objs in Projects with attributes from other tables
         project, created = Projects.objects.get_or_create(
-            dx_id = entry['dx_id'],
-            name = entry['name'],
-            created_by = user,
-            created = a_new_date,
+            dx_id=entry['dx_id'],
+            name=entry['name'],
+            created_by=user,
+            created=a_new_date,
         )
+
 
 def populate_running_totals():
     """
@@ -211,16 +214,16 @@ def populate_running_totals():
 
     # Make date entry
     new_date, created = Dates.objects.get_or_create(
-        date = running_tots_dict['date'],
+        date=running_tots_dict['date'],
     )
 
     # Add running totals to totals table with date foreign key
     total, created = DailyOrgRunningTotal.objects.get_or_create(
-        date = new_date,
-        storage_charges = running_tots_dict['storage_charges'],
-        compute_charges = running_tots_dict['compute_charges'],
-        egress_charges = running_tots_dict['egress_charges'],
-        estimated_balance = running_tots_dict['estimated_balance'],
+        date=new_date,
+        storage_charges=running_tots_dict['storage_charges'],
+        compute_charges=running_tots_dict['compute_charges'],
+        egress_charges=running_tots_dict['egress_charges'],
+        estimated_balance=running_tots_dict['estimated_balance'],
     )
 
 
@@ -244,12 +247,16 @@ def get_files(proj):
     # Per project, create dict with info per file and add this to 'file' list
     # .get handles files with no size (e.g. .snapshot files) and sets this to zero
     project_files_dict = defaultdict(lambda: {"files": []})
-    files = list(dx.search.find_data_objects(classname='file', project=proj, describe={
-        'fields': {'archivalState': True, 'size': True, 'name': True}}))
+    files = list(dx.search.find_data_objects(classname='file', project=proj,
+                                             describe={
+                                                 'fields': {'archivalState': True, 'size': True, 'name': True}
+                                             }))
     for file in files:
         proj = file['project']
-        project_files_dict[proj]["files"].append({"id": file["id"], "name": file["describe"]['name'], "size": file.get(
-            'describe', {}).get('size', 0), "state": file['describe']['archivalState']})
+        project_files_dict[proj]["files"].append({"id": file["id"],
+                                                  "name": file["describe"]['name'], "size": file.get(
+            'describe', {}).get('size', 0),
+            "state": file['describe']['archivalState']})
 
     return project_files_dict
 
@@ -527,17 +534,20 @@ def group_by_project_and_rename(df_name, string_to_replace):
 
 def calculate_totals(my_grouped_df, type):
     """
-    Calculate the total cost of storing per project by file state through rates defined in CREDENTIALS.json
+    Calculate the total cost of storing per project
+    by file state through rates defined in CREDENTIALS.json
     ----------
     my_grouped_df : pd.DataFrame
-        the dataframe which is grouped by project and state with aggregated total size
+        the dataframe which is grouped by project
+        and state with aggregated total size
     type : str
         'unique' or 'total'
 
     Returns
     -------
     grouped_df : pd.DataFrame
-        dataframe with calculated daily storage cost grouped by project and state with columns project, state, size, cost
+        dataframe with calculated daily storage cost
+        grouped by project and state with columns project, state, size, cost
     """
     days_in_month = no_of_days_in_month()[1]
     # If the state of the file is live, convert total size to GB and times by storage cost per month
@@ -651,7 +661,8 @@ def put_into_dict_write_to_file(final_all_projs_df):
 
     """
     all_proj_dict = {n: grp.loc[n].to_dict('index') for n, grp in
-                     final_all_projs_df.set_index(['project', 'state']).groupby(level='project')}
+                     final_all_projs_df.set_index(
+                         ['project', 'state']).groupby(level='project')}
 
     final_project_storage_totals = json.dumps(all_proj_dict, indent=4)
 
@@ -690,7 +701,7 @@ def populate_database_files(all_projects_dict):
             total_size_archived=value['total_archived']['size'],
             total_cost_archived=value['total_archived']['cost'],
             # Get date object from the dates table
-            date=Dates.objects.get(date=today_date),
+            date=Dates.objects.get_or_create(date=today_date),
         )
 
 
