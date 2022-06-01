@@ -8,7 +8,14 @@ class DateForm(forms.Form):
     end = forms.DateField(widget=forms.DateInput(attrs={'class':'datepicker', 'type':'date'}))
 
     def clean_end(self):
-        """docstring"""
+        """
+        Clean the date to check it is valid
+        ----------
+        Returns
+        -------
+        cleaned_data : str
+            validated string
+        """
         data = self.cleaned_data['end']
         if data > str(datetime.date.today()):
            raise forms.ValidationError("End date is in the future!")

@@ -28,6 +28,11 @@ def login():
         ----------
         token : str
             authorisation token for DNAnexus, from settings.py
+        
+        Raises
+        ------
+        Error
+            Raised when DNAnexus user authentification check fails
 
         Returns
         -------
@@ -44,8 +49,8 @@ def login():
     try:
         dx.api.system_whoami()
         print("DNAnexus login successful")
-    except:
-        print("Error with DNAnexus login")
+    except Exception as e:
+        print(f'Error logging into DNAnexus: {e}')
         sys.exit(1)
 
 
@@ -68,7 +73,12 @@ def get_projects():
         dataframe with a row for each project
     """
     project_response = list(dx.find_projects(
-        billed_to=settings.ORG, level='VIEW', describe=True))
+        billed_to=settings.ORG, 
+        level='VIEW', 
+        describe={'fields': {
+            'id': True, 'name': True, 'createdBy': True, 'created': True
+            }
+        }))
 
     # Put each into dict, turn epoch time into datetime YYYY-MM-DD
     project_ids_list = []
@@ -84,29 +94,28 @@ def get_projects():
                 (project['describe']['created']) / 1000).strftime('%Y-%m-%d')}
         list_projects_dicts.append(item)
 
-    # Create a df with a row for each project from the dict
+    # Create project data df, one project per row, keep only required columns
     projects_df = pd.DataFrame(list_projects_dicts)
-    # Drop unnecessary fields to only get project and created_epoch
     projects_df = projects_df.drop(columns=['name', 'created_by', 'created'])
-    # Rename projects column for easier merging with file df
-    projects_df.columns = ['project', 'created_epoch']
+    projects_df.rename(columns = {'dx_id':'project'}, inplace = True)
 
     return list_projects_dicts, project_ids_list, projects_df
 
 
 def get_files(proj):
     """
-    Get all files for the project in DNAnexus, storing each file and its size, name and archival state. 
+    Get all files for the project in DNAnexus, storing each file and its size, name and archival state.
     Used with ThreadExecutorPool
 
     Parameters
     ----------
-    proj : entry in list
+    proj : str
+        given project to retrieve all files for
 
     Returns
     -------
      project_files_dict : collections.defaultdict
-        dictionary with all the files per project
+        dictionary with all the files and metadata per project
 
     """
 
@@ -114,23 +123,29 @@ def get_files(proj):
     # Per project, create dict with info per file and add this to 'file' list
     # .get handles files with no size (e.g. .snapshot files) and sets this to zero
     project_files_dict = defaultdict(lambda: {"files": []})
-    files = list(dx.search.find_data_objects(classname='file', project=proj,
-                                             describe={
-                                                 'fields': {'archivalState': True, 'size': True, 'name': True}
-                                             }))
+    files = list(dx.search.find_data_objects(
+        classname='file', project=proj,
+        describe={'fields': {
+            'archivalState': True,
+            'size': True, 
+            'name': True
+        }}
+    ))
     for file in files:
         proj = file['project']
-        project_files_dict[proj]["files"].append({"id": file["id"],
-                                                  "name": file["describe"]['name'], "size": file.get(
-            'describe', {}).get('size', 0),
-            "state": file['describe']['archivalState']})
+        project_files_dict[proj]["files"].append({
+            "id": file["id"],
+            "name": file["describe"]['name'],
+            "size": file.get('describe', {}).get('size', 0),
+            "state": file['describe']['archivalState']
+        })
 
     return project_files_dict
 
 
-def threadify(project_list, get_files_function):
+def threadify(project_list):
     """
-    Use ThreadPoolExecutor on get_files() function
+    Use pool of threads to asynchronously get_files() on multiple projects
 
     Parameters
     ----------
@@ -143,35 +158,40 @@ def threadify(project_list, get_files_function):
     -------
      list_of_project_file_dicts : list
         list of dictionaries with all the files per project in each dict
-    e.g.
-    [ {"project-X":
-     {"files":
-      [
-          {
-        'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803,
-      'archivalState': 'live'
+     e.g.
+    [{
+        'project-X': {'files': [
+            {
+                'file_id': 'file-1',
+                'name': "IamFile1.json",
+                'size': 4803,
+                'archivalState': 'live'
+            }, {
+                'file_id': 'file-2',
+                'name': "IamFile2.json",
+                'size': 702,
+                'archivalState': 'archived'
+            }
+        ]}
     },
     {
-        'file_id': 'file-2', 'name': "IamFile2.json", 'size': 702,
-      'archivalState': 'archived'
-    }
-      ]
-     }},
-    {'project-Y':
-     {"files":
-      [{
-        'file_id': 'file-4', 'name': "IamFile4.json", 'size': 3281,
-      'archivalState': 'live'
-      }
-      ]
-    }}
-      ]
+        'project-Y': {'files': [
+            {
+                'file_id': 'file-4',
+                'name': "IamFile4.json",
+                'size': 3281,
+                'archivalState': 'live'
+            }
+        ]}
+    }]
     """
     list_of_project_file_dicts = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
         futures = []
+        # Submit the get_files function for a project
         for project in project_list:
-            futures.append(executor.submit(get_files_function, proj=project))
+            futures.append(executor.submit(get_files, proj=project))
+        # Once all project files are retrieved, append the final dict  
         for future in concurrent.futures.as_completed(futures):
             list_of_project_file_dicts.append(future.result())
 
@@ -197,48 +217,54 @@ def make_file_df(list_project_files_dictionary):
     List of files with describe data
     -------------------------------------------------------------------
      e.g.
-    [ {"project-X":
-     {"files":
-      [
-          {
-        'file_id': 'file-1', 'name': "IamFile1.json", 'size': 4803,
-      'archivalState': 'live'
+    [{
+        'project-X': {'files': [
+            {
+                'file_id': 'file-1',
+                'name': "IamFile1.json",
+                'size': 4803,
+                'archivalState': 'live'
+            }, {
+                'file_id': 'file-2',
+                'name': "IamFile2.json",
+                'size': 702,
+                'archivalState': 'archived'
+            }
+        ]}
     },
     {
-        'file_id': 'file-2', 'name': "IamFile2.json", 'size': 702,
-      'archivalState': 'archived'
-    }
-      ]
-     }},
-    {'project-Y':
-     {"files":
-      [{
-        'file_id': 'file-4', 'name': "IamFile4.json", 'size': 3281,
-      'archivalState': 'live'
-      }
-      ]
-    }}
-      ]
+        'project-Y': {'files': [
+            {
+                'file_id': 'file-4',
+                'name': "IamFile4.json",
+                'size': 3281,
+                'archivalState': 'live'
+            }
+        ]}
+    }]
     --------------------------------------------------------------------
                                       |
                                       |
                                       ▼
                                   DataFrame
-        project       id           name    archivalState  size
-        project-X  file-1   IamFile1.json  live           4803
-        project-X  file-2   IamFile2.json  archived       702
-        project-Y  file-4   IamFile4.json  live           3281
+    +-----------+--------+---------------+---------------+------+
+    |  project  |   id   |     name      | archivalState | size |
+    +-----------+--------+---------------+---------------+------+
+    | project-X | file-1 | IamFile1.json | live          | 4803 |
+    | project-X | file-2 | IamFile2.json | archived      |  702 |
+    | project-Y | file-4 | IamFile4.json | live          | 3281 |
+    +-----------+--------+---------------+---------------+------+
     """
 
     rows = []
     # For each project dictionary with its associated files
     for project_dict in list_project_files_dictionary:
         # For the project and its associated files
-        for k, v in project_dict.items():
+        for proj, data in project_dict.items():
             # Get the file info
-            data_row = v['files']
+            data_row = data['files']
             # Assign the project as the parent key
-            project = k
+            project = proj
 
             # Add the project name to the row 'project'
             for row in data_row:
@@ -249,7 +275,7 @@ def make_file_df(list_project_files_dictionary):
     # Convert to data frame
     # Drop the name column as it's not used later
     file_df = pd.DataFrame(rows)
-    file_df = file_df.drop(columns=['name'])
+    file_df.drop(columns=['name'], inplace=True)
 
     return file_df
 
@@ -280,44 +306,47 @@ def count_how_many_lost(df_of_files, projs_list):
 
     empty_projs = [i for i in projs_list if i not in how_many_unique]
     how_many_empty = len(empty_projs)
-    print(
-        f"""There are {how_many_empty}
-        projects where no files were found
-        and so they have not been added to the df""")
+    print(f"There are {how_many_empty} projects with\n no files so they weren't added to the df")
     return unique_after_empty_projs_removed, empty_projs
 
 def merge_files_and_proj_dfs(file_df, proj_df):
     """
     Merge the files and projects dfs together so oldest project can be found
+
     Parameters
     ----------
     file_df : pd.DataFrame
         dataframe of the files
     proj_df : pd.DataFrame
         dataframe of the projects and their epoch time created
+
     Returns
     -------
     files_with_proj_created : pd.DataFrame
         merged dataframe with each file including
         its associated project's created time.
 
-    >>> merge_files_and_proj_dfs(all_files, all_projects)
     -------------------------------------------------------------------
     Data frame with all files. + Data frame with all projects and created_epoch
     -------------------------------------------------------------------
      e.g.
-                            DataFrame
-        project       id           name    archivalState  size
-        project-X  file-1   IamFile1.json  live           4803
-        project-X  file-2   IamFile2.json  archived       702
-        project-Y  file-4   IamFile4.json  live           3281
+    +-----------+--------+---------------+---------------+------+
+    |  project  |   id   |     name      | archivalState | size |
+    +-----------+--------+---------------+---------------+------+
+    | project-X | file-1 | IamFile1.json | live          | 4803 |
+    | project-X | file-2 | IamFile2.json | archived      |  702 |
+    | project-Y | file-4 | IamFile4.json | live          | 3281 |
+    +-----------+--------+---------------+---------------+------+
 
                                 +
 
                             DataFrame
-        project     created_epoch
-        project-X   1649941566
-        project-Y   1659899291
+    +-----------+---------------+
+    |  project  | created_epoch |
+    +-----------+---------------+
+    | project-X |    1649941566 |
+    | project-Y |    1659899291 |
+    +-----------+---------------+
 
     --------------------------------------------------------------------
                                       |
@@ -325,10 +354,13 @@ def merge_files_and_proj_dfs(file_df, proj_df):
                                       ▼
 
                                   DataFrame
-    project       id           name    archivalState  size  created_epoch
-    project-X  file-1   IamFile1.json  live           4803  1649941566
-    project-X  file-2   IamFile2.json  archived       702   1649941566
-    project-Y  file-4   IamFile4.json  live           3281  1659899291
+    +-----------+--------+---------------+---------------+------+---------------+
+    |  project  |   id   |     name      | archivalState | size | created_epoch |
+    +-----------+--------+---------------+---------------+------+---------------+
+    | project-X | file-1 | IamFile1.json | live          | 4803 |    1649941566 |
+    | project-X | file-2 | IamFile2.json | archived      |  702 |    1649941566 |
+    | project-Y | file-4 | IamFile4.json | live          | 3281 |    1659899291 |
+    +-----------+--------+---------------+---------------+------+---------------+
     """
 
     files_with_proj_created = pd.merge(file_df, proj_df, on=["project"])
@@ -346,7 +378,7 @@ def merge_files_and_proj_dfs(file_df, proj_df):
 
 def remove_duplicates(merged_df, unique_without_empty_projs):
     """
-    Remove the duplicate files which are found in >1 project by oldest project
+    Remove duplicate files, attributing a file only to the oldest project
     Parameters
     ----------
     merged_df : pd.DataFrame
@@ -373,6 +405,7 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
 def group_by_project_and_rename(df_name, string_to_replace):
     """
     Group the dataframe by project to get total size per file state
+    Parameters
     ----------
     df_name : pd.DataFrame
         the dataframe you want to group (unique or total)
@@ -383,6 +416,14 @@ def group_by_project_and_rename(df_name, string_to_replace):
     -------
     grouped_df : pd.DataFrame
         dataframe grouped by project, state (e.g. total_live) which gives the aggregated size
+    e.g.
+    +-----------+-----------------+---------------+
+    |  project  |      state      |     size      |
+    +-----------+-----------------+---------------+
+    | project-X | unique_live     | 1133796550572 |
+    | project-X | unique_archived |         51238 |
+    | project-Y | unique_live     |      58575459 |
+    +-----------+-----------------+---------------+
     """
     # Group by project and file state and sum the size column to get total size (with duplicates)
     grouped_df = df_name.groupby(['project', 'state']).agg(
@@ -412,22 +453,31 @@ def calculate_totals(my_grouped_df, type):
     grouped_df : pd.DataFrame
         dataframe with calculated daily storage cost
         grouped by project and state with columns project, state, size, cost
+    e.g.
+    +-----------+-----------------+---------------+----------+
+    |  project  |      state      |     size      |   cost   |
+    +-----------+-----------------+---------------+----------+
+    | project-X | unique_live     | 1133796550572 | 0.875400 |
+    | project-X | unique_archived |         51238 | 0.011010 |
+    | project-Y | unique_live     |      58575459 | 0.001498 |
+    +-----------+-----------------+---------------+----------+
     """
     days_in_month = no_of_days_in_month()[1]
     # If the state of the file is live, convert total size to GB and times by storage cost per month
     # Then divide by the number of days in current month
     # Else if state not live (archived) then times by archived storage cost price
 
-    my_grouped_df['cost'] = np.where(my_grouped_df['state'] == type+"_live",
-                                     my_grouped_df['size'] / (
-                                         2**30) * settings.LIVE_STORAGE_COST_MONTH / days_in_month,
-                                     my_grouped_df['size'] / (2**30) * settings.ARCHIVED_STORAGE_COST_MONTH / days_in_month)
+    my_grouped_df['cost'] = np.where(
+        my_grouped_df['state'] == type+"_live",
+        my_grouped_df['size'] / (2**30) * settings.LIVE_STORAGE_COST_MONTH / days_in_month,
+        my_grouped_df['size'] / (2**30) * settings.ARCHIVED_STORAGE_COST_MONTH / days_in_month)
 
     return my_grouped_df
 
 def merge_together_add_empty_rows(df1, df2):
     """
-    Merge together the two dataframes to easily make dict at end and add zeros for any file state categories which don't exist
+    Merge two dataframes to make final dict and add zeros for file state
+    categories which don't exist
     ----------
     df1 : pd.DataFrame
         the dataframe with costs for unique files per project
@@ -439,6 +489,17 @@ def merge_together_add_empty_rows(df1, df2):
     total_merged_df : pd.DataFrame
         merged dataframe with project, all file states (total_live, total_archived, unique_live, unique_archived),
         cost and size with zeros if did not exist
+    e.g.
+    +-----------+-----------------+---------------+----------+
+    | project-X | unique_live     | 1133796550572 | 0.875400 |
+    | project-X | unique_archived |         51238 | 0.011010 |
+    | project-X | total_live      | 1133796550572 | 0.875400 |
+    | project-X | total_archived  |         71238 | 0.012038 |
+    | project-Y | unique_live     |      58575459 | 0.001498 |
+    | project-Y | unique_archived |             0 |        0 |
+    | project-Y | total_live      |      68373901 | 0.004857 |
+    | project-Y | total_archived  |             0 |        0 |
+    +-----------+-----------------+---------------+----------+
     """
     # Merge the two together to have unique and total costs in one df
     total_merged_df = pd.concat([df1, df2], ignore_index=True, sort=True)
@@ -521,7 +582,7 @@ def put_into_dict_write_to_file(final_all_projs_df):
     }
 
     """
-    all_proj_dict = {n: grp.loc[n].to_dict('index') for n, grp in
+    all_proj_dict = {proj: state.loc[proj].to_dict('index') for proj, state in
                      final_all_projs_df.set_index(
                          ['project', 'state']).groupby(level='project')}
 
@@ -551,50 +612,30 @@ def get_analyses(proj):
 
     # Find analyses in each project, only returning specified fields in item
     project_analyses_dict = defaultdict(lambda: {"analysis": []})
-    jobs = dx.bindings.search.find_executions(classname="analysis",
-                                              project=proj,
-                                              state="done",
-                                              # no_parent_job=False,
-                                              # parent_analysis="null",
-                                              no_parent_analysis=True,
-                                              # root_execution=None,
-                                              created_after="-1d",
-                                              # created_before="-1d",
-                                              describe=True)
+    jobs = dx.bindings.search.find_executions(
+            classname="analysis",
+            project=proj,
+            state="done",
+            no_parent_analysis=True,
+            created_after="-1d",
+            describe=True
+        )
 
-    # jobs = list(dx.search.find_data_objects(classname='analyses', project=proj, describe={
-    #     'fields': {'archivalState': True, 'size': True, 'name': True}}))
     for job in jobs:
         proj = job['describe']['project']
-        # print(job)
-        # item = {"id": job["id"],
-        #         "name": job['describe']['name'],
-        #         "cost": job['describe']['totalPrice'],
-        #         "class": job['describe']['class'],
-        #         "executable": job['describe']['executable'],
-        #         # "totalEgress": job['describe']['totalEgress'],
-        #         "state": job['describe']['state'],
-        #         "created": job['describe']['created'],
-        #         "launchedBy": job['describe']['launchedBy'],
-        #         "WorkflowID": job['describe']['workflow']['id'],
-        #         "createdBy": job['describe']['workflow']['createdBy'],
-        #         }
-        #print(job)
 
-        project_analyses_dict[proj]["analysis"].append({"id": job["id"],
+        project_analyses_dict[proj]["analysis"].append({
+                "id": job["id"],
                 "name": job['describe']['name'],
                 "cost": job['describe']['totalPrice'],
                 "class": job['describe']['class'],
                 "executable": job['describe']['executable'],
-                # "totalEgress": job['describe']['totalEgress'],
                 "state": job['describe']['state'],
                 "created": job['describe']['created'],
                 "modified": job['describe']['modified'],
                 "launchedBy": job['describe']['launchedBy'],
-                #"WorkflowID": job['describe']['workflow']['id'],
-                #'startedRunning': job['describe']['startedRunning'],
-                #'stoppedRunning': job['describe']['stoppedRunning'],
-                "createdBy": job['describe']['workflow']['createdBy']})
+                "createdBy": job['describe']['workflow']['createdBy']
+            })
     return project_analyses_dict
 
 
@@ -613,30 +654,22 @@ def make_analyses_df(list_project_analyses_dictionary):
     """
 
     rows = []
-    # For each project dictionary with its associated files
+    # For each project dictionary with its associated analyses
     for project_dict in list_project_analyses_dictionary:
-        # For the project and its associated files
-        for k, v in project_dict.items():
-            # Get the file info
-            data_row = v['analysis']
+        # For the project and its associated analyses
+        for proj, data in project_dict.items():
+            # Get the analyses info
+            data_row = data['analysis']
             # Assign the project as the parent key
-            project = k
+            project = proj
 
             # Add the project name to the row 'project'
             for row in data_row:
                 row['project'] = project
-                # Append each file's info as info to the other columns
+                # Append each analyses info as info to the other columns
                 rows.append(row)
 
-    # Convert to data frame
-    analysis_df = pd.DataFrame(rows)
-
-    # sum_column = (
-    #     (analysis_df["stoppedRunning"] + analysis_df["startedRunning"])/60
-    #     )
-    # analysis_df["RunTime"] = sum_column
-
-    return analysis_df
+    return pd.DataFrame(rows)
 
 
 
@@ -651,7 +684,7 @@ def orchestrate_get_files(proj_list, proj_df):
     proj_df: dataframe
         dataframe with a row for each project
     """
-    project_file_dicts_list = threadify(proj_list, get_files)
+    project_file_dicts_list = threadify(proj_list)
     file_df = make_file_df(project_file_dicts_list)
     unique_without_empty_projs, empty_projs = count_how_many_lost(
         file_df, proj_list)

@@ -1,16 +1,17 @@
 """
     Script to add API data to MariaDB Database.
 """
-
-from dashboard.models import ComputeCosts, Users, Dates, Projects, Executables
-from scripts import DNAnexus_queries as q
 import datetime as dt
+import pandas as pd
+
 from calendar import monthrange
 from collections import defaultdict
+from time import time, localtime, strftime
+
 from django.apps import apps
 from django.conf import settings
-from time import time, localtime, strftime
-import pandas as pd
+from dashboard.models import ComputeCosts, Users, Dates, Projects, Executables
+from scripts import DNAnexus_queries as q
 
 
 def populate_projects(all_projects):
@@ -36,26 +37,6 @@ def populate_projects(all_projects):
         a_new_date, created = Dates.objects.get_or_create(
             date=entry['created'],
         )
-
-        # # Get names of projects from our dict
-        # new_name = entry['name']
-
-        # # Filter on dx_id
-        # filter_dict = {
-        #     "dx_id": entry['dx_id'],
-        # }
-
-        # # Filter the projects
-        # found_entry = projects_data.filter(**filter_dict)
-
-        # # If already in db, get the name
-        # if found_entry:
-        #     existing_project = found_entry.values_list(
-        #         "name", flat=True
-        #     ).get()
-
-        #     if existing_project != new_name:
-        #         found_entry.update(name=new_name)
 
         # Get or create objs in Projects with attributes from other tables
         project, created = Projects.objects.update_or_create(
@@ -145,9 +126,9 @@ def populate_analyses(all_projects):
     all_analyses = []
     for proj in all_projects:
         #print(proj)
-        analyses = qa.get_analyses(proj['dx_id'])
+        analyses = q.get_analyses(proj['dx_id'])
         all_analyses.append(analyses)
-    all_analyses_df = qa.make_analyses_df(all_analyses)
+    all_analyses_df = q.make_analyses_df(all_analyses)
 
     for index, row in all_analyses_df.iterrows():
         print(row)
@@ -183,8 +164,6 @@ def populate_analyses(all_projects):
             date_id=a_new_date
         )
         print("done")
-        # # Get date object from the dates table
-        # #date=Dates.objects.get(date=today_date),
 
 
 def run():

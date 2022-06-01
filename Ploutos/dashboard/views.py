@@ -17,7 +17,9 @@ def index(request):
 
     # Filter totals based on the dates provided in start and end (foreign key)
     if start:
-        totals = totals.filter(date__id__in = (Dates.objects.filter(date__range=[start,end]).values_list('id',flat=True)))
+        totals = totals.filter(date__id__in = (
+            Dates.objects.filter(date__range=[start,end]).values_list(
+                'id',flat=True)))
 
     # Stuff to work out delta of storage compared to day before
     # my_date = "2022-04-25"
