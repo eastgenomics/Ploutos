@@ -20,7 +20,7 @@ class Projects(models.Model):
     """Model representing a project."""
     dx_id = models.CharField(max_length=35, unique=True)
     name = models.CharField(max_length=100)
-    created_by = models.ForeignKey(Users, on_delete=models.PROTECT)
+    created_by = models.ForeignKey(Users, on_delete=models.CASCADE)
     created = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -28,7 +28,7 @@ class Projects(models.Model):
 
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
-    date = models.ForeignKey(Dates, on_delete=models.PROTECT, unique=True)
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True)
     storage_charges = models.FloatField()
     compute_charges = models.FloatField()
     egress_charges = models.FloatField()
@@ -38,7 +38,7 @@ class DailyOrgRunningTotal(models.Model):
 
 class StorageCosts(models.Model):
     """Model representing storage costs per project"""
-    project = models.ForeignKey(Projects, on_delete=models.PROTECT)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
     unique_size_live = models.FloatField()
     unique_size_archived = models.FloatField()
     total_size_live = models.FloatField()
@@ -47,7 +47,7 @@ class StorageCosts(models.Model):
     unique_cost_archived = models.FloatField()
     total_cost_live = models.FloatField()
     total_cost_archived = models.FloatField()
-    date = models.ForeignKey(Dates, on_delete=models.PROTECT)
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
 #    def __str__(self):
 #        return self.name
@@ -56,7 +56,7 @@ class Executables(models.Model):
     executable_id = models.AutoField(primary_key=True)
     dx_id = models.CharField(max_length=200)
     excutable_name = models.CharField(max_length=200)
-    project = models.ForeignKey(Projects, on_delete=models.PROTECT)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
     #version = models.CharField(max_length=30)
 
 #    def __str__(self):
