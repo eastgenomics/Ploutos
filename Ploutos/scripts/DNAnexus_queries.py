@@ -61,6 +61,8 @@ def no_of_days_in_month():
     none
     Returns
     -------
+     today_date : str
+        today's date e.g. "06-06-2022"
      day_count : int
         number of days in current month
     """
