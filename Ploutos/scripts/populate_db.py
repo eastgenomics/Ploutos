@@ -4,13 +4,15 @@
 import datetime as dt
 import pandas as pd
 
+import dxpy as dx
+
 from calendar import monthrange
 from collections import defaultdict
 from time import time, localtime, strftime
 
 from django.apps import apps
 from django.conf import settings
-from dashboard.models import ComputeCosts, Users, Dates, Projects, Executables
+from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Users, Dates, Projects, Executables, StorageCosts
 from scripts import DNAnexus_queries as q
 
 
@@ -173,7 +175,7 @@ def run():
     start = time()
     print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
 
-    q.DNAnexus_login()
+    q.login()
     all_projects, proj_list, proj_df = q.get_projects()
     populate_projects(all_projects)
     populate_running_totals()

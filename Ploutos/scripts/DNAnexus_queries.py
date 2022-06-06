@@ -53,6 +53,23 @@ def login():
         print(f'Error logging into DNAnexus: {e}')
         sys.exit(1)
 
+def no_of_days_in_month():
+    """
+    Get days in the month for calculations later
+    Parameters
+    ----------
+    none
+    Returns
+    -------
+     day_count : int
+        number of days in current month
+    """
+    today_date = dt.datetime.now().strftime("%Y/%m/%d").replace("/", "-")
+    year, month = int(today_date.split("-")[0]), int(today_date.split("-")[1])
+    day_count = monthrange(year, month)[1]
+
+    return today_date, day_count
+
 
 def get_projects():
     """
