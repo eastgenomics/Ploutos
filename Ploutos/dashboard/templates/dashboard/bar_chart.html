@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Storage Costs</title>
+   <script src="https://code.highcharts.com/highcharts.js"></script>
+        <script src="https://code.highcharts.com/modules/exporting.js"></script>
+        <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <script src="http://blacklabel.github.io/grouped_categories/grouped-categories.js"></script>
+</head>
+<body>
+<div id="container_data"></div>
+<script>
+       Highcharts.chart('container_data', {{storage_data|safe }});
+</script>
+</body>
+</html>
