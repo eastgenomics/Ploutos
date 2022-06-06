@@ -3,6 +3,7 @@
 *.pyc
 *.json
 *.Rhistory
+/dashboard/migrations/__pycache__/*
 _dashboard/__pycache__/*
 *.ipynb
 _migrations/__pycache__/*
