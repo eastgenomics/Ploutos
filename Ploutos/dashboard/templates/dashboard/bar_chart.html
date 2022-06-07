@@ -1,18 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Storage Costs</title>
-   <script src="https://code.highcharts.com/highcharts.js"></script>
-        <script src="https://code.highcharts.com/modules/exporting.js"></script>
-        <script src="https://code.highcharts.com/modules/export-data.js"></script>
-    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
-    <script src="http://blacklabel.github.io/grouped_categories/grouped-categories.js"></script>
-</head>
-<body>
-<div id="container_data"></div>
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+
+<form method="GET" action="{% url 'storage' %}">
+   
+    <div class="container">
+        <div class="row">
+        {% for field in form  %}
+          <div class="col-sm-6">
+            <b>{{ field.label_tag }}</b> - {{ field }} 
+          </div>
+        {% endfor %}
+        </div>  
+      </div>
+
+    <input type="submit" name="submit" value="Submit"/>
+</form>
+<script>
+    $(document).ready(function(){
+    $(".active").removeClass("active");
+    $("#link-storage").addClass("active");
+    });
+</script>
+
+<div id="container_data" align="center"></div>
 <script>
        Highcharts.chart('container_data', {{storage_data|safe }});
 </script>
-</body>
-</html>
+{% endblock content %}
