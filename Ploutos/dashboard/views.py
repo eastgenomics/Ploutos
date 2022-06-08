@@ -155,7 +155,7 @@ def storage_chart(request):
     proj_colour_dict = {'001': project_colours[0], '002': project_colours[1], '003': project_colours[2], '004': project_colours[3]}
 
     assay_colour_dict = {'CEN': assay_colours[0], 'MYE': assay_colours[1], 'TWE': assay_colours[2], 'TSO500': assay_colours[3],
-    'SNP': assay_colours[4], 'CP': assay_colours[5], 'WES': assay_colours[6], 'FH':assay_colours[7]}
+    'SNP': assay_colours[4], 'CP': assay_colours[5], 'WES': assay_colours[6], 'FH':assay_colours[7], 'clinicalgenetics': assay_colours[8]}
 
     # Find the months that exist in the db as categories 
     month_categories = list(StorageCosts.objects.order_by().values_list('date__date__month',flat=True).distinct())
@@ -182,9 +182,9 @@ def storage_chart(request):
                 for proj_type in proj_types:
                     cost_list = StorageCosts.objects.filter(project__name__startswith= proj_type, date__date__year = year).order_by().values('date__date__month').annotate(Live = Sum('unique_cost_live'), Archived=Sum('unique_cost_archived'))
 
-                    live_data = {'name': proj_type, 'data': list(cost_list.values_list('Live',flat=True)), 'stack': 'Live', 'color': proj_colour_dict[proj_type]}
+                    live_data = {'name': proj_type, 'data': list(cost_list.values_list('Live',flat=True)), 'stack': 'Live', 'color': proj_colour_dict.get(proj_type,'purple')}
                     category_data_source.append(live_data)
-                    archived_data = {'name': proj_type, 'data': list(cost_list.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous', 'color': proj_colour_dict[proj_type]}
+                    archived_data = {'name': proj_type, 'data': list(cost_list.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous', 'color': proj_colour_dict.get(proj_type, 'yellow')}
                     category_data_source.append(archived_data)
 
                     category_chart_data = {
@@ -232,9 +232,9 @@ def storage_chart(request):
                 # Filter by 'endswith' for each box-checked assay type
                 for assay_type in assay_types:
                     cost_list = StorageCosts.objects.filter(project__name__endswith= assay_type, date__date__year = '2022').order_by().values('date__date__month').annotate(Live = Sum('unique_cost_live'), Archived=Sum('unique_cost_archived'))
-                    live_data = {'name': assay_type, 'data': list(cost_list.values_list('Live',flat=True)), 'stack': 'Live', 'color': assay_colour_dict.get(assay_type, {'red'})}
+                    live_data = {'name': assay_type, 'data': list(cost_list.values_list('Live',flat=True)), 'stack': 'Live', 'color': assay_colour_dict.get(assay_type, 'red')}
                     category_data_source.append(live_data)
-                    archived_data = {'name': assay_type, 'data': list(cost_list.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous', 'color': assay_colour_dict.get(assay_type, {'green'})}
+                    archived_data = {'name': assay_type, 'data': list(cost_list.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous', 'color': assay_colour_dict.get(assay_type, 'green')}
                     category_data_source.append(archived_data)
 
                     category_chart_data = {

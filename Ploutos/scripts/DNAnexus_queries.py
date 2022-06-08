@@ -507,6 +507,9 @@ def merge_together_add_empty_rows(df1, df2):
         merged dataframe with project, all file states (total_live, total_archived, unique_live, unique_archived),
         cost and size with zeros if did not exist
     e.g.
+    
+    +-----------+-----------------+---------------+----------+
+    |  project  |      state      |     size      |   cost   |
     +-----------+-----------------+---------------+----------+
     | project-X | unique_live     | 1133796550572 | 0.875400 |
     | project-X | unique_archived |         51238 | 0.011010 |
@@ -543,7 +546,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
     Returns
     -------
     final_all_projs_df : pd.DataFrame
-        final dataframe with project, file state, total size and cost for all projects 
+        final dataframe with project, file state, total size and cost for all projects
     """
     # For the projects that were removed at the beginning because they are empty
     # Create a list of dictionaries with all the fields as zero
