@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 class DateForm(forms.Form):
     """Date and charge type picker for the running totals"""
     CHARGE_CHOICES = (
+        ('All','All'),
         ('Storage', 'Storage'),
         ('Compute', 'Compute'),
         ('Egress','Egress'),
@@ -19,10 +20,9 @@ class DateForm(forms.Form):
     charge_type = forms.ChoiceField(choices = CHARGE_CHOICES, required=True)
 
     def clean(self):
-        cleaned_data = super(DateForm, self).clean()
-        start = cleaned_data['start']
-        end = cleaned_data['end']
-        charge_type = cleaned_data['charge_type']
+        start = self.cleaned_data['start']
+        end = self.cleaned_data['end']
+        charge_type = self.cleaned_data['charge_type']
         #error_messages = []
 
         if str(start) < "2022-05-06":
@@ -31,8 +31,7 @@ class DateForm(forms.Form):
         if str(end) > str(datetime.date.today()):
             self.add_error("end", "End date is in the future")
 
-        return cleaned_data
-
+        return self.cleaned_data
 
 class StorageForm(forms.Form):
 
@@ -43,23 +42,24 @@ class StorageForm(forms.Form):
         ('004','004'),
         )
     ASSAY_CHOICES= (
-        ('1','CEN'),
-        ('2','MYE'),
-        ('3','TWE'),
-        ('4','TSO500'),
-        ('5','SNP'),
-        ('6','CP'),
-        ('7','WES'),
-        ('8','FH'),
+        ('CEN','CEN'),
+        ('MYE','MYE'),
+        ('TWE','TWE'),
+        ('TSO500','TSO500'),
+        ('SNP','SNP'),
+        ('CP','CP'),
+        ('WES','WES'),
+        ('FH','FH'),
         )
-    project_type = forms.MultipleChoiceField(choices=TYPE_CHOICES, widget=forms.CheckboxSelectMultiple())
+
+    project_type = forms.MultipleChoiceField(choices=TYPE_CHOICES, widget=forms.CheckboxSelectMultiple(), required=False)
     assay_type = forms.MultipleChoiceField(choices=ASSAY_CHOICES, widget=forms.CheckboxSelectMultiple(), required=False)
     
-    # def clean(self):
-    #     project_type = self.cleaned_data["project_type"]
-    #     assay_type = self.cleaned_data["assay_type"]
+    def clean(self):
+        project_type = self.cleaned_data["project_type"]
+        assay_type = self.cleaned_data["assay_type"]
 
-    #     # if project_type and assay_type:
-    #     #     raise ValidationError("Please fill in either project type or assay type, not both")
-    #     return self.cleaned_data
+        if project_type and assay_type:
+            self.add_error("project_type", "Please check boxes in either project type or assay type, not both")
+        return self.cleaned_data
 

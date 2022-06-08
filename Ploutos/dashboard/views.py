@@ -7,6 +7,7 @@ from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal, Stora
 import datetime
 import json
 
+
 def index(request):
     """ 
     View to display running total charges via Plotly 
@@ -16,6 +17,7 @@ def index(request):
     if 'submit' in request.GET:
         form = DateForm(request.GET)
         if form.is_valid():
+            print("Form is valid")
             start = form.cleaned_data.get("start")
             end = form.cleaned_data.get("end")
             charge_type = form.cleaned_data.get("charge_type")
@@ -26,44 +28,92 @@ def index(request):
                     Dates.objects.filter(date__range=[start,end]
                     ).values_list('id',flat=True)))
 
-                if charge_type == "Egress":
-                    print("Charge type is egress")
-                    y_data = [c.egress_charges for c in totals]
-                elif charge_type == "Compute":
-                    y_data = [c.compute_charges for c in totals]
-                    print("Charge type is compute")
-                elif charge_type == "Storage":
-                    y_data = [c.storage_charges for c in totals]
-                    print("Charge type is storage")
+                # If want to see all charge types, render whole graph
+                if charge_type == 'All':
+                    compute = [c.compute_charges for c in totals]
+                    storage = [c.storage_charges for c in totals]
+                    egress = [c.egress_charges for c in totals]
+                    fig = px.line(
+                        x= [x.date.date for x in totals],
+                        y=compute,
+                        title = "Running charges",
+                        labels = {'x':'Date', 'y':'Charges ($)'}, width=1200, height=600
+                    )
 
-                fig = px.line(
-                    x = [x.date.date for x in totals],
-                    y = y_data,
-                    title = "Running charges",
-                    labels = {'x':'Date', 'y':'Charges ($)'}, width=1200, height=500
-                )
+                    fig.data[0].name = "Compute"
+                    fig.update_traces(showlegend=True)
+                    fig.add_scatter(x=[x.date.date for x in totals], y=storage, mode='lines', name="Storage")
+                    fig.add_scatter(x=[x.date.date for x in totals], y=egress, mode='lines', name="Egress")
+
+                # If not all, set y_data to be specific charge type
+                else:
+                    if charge_type == "Egress":
+                        y_data = [c.egress_charges for c in totals]
+                    elif charge_type == "Compute":
+                        y_data = [c.compute_charges for c in totals]
+                    elif charge_type == "Storage":
+                        y_data = [c.storage_charges for c in totals]
+
+                    fig = px.line(
+                        x = [x.date.date for x in totals],
+                        y = y_data,
+                        title = "Running charges",
+                        labels = {'x':'Date', 'y':'Charges ($)'}, width=1200, height=600
+                    )
+                
+                # Update layout for all versions of graph
                 fig.update_layout(
                     title={
                         'font_size': 24,
                         'xanchor': 'center',
                         'x': 0.5
                 })
-        else:
-            form = DateForm()
 
+                chart = fig.to_html()
+                context = {'chart': chart, 'form': form}
+        else:
+            totals = DailyOrgRunningTotal.objects.all()
+            compute = [c.compute_charges for c in totals]
+            storage = [c.storage_charges for c in totals]
+            egress = [c.egress_charges for c in totals]
+            fig = px.line(
+                x= [x.date.date for x in totals],
+                #x=[Dates.objects.get(id = c.id).date for c in totals],
+                y=compute,
+                title = "Running charges",
+                labels = {'x':'Date', 'y':'Charges ($)'}, width=1200, height=600
+            )
+
+            # Legend labels weren't working so added new traces with names
+            fig.data[0].name = "Compute"
+            fig.update_traces(showlegend=True)
+            fig.add_scatter(x=[x.date.date for x in totals], y=storage, mode='lines', name="Storage")
+            fig.add_scatter(x=[x.date.date for x in totals], y=egress, mode='lines', name="Egress")
+
+            # Change formatting of title
+            fig.update_layout(
+                title={
+                    'font_size': 24,
+                    'xanchor': 'center',
+                    'x': 0.5
+            })
+
+            chart = fig.to_html()
+            context = {'chart': chart, 'form': form}
     else:
         form = DateForm()
 
-    # Plot the date and storage charges as line graph
-
+        # Plot the date and storage charges as line graph
+        totals = DailyOrgRunningTotal.objects.all()
         compute = [c.compute_charges for c in totals]
         storage = [c.storage_charges for c in totals]
         egress = [c.egress_charges for c in totals]
         fig = px.line(
             x= [x.date.date for x in totals],
+            #x=[Dates.objects.get(id = c.id).date for c in totals],
             y=compute,
             title = "Running charges total",
-            labels = {'x':'Date', 'y':'Charges ($)'}, width=1200, height=500
+            labels = {'x':'Date', 'y':'Charges ($)'}, width=1200, height=600
         )
 
         # Legend labels weren't working so added new traces with names
@@ -80,8 +130,8 @@ def index(request):
                 'x': 0.5
         })
 
-    chart = fig.to_html()
-    context = {'chart': chart, 'form': form}
+        chart = fig.to_html()
+        context = {'chart': chart, 'form': form}
     return render(request, 'index.html', context)
 
 
@@ -105,11 +155,12 @@ def bar_chart(request):
         form = StorageForm(request.GET)
         if form.is_valid():
             print("Form is valid")
-            proj_types = form.cleaned_data.get('project_type')
-
-            if proj_types:
+            #proj_types = form.cleaned_data.get('project_type', {None})
+            category_data_source = []
+            if form.cleaned_data.get('project_type'):
+                proj_types = form.cleaned_data.get('project_type')
                 count=-1
-                category_data_source = []
+                
                 for proj_type in proj_types:
                     cost_list = StorageCosts.objects.filter(project__name__startswith= proj_type).order_by().values('date__date__month').annotate(Live = Sum('unique_cost_live'), Archived=Sum('unique_cost_archived'))
                     count+=1
@@ -117,13 +168,28 @@ def bar_chart(request):
                     category_data_source.append(live_data)
                     archived_data = {'name': proj_type, 'data': list(cost_list.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous', 'color': colours[count]}
                     category_data_source.append(archived_data)
+            
             elif form.cleaned_data.get('assay_type'):
+                assay_types = form.cleaned_data.get('assay_type')
                 print("Assays selected")
+                count = -1
+                for assay_type in assay_types:
+                    cost_list = StorageCosts.objects.filter(project__name__endswith= assay_type).order_by().values('date__date__month').annotate(Live = Sum('unique_cost_live'), Archived=Sum('unique_cost_archived'))
+                    count+=1
+                    live_data = {'name': assay_type, 'data': list(cost_list.values_list('Live',flat=True)), 'stack': 'Live', 'color': colours[count]}
+                    category_data_source.append(live_data)
+                    archived_data = {'name': assay_type, 'data': list(cost_list.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous', 'color': colours[count]}
+                    category_data_source.append(archived_data)
+            else:
+                storage_totals = StorageCosts.objects.order_by().values('date__date__month').annotate(Live = Sum('unique_cost_live'), Archived=Sum('unique_cost_archived'))
+
+                category_data_source = [{"name": "All projects", "data": list(storage_totals.values_list('Live',flat=True)), 'stack': 'Live'}, {"name": "All projects", "data": list(storage_totals.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous'}]
+
         else:
             form = StorageForm()
             storage_totals = StorageCosts.objects.order_by().values('date__date__month').annotate(Live = Sum('unique_cost_live'), Archived=Sum('unique_cost_archived'))
 
-            category_data_source = [{"name": "All projects", "data": list(storage_totals.values_list('Live',flat=True)), 'stack': 'Live'}, {"name": "all", "data": list(storage_totals.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous'}]
+            category_data_source = [{"name": "All projects", "data": list(storage_totals.values_list('Live',flat=True)), 'stack': 'Live'}, {"name": "All projects", "data": list(storage_totals.values_list('Archived',flat=True)), 'stack': 'Archived', 'linkedTo': ':previous'}]
     
     else:
         form = StorageForm()
