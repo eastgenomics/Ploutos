@@ -36,7 +36,7 @@ def populate_projects(all_projects):
         )
 
         # Add project created dates to Dates table to create IDs
-        a_new_date, created = Dates.objects.get_or_create(
+        new_date, created = Dates.objects.get_or_create(
             date=entry['created'],
         )
 
@@ -45,7 +45,7 @@ def populate_projects(all_projects):
             dx_id=entry['dx_id'],
             name=entry['name'],
             created_by=user,
-            created=a_new_date,
+            created=new_date,
         )
 
 
@@ -85,14 +85,13 @@ def populate_database_files(all_projects_dict):
     Returns
     -------
     none
-    N.B. Move this to new script and import other query script.
     """
 
     today_date = q.no_of_days_in_month()[0]
 
     for key, value in all_projects_dict.items():
         new_storage, created = StorageCosts.objects.get_or_create(
-            # Get the project ID from the projects table by project dx id
+            # Get project ID from the projects table by project dx_id
             project = Projects.objects.get(dx_id=key),
             unique_size_live = value['unique_live']['size'],
             unique_cost_live = value['unique_live']['cost'],

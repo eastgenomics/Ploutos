@@ -14,14 +14,13 @@
         {% endif %}
         {% for field in form  %}
           <div class="col-sm-6">
-            <b>{{ field.label_tag }}</b> - {{ field }} 
+            <b>{{ field.label_tag }}</b> {{ field }} 
           </div>
         {% endfor %}
         </div>  
-      </div>
-
 
     <input type="submit" name="submit" value="Submit"/>
+    </div>
 
 </form>
 <div id='chart_div' align='center' style='margin: 0 auto;'>

@@ -12,13 +12,11 @@ import dxpy as dx
 
 from calendar import monthrange
 from collections import defaultdict
+from time import time, localtime, strftime
+
 from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal, StorageCosts
 from django.apps import apps
 from django.conf import settings
-from time import time, localtime, strftime
-
-
-
 
 
 def login():

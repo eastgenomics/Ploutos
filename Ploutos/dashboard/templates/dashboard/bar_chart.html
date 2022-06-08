@@ -13,15 +13,13 @@
         {% endif %}
         {% for field in form  %}
           <div class="col-sm-6">
-            <b>{{ field.label_tag }}</b> - {{ field }} 
+            <b >{{ field.label_tag }}</b> {{ field }} 
           </div>
         {% endfor %}
         </div>  
-      </div>
-    <div class="buttonHolder">
     <input type="submit" name="submit" value="Submit"/>
     </div>
-    
+&nbsp; 
 </form>
 <script>
     $(document).ready(function(){
@@ -29,7 +27,6 @@
     $("#link-storage").addClass("active");
     });
 </script>
-
 <div id="container_data" align="center"></div>
 <script>
        Highcharts.chart('container_data', {{storage_data|safe }});
