@@ -5,8 +5,21 @@
 
 
 <form method="GET" action="{% url 'index' %}">
+    <div class="container">
+        <div class="row">
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                {{ form.errors }}
+            </div>
+        {% endif %}
+        {% for field in form  %}
+          <div class="col-sm-6">
+            <b>{{ field.label_tag }}</b> - {{ field }} 
+          </div>
+        {% endfor %}
+        </div>  
+      </div>
 
-    {{ form.as_p }}
 
     <input type="submit" name="submit" value="Submit"/>
 

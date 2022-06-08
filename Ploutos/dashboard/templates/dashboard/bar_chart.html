@@ -6,6 +6,11 @@
    
     <div class="container">
         <div class="row">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
         {% for field in form  %}
           <div class="col-sm-6">
             <b>{{ field.label_tag }}</b> - {{ field }} 
@@ -13,8 +18,10 @@
         {% endfor %}
         </div>  
       </div>
-
+    <div class="buttonHolder">
     <input type="submit" name="submit" value="Submit"/>
+    </div>
+    
 </form>
 <script>
     $(document).ready(function(){

@@ -60,6 +60,6 @@ class StorageForm(forms.Form):
         assay_type = self.cleaned_data["assay_type"]
 
         if project_type and assay_type:
-            self.add_error("project_type", "Please check boxes in either project type or assay type, not both")
+            raise ValidationError("Please check boxes in either project type or assay type, not both")
         return self.cleaned_data
 
