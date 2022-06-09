@@ -1,0 +1,13 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<script>
+    $(document).ready(function(){
+    $(".active").removeClass("active");
+    $("#link-jobs").addClass("active");
+    });
+</script>
+
+    Jobs will be shown on this page
+
+{% endblock content %}

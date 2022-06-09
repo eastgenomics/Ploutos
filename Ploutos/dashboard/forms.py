@@ -66,9 +66,9 @@ class StorageForm(forms.Form):
 
     #project_type = forms.MultipleChoiceField(choices=TYPE_CHOICES, widget=forms.CheckboxSelectMultiple(), required=False)
     project_type = forms.CharField(required=False, label='Project type', 
-                    widget=forms.TextInput(attrs={'placeholder': 'Project types, separated by commas', 'style': 'width:300px'}))
+                    widget=forms.TextInput(attrs={'placeholder': 'Enter project types, separated by commas', 'style': 'width:300px'}))
     assay_type = forms.CharField(required=False, label='Assay type', 
-                    widget=forms.TextInput(attrs={'placeholder': 'Assay types, separated by commas', 'style': 'width:300px'}))
+                    widget=forms.TextInput(attrs={'placeholder': 'Enter assay types, separated by commas', 'style': 'width:300px'}))
     #assay_type = forms.MultipleChoiceField(choices=ASSAY_CHOICES, widget=forms.CheckboxSelectMultiple(), required=False)
     year = forms.ChoiceField(choices = YEAR_CHOICES, required=False)
     #month = forms.ChoiceField(choices = MONTH_CHOICES, required=False)
@@ -79,6 +79,7 @@ class StorageForm(forms.Form):
         year = self.cleaned_data["year"]
 
         if project_type and assay_type:
-            raise ValidationError("Please enter filters in either project type or assay type, not both")
+            if project_type.find(",") !=-1 or assay_type.find(",") != -1:
+                raise ValidationError("If using both project type and assay type filters, please only enter one of each")
         return self.cleaned_data
 
