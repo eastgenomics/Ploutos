@@ -57,12 +57,22 @@ class StorageForm(forms.Form):
     
     years = list(StorageCosts.objects.order_by().values_list('date__date__year',flat=True).distinct())
     YEAR_CHOICES = ((year, year) for year in years)
-    # conversion_dict = {1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June', 7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'}
-    # MONTHS_AVAILABLE = list(StorageCosts.objects.order_by().values_list('date__date__month',flat=True).distinct())
-    # print(MONTHS_AVAILABLE)
-    # #MONTHS_AVAILABLE = MONTHS_IN_DB.append("All")
-    
-    # MONTH_CHOICES = ((month, month) for month in MONTHS_AVAILABLE)
+
+    MONTH_CHOICES = (
+        ('All','All'),
+        ('1', 'January'),
+        ('2', 'February'),
+        ('3', 'March'),
+        ('4', 'April'),
+        ('5', 'May'),
+        ('6', 'June'),
+        ('7', 'July'),
+        ('8', 'August'),
+        ('9', 'September'),
+        ('10', 'October'),
+        ('11', 'November'),
+        ('12', 'December')
+    )
 
     #project_type = forms.MultipleChoiceField(choices=TYPE_CHOICES, widget=forms.CheckboxSelectMultiple(), required=False)
     project_type = forms.CharField(required=False, label='Project type', 
@@ -70,7 +80,8 @@ class StorageForm(forms.Form):
     assay_type = forms.CharField(required=False, label='Assay type', 
                     widget=forms.TextInput(attrs={'placeholder': 'Enter assay types, separated by commas', 'style': 'width:300px'}))
     #assay_type = forms.MultipleChoiceField(choices=ASSAY_CHOICES, widget=forms.CheckboxSelectMultiple(), required=False)
-    year = forms.ChoiceField(choices = YEAR_CHOICES, required=False)
+    year = forms.ChoiceField(choices = YEAR_CHOICES, required=True)
+    month = forms.ChoiceField(choices = MONTH_CHOICES, required=True)
     #month = forms.ChoiceField(choices = MONTH_CHOICES, required=False)
     
     def clean(self):

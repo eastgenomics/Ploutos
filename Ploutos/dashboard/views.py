@@ -237,12 +237,49 @@ def storage_chart(request):
         # If only one type of filter is check-boxed
         if form.is_valid():
             year = form.cleaned_data.get('year')
+            month = form.cleaned_data.get('month')
+            
+            # If month selected
+            # Still in development
+            # if form.cleaned_data.get('month'):
+            #     month = form.cleaned_data.get('month')
+                # If you want all the months: do the same as before
+                # if month == 'All':
+                    # Do everything as currently
+
+                    # proj_types = X
+
+                    #cost_list = [StorageCosts.objects.filter(project__name__startswith = proj_type, date__date__year = year, date__date__month = month).aggregate(Live = Sum('unique_cost_live'), Archived= Sum('unique_cost_archived')) for proj_type in proj_types]
+
+
+
+                    # live = cost_list.get('Live')
+                    # archived = cost_list.get('Archived')
+                    # live_data = {
+                    #     'name': proj_type, 
+                    #     'data': [project.get('Live') for project in cost_list],
+                    #             'stack': 'Live',
+                    #             'color': proj_colour_dict.get(
+                    #                 proj_type,'purple'
+                    #     )}
+                    
+                    # archived_data = {
+                    #     'name': proj_type,
+                    #     'data': [project.get('Archived') for project in cost_list],
+                    #             'stack': 'Archived',
+                    #             'linkedTo': ':previous',
+                    #             'color': proj_colour_dict.get(
+                    #                 proj_type, 'purple'
+                    #     )}
 
             category_data_source = []
-            # If there are projects selected
+            # If there are both a project type and assay type entered
+            # Validated to be only one of each so get the string from each
             if form.cleaned_data.get('project_type') and form.cleaned_data.get('assay_type'):
                 project_type = form.cleaned_data.get('project_type')
                 assay_type = form.cleaned_data.get('assay_type')
+
+                # Filter by startswith project type and ends with assay type
                 cost_list = StorageCosts.objects.filter(
                         project__name__startswith= project_type, project__name__endswith = assay_type,
                         date__date__year = year
@@ -252,9 +289,9 @@ def storage_chart(request):
                                 Live = Sum('unique_cost_live'),
                                 Archived=Sum('unique_cost_archived')
                         )
-
+                
                 live_data = {
-                        'name': f"{project_type}+{assay_type}", 
+                        'name': f"{project_type}*{assay_type}", 
                         'data': list(
                             cost_list.values_list(
                                 'Live',flat=True)
@@ -264,7 +301,7 @@ def storage_chart(request):
                                     project_type,'purple'
                         )}
                 archived_data = {
-                        'name': f"{project_type}+{assay_type}",
+                        'name': f"{project_type}*{assay_type}",
                         'data': list(
                             cost_list.values_list(
                                 'Archived',flat=True)
@@ -313,12 +350,13 @@ def storage_chart(request):
                     'storage_data': json.dumps(category_chart_data),
                     'form': form}
             else:
+                # If there are only projects searched for
                 if form.cleaned_data.get('project_type'):
-                    # Remove all whitespace and add to list, split by commas
+                    # Remove all whitespace + add to list, split by commas
                     proj_string = form.cleaned_data.get('project_type')
                     proj_types = proj_string.replace(" ", "").split(",")
                     
-                    # Filter by 'startswith' for each box-checked project type
+                    # Filter by 'startswith' for each searched project type
                     for proj_type in proj_types:
                         cost_list = StorageCosts.objects.filter(
                             project__name__startswith= proj_type,
@@ -390,12 +428,12 @@ def storage_chart(request):
                         'storage_data': json.dumps(category_chart_data),
                         'form': form}
 
-                # If there are assays selected
+                # If there only assays searched for
                 elif form.cleaned_data.get('assay_type'):
                     assay_string = form.cleaned_data.get('assay_type')
                     assay_types = assay_string.replace(" ", "").split(",")
 
-                    # Filter by 'endswith' for each box-checked assay type
+                    # Filter by 'endswith' for each searched assay type
                     for assay_type in assay_types:
                         cost_list = StorageCosts.objects.filter(
                             project__name__endswith= assay_type,
@@ -527,7 +565,7 @@ def storage_chart(request):
     
 
         else:
-            # If the form is not valid, display just standard graph
+            # If the form is not valid, display just the standard graph
             storage_totals = StorageCosts.objects.filter(
                 date__date__year = '2022'
                 ).order_by().values(
@@ -592,6 +630,7 @@ def storage_chart(request):
     
     else:
         # If nothing is submitted on the form (normal landing page)
+        # Display all projects graph
         form = StorageForm()
         storage_totals = StorageCosts.objects.filter(
             date__date__year = '2022'
