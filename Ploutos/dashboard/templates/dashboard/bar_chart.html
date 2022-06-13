@@ -6,21 +6,26 @@
    
     <div class="container">
         <div class="row">
+        <!-- If general form errors, display them with red banner -->
         {% if form.non_field_errors %}
             <div class="alert alert-danger">
                 {{ form.non_field_errors }}
             </div>
         {% endif %}
+        <!-- Display each field's label and the field itself -->
         {% for field in form  %}
           <div class="col-sm-6">
             <b >{{ field.label_tag }}</b> {{ field }} 
           </div>
         {% endfor %}
-        </div>  
+        </div>
+    <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Submit"/>
     </div>
 &nbsp; 
 </form>
+
+<!-- Remove active class from the previous page, add to current page -->
 <script>
     $(document).ready(function(){
     $(".active").removeClass("active");

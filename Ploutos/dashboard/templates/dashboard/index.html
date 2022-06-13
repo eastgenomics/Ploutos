@@ -2,16 +2,16 @@
 
 {% block content %}
 
-
-
 <form method="GET" action="{% url 'index' %}">
     <div class="container">
         <div class="row">
+        <!-- If form errors, display each field's error with red banner -->
         {% if form.errors %}
             <div class="alert alert-danger">
                 {{ form.errors }}
             </div>
         {% endif %}
+        <!-- Display each field's label and the field itself -->
         {% for field in form  %}
           <div class="col-sm-6">
             <b>{{ field.label_tag }}</b> {{ field }} 
@@ -19,6 +19,7 @@
         {% endfor %}
         </div>  
 
+    <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Submit"/>
     </div>
 

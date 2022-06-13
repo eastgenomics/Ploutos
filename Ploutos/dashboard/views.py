@@ -33,7 +33,7 @@ def index(request):
                         Dates.objects.filter(
                             date__range = [start, end]
                         ).values_list(
-                            'id', flat = True
+                            'id', flat=True
                         )
                     )
                 )
@@ -237,7 +237,7 @@ def storage_chart(request):
     # Find the months that exist in the db as categories for the graph
     month_categories = list(
         StorageCosts.objects.order_by().values_list(
-            'date__date__month', flat = True
+            'date__date__month', flat=True
             ).distinct()
     )
 
@@ -295,7 +295,7 @@ def storage_chart(request):
                         'name': f"{project_type}*{assay_type}",
                         'data': list(
                             cost_list.values_list(
-                                'Live', flat = True
+                                'Live', flat=True
                                 )
                         ),
                         'stack': 'Live',
@@ -308,7 +308,7 @@ def storage_chart(request):
                             'name': f"{project_type}*{assay_type}",
                             'data': list(
                                 cost_list.values_list(
-                                    'Archived',flat=True
+                                    'Archived', flat=True
                                 )
                             ),
                             'stack': 'Archived',
@@ -398,7 +398,7 @@ def storage_chart(request):
                                 'name': proj_type,
                                 'data': list(
                                     cost_list.values_list(
-                                        'Live', flat = True)
+                                        'Live', flat=True)
                                 ),
                                 'stack': 'Live',
                                 'color': proj_colour_dict.get(
@@ -409,7 +409,7 @@ def storage_chart(request):
                                 'name': proj_type,
                                 'data': list(
                                     cost_list.values_list(
-                                        'Archived', flat = True)
+                                        'Archived', flat=True)
                                 ),
                                 'stack': 'Archived',
                                 'linkedTo': ':previous',
@@ -494,7 +494,7 @@ def storage_chart(request):
                             live_data = {
                                 'name': assay_type,
                                 'data': list(
-                                    cost_list.values_list('Live', flat = True)
+                                    cost_list.values_list('Live', flat=True)
                                     ),
                                 'stack': 'Live',
                                 'color': assay_colour_dict.get(
@@ -506,7 +506,7 @@ def storage_chart(request):
                                 'name': assay_type,
                                 'data': list(
                                     cost_list.values_list(
-                                        'Archived',flat = True
+                                        'Archived', flat=True
                                     )
                                 ),
                                 'stack': 'Archived',
@@ -588,7 +588,7 @@ def storage_chart(request):
                         {
                             "name": "All projects",
                             "data": list(storage_totals.values_list(
-                                'Live', flat = True
+                                'Live',flat=True
                                 )
                             ),
                             'stack': 'Live'
@@ -596,7 +596,7 @@ def storage_chart(request):
                         {
                             "name": "All projects",
                             "data": list(storage_totals.values_list(
-                                'Archived', flat = True
+                                'Archived', flat=True
                                 )
                             ),
                             'stack': 'Archived',
@@ -1066,7 +1066,7 @@ def storage_chart(request):
             {
                 "name": "All projects",
                 "data": list(storage_totals.values_list(
-                    'Live', flat = True
+                    'Live', flat=True
                     )
                  ),
                 'stack': 'Live'
@@ -1074,7 +1074,7 @@ def storage_chart(request):
             {
                 "name": "All projects",
                 "data": list(storage_totals.values_list(
-                    'Archived', flat = True
+                    'Archived', flat=True
                     )
                 ),
                 'stack': 'Archived',
@@ -1150,7 +1150,7 @@ def storage_chart(request):
             {
                 "name": "All projects",
                 "data": list(storage_totals.values_list(
-                    'Live', flat = True
+                    'Live', flat=True
                         )
                     ),
                 'stack': 'Live'
@@ -1159,7 +1159,7 @@ def storage_chart(request):
             {
                 "name": "All projects",
                 "data": list(storage_totals.values_list(
-                    'Archived', flat = True
+                    'Archived', flat=True
                     )
                 ),
                 'stack': 'Archived',

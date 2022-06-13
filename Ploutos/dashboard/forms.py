@@ -25,9 +25,13 @@ class DateForm(forms.Form):
         end = self.cleaned_data['end']
         charge_type = self.cleaned_data['charge_type']
 
+        # Check start date isn't before earliest db entry
+        # Assign error to the specific field
         if str(start) < "2022-05-06":
             self.add_error("start", "Start date is earlier than the earliest entry in the database")
 
+        # Check end date isn't after today
+        # Assign error to the specific field
         if str(end) > str(datetime.date.today()):
             self.add_error("end", "End date is in the future")
 
@@ -72,29 +76,34 @@ class StorageForm(forms.Form):
         ('12', 'December')
     )
 
-    #project_type = forms.MultipleChoiceField(choices=TYPE_CHOICES, widget=forms.CheckboxSelectMultiple(), required=False)
     project_type = forms.CharField(required=False, label='Project type', 
                     widget=forms.TextInput(attrs={'placeholder': 'Enter project types, separated by commas', 'style': 'width:300px'}))
     assay_type = forms.CharField(required=False, label='Assay type', 
                     widget=forms.TextInput(attrs={'placeholder': 'Enter assay types, separated by commas', 'style': 'width:300px'}))
-    #assay_type = forms.MultipleChoiceField(choices=ASSAY_CHOICES, widget=forms.CheckboxSelectMultiple(), required=False)
     year = forms.ChoiceField(choices = YEAR_CHOICES, required=True)
     month = forms.ChoiceField(choices = MONTH_CHOICES, required=True)
-    #month = forms.ChoiceField(choices = MONTH_CHOICES, required=False)
     
     def clean(self):
         project_type = self.cleaned_data["project_type"]
         assay_type = self.cleaned_data["assay_type"]
         year = self.cleaned_data["year"]
         month = self.cleaned_data["month"]
-        
+
+        # Only May and June are in the db currently
         acceptable_months = ['All', '5', '6']
 
+        # Check whether >1 entries are in both proj and assay type by comma
         if project_type and assay_type:
             if project_type.find(",") !=-1 or assay_type.find(",") != -1:
-                raise ValidationError("If using both project type and assay type filters, please only enter one of each")
+                raise ValidationError(
+                    "If using both project type and assay type filters, "
+                    "please only enter one of each"
+                )
 
+        # Check whether user is choosing months with no data currently
         if month not in acceptable_months:
-            raise ValidationError("No entries are in the db for that month")
+            raise ValidationError(
+                "There are no database entries for the specified month"
+            )
         return self.cleaned_data
 
