@@ -351,7 +351,8 @@ def storage_chart(request):
                         ,
                         'setOptions': {
                             'lang': {
-                                'thousandsSep': ','
+                                'thousandsSep': ',',
+                                'noData': 'No data to display'
                             }
                         },
                         'plotOptions': {
@@ -361,7 +362,7 @@ def storage_chart(request):
                             },
                         'series': category_data_source
                     }
-
+                    
                     context = {
                         'storage_data': json.dumps(category_chart_data),
                         'form': form
@@ -372,7 +373,7 @@ def storage_chart(request):
                     if form.cleaned_data.get('project_type'):
                         # Remove all whitespace + add to list, split by commas
                         proj_string = form.cleaned_data.get('project_type')
-                        proj_types = proj_string.rstrip(",").replace(" ", "").split(",")
+                        proj_types = proj_string.strip(",").replace(" ", "").split(",")
                         
                         # Filter by 'startswith' for each searched project type
                         for proj_type in proj_types:
@@ -448,7 +449,8 @@ def storage_chart(request):
                             ,
                             'setOptions': {
                                 'lang': {
-                                    'thousandsSep': ','
+                                    'thousandsSep': ',',
+                                    'noData': 'No data to display'
                                 }
                             },
                             'plotOptions': {
@@ -467,7 +469,7 @@ def storage_chart(request):
                     # If there only assays searched for
                     elif form.cleaned_data.get('assay_type'):
                         assay_string = form.cleaned_data.get('assay_type')
-                        assay_types = assay_string.rstrip(",").replace(" ", "").split(",")
+                        assay_types = assay_string.strip(",").replace(" ", "").split(",")
 
                         # Filter by 'endswith' for each searched assay type
                         for assay_type in assay_types:
@@ -543,7 +545,8 @@ def storage_chart(request):
                             ,
                             'setOptions': {
                                 'lang': {
-                                    'thousandsSep': ','
+                                    'thousandsSep': ',',
+                                    'noData': 'No data to display'
                                 }
                             },
                             'plotOptions': {
@@ -621,7 +624,8 @@ def storage_chart(request):
                             ,
                             'setOptions': {
                                 'lang': {
-                                    'thousandsSep': ','
+                                    'thousandsSep': ',',
+                                    'noData': 'No data to display'
                                 }
                             },
                             'plotOptions': {
@@ -640,6 +644,7 @@ def storage_chart(request):
                 # A specific month has been selected
                 converted_month = date_conversion_dict[int(month)]
 
+                # If a project type and an assay type entered
                 if (form.cleaned_data.get('project_type') and
                 form.cleaned_data.get('assay_type')):
                     project_type = form.cleaned_data.get('project_type')
@@ -653,7 +658,7 @@ def storage_chart(request):
                             Live = Sum('unique_cost_live'),
                             Archived = Sum('unique_cost_archived')
                         )
-
+                    
                     live_data = {
                         'name': f"{project_type}*{assay_type}",
                         'data': [cost_list.get('Live')],
@@ -706,14 +711,15 @@ def storage_chart(request):
                                 'style': {
                                     'fontWeight': 'bold',
                                     'color': 'gray'
-                                }, 
+                                },
                                 'format': "{stack}"
                             }
                         }
                         ,
                         'setOptions': {
                             'lang': {
-                                'thousandsSep': ','
+                                'thousandsSep': ',',
+                                'noData': 'No data to display'
                             }
                         },
                         'plotOptions': {
@@ -723,7 +729,7 @@ def storage_chart(request):
                         },
                         'series': category_data_source
                     }
-
+                    print(category_chart_data)
                     context = {
                         'storage_data': json.dumps(category_chart_data),
                         'form': form
@@ -732,7 +738,7 @@ def storage_chart(request):
                 elif form.cleaned_data.get('project_type'):
                     
                     proj_string = form.cleaned_data.get('project_type')
-                    proj_types = proj_string.rstrip(",").replace(" ", "").split(",")
+                    proj_types = proj_string.strip(",").replace(" ", "").split(",")
 
                     for proj_type in proj_types:
                         cost_list = StorageCosts.objects.filter(
@@ -772,7 +778,7 @@ def storage_chart(request):
                         'chart': {
                             'type': 'column',
                             'width': 1200,
-                            'height': 500, 
+                            'height': 500,
                             'style': {
                                 'float': 'center'
                             }
@@ -802,7 +808,8 @@ def storage_chart(request):
                         ,
                         'setOptions': {
                             'lang': {
-                                'thousandsSep': ','
+                                'thousandsSep': ',',
+                                'noData': 'No data to display'
                             }
                         },
                         'plotOptions': {
@@ -820,9 +827,8 @@ def storage_chart(request):
 
                 
                 elif form.cleaned_data.get('assay_type'):
-                    
                     assay_string = form.cleaned_data.get('assay_type')
-                    assay_types = assay_string.rstrip(",").replace(" ", "").split(",")
+                    assay_types = assay_string.strip(",").replace(" ", "").split(",")
 
                     for assay_type in assay_types:
                         cost_list = StorageCosts.objects.filter(
@@ -848,7 +854,7 @@ def storage_chart(request):
                             'data': [cost_list.get('Archived')],
                             'stack': 'Archived',
                             'linkedTo' : ':previous',
-                            'color' : assay_colour_dict.get(
+                            'color': assay_colour_dict.get(
                                     assay_type, 'red'
                             ),
                             'opacity': 0.8
@@ -893,7 +899,8 @@ def storage_chart(request):
                         ,
                         'setOptions': {
                             'lang': {
-                                'thousandsSep': ','
+                                'thousandsSep': ',',
+                                'noData': 'No data to display'
                             }
                         },
                         'plotOptions': {
@@ -958,7 +965,8 @@ def storage_chart(request):
                         ,
                         'setOptions': {
                             'lang': {
-                                'thousandsSep': ','
+                                'thousandsSep': ',',
+                                'noData': 'No data to display'
                             }
                         },
                         'plotOptions': {'column': {'stacking': 'normal'}},
@@ -1033,7 +1041,8 @@ def storage_chart(request):
                 ,
                 'setOptions': {
                     'lang': {
-                        'thousandsSep': ','
+                        'thousandsSep': ',',
+                        'noData': 'No data to display'
                     }
                 },
                 'plotOptions': {
@@ -1117,7 +1126,8 @@ def storage_chart(request):
             ,
             'setOptions': {
                 'lang': {
-                    'thousandsSep': ','
+                    'thousandsSep': ',',
+                    'noData': 'No data to display'
                 }
             },
             'plotOptions': {

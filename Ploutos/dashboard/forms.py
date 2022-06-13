@@ -86,9 +86,15 @@ class StorageForm(forms.Form):
         project_type = self.cleaned_data["project_type"]
         assay_type = self.cleaned_data["assay_type"]
         year = self.cleaned_data["year"]
+        month = self.cleaned_data["month"]
+        
+        acceptable_months = ['All', '5', '6']
 
         if project_type and assay_type:
             if project_type.find(",") !=-1 or assay_type.find(",") != -1:
                 raise ValidationError("If using both project type and assay type filters, please only enter one of each")
+
+        if month not in acceptable_months:
+            raise ValidationError("No entries are in the db for that month")
         return self.cleaned_data
 
