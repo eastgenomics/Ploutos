@@ -41,7 +41,10 @@ def index(request):
                         x=[x.date.date for x in totals],
                         y=compute,
                         title="Running charges",
-                        labels={'x': 'Date', 'y': 'Charges ($)'},
+                        labels={
+                            'x': 'Date',
+                            'y': 'Charges ($)'
+                        },
                         width=1200,
                         height=600
                     )
@@ -80,7 +83,10 @@ def index(request):
                         x=[x.date.date for x in totals],
                         y=y_data,
                         title=updated_title,
-                        labels={'x':'Date', 'y':'Charges ($)'},
+                        labels={
+                            'x':'Date',
+                            'y':'Charges ($)'
+                        },
                         width=1200,
                         height=600
                     )
@@ -109,7 +115,10 @@ def index(request):
                 x=[x.date.date for x in totals],
                 y=compute,
                 title="Running total charges",
-                labels={'x':'Date', 'y':'Charges ($)'},
+                labels={
+                    'x':'Date',
+                    'y':'Charges ($)'
+                },
                 width=1200,
                 height=600
             )
@@ -123,6 +132,7 @@ def index(request):
                 mode='lines',
                 name='Storage'
             )
+
             fig.add_scatter(
                 x=[x.date.date for x in totals],
                 y=egress,
@@ -153,7 +163,10 @@ def index(request):
             x=[x.date.date for x in totals],
             y=compute,
             title="Running total charges",
-            labels={'x':'Date', 'y':'Charges ($)'},
+            labels={
+                'x':'Date',
+                'y':'Charges ($)'
+            },
             width=1200,
             height=600
         )
@@ -179,7 +192,8 @@ def index(request):
                 'font_size': 24,
                 'xanchor': 'center',
                 'x': 0.5
-        })
+            }
+        )
 
         chart = fig.to_html()
         context = {'chart': chart, 'form': form}
@@ -259,38 +273,40 @@ def storage_chart(request):
 
                     # Filter by startswith project type and ends with assay type
                     cost_list = StorageCosts.objects.filter(
-                            project__name__startswith = project_type, project__name__endswith = assay_type,
-                            date__date__year = year
-                            ).order_by().values(
-                                'date__date__month'
-                                ).annotate(
-                                    Live = Sum('unique_cost_live'),
-                                    Archived = Sum('unique_cost_archived')
-                                    )
+                        project__name__startswith = project_type,
+                        project__name__endswith = assay_type,
+                        date__date__year = year
+                        ).order_by().values(
+                            'date__date__month'
+                            ).annotate(
+                                Live = Sum('unique_cost_live'),
+                                Archived = Sum('unique_cost_archived')
+                                )
                     
                     live_data = {
-                            'name': f"{project_type}*{assay_type}",
-                            'data': list(
-                                cost_list.values_list(
-                                    'Live', flat = True)
-                                    ),
-                                    'stack': 'Live',
-                                    'color': proj_colour_dict.get(
-                                        project_type, 'purple'
-                                        )
-                            }
+                        'name': f"{project_type}*{assay_type}",
+                        'data': list(
+                            cost_list.values_list(
+                                'Live', flat = True)
+                                ),
+                        'stack': 'Live',
+                        'color': proj_colour_dict.get(
+                            project_type, 'purple'
+                            )
+                    }
+
                     archived_data = {
                             'name': f"{project_type}*{assay_type}",
                             'data': list(
                                 cost_list.values_list(
                                     'Archived',flat=True)
-                                    ),
-                                    'stack': 'Archived',
-                                    'linkedTo': ':previous',
-                                    'color': proj_colour_dict.get(
-                                        project_type, 'purple'
-                                        )
-                            }
+                                ),
+                            'stack': 'Archived',
+                            'linkedTo': ':previous',
+                            'color': proj_colour_dict.get(
+                                project_type, 'purple'
+                                )
+                    }
 
                     category_data_source.append(live_data)
                     category_data_source.append(archived_data)
@@ -336,12 +352,12 @@ def storage_chart(request):
                                 }
                             },
                         'series': category_data_source
-                        }
+                    }
 
                     context = {
                         'storage_data': json.dumps(category_chart_data),
                         'form': form
-                        }
+                    }
                 
                 else:
                     # If there are only projects searched for
@@ -367,25 +383,24 @@ def storage_chart(request):
                                 'data': list(
                                     cost_list.values_list(
                                         'Live', flat = True)
-                                        ),
-                                        'stack': 'Live',
-                                        'color': proj_colour_dict.get(
-                                            proj_type, 'purple'
-                                        )
-                                }
+                                    ),
+                                'stack': 'Live',
+                                'color': proj_colour_dict.get(
+                                    proj_type, 'purple'
+                                )
+                            }
                             archived_data = {
                                 'name': proj_type,
                                 'data': list(
                                     cost_list.values_list(
-                                        'Archived', flat = True
-                                        )
+                                        'Archived', flat = True)
                                     ),
-                                        'stack': 'Archived',
-                                        'linkedTo': ':previous',
-                                        'color': proj_colour_dict.get(
-                                            proj_type, 'purple'
-                                        )
-                                }
+                                'stack': 'Archived',
+                                'linkedTo': ':previous',
+                                'color': proj_colour_dict.get(
+                                    proj_type, 'purple'
+                                )
+                            }
 
                             category_data_source.append(live_data)
                             category_data_source.append(archived_data)
@@ -632,19 +647,19 @@ def storage_chart(request):
                     live_data = {
                         'name': f"{project_type}*{assay_type}",
                         'data': [cost_list.get('Live')],
-                                'stack': 'Live',
-                                'color': proj_colour_dict.get(
-                                    project_type,'purple'
+                        'stack': 'Live',
+                        'color': proj_colour_dict.get(
+                            project_type,'purple'
                         )
                     }
 
                     archived_data = {
                         'name': f"{project_type}*{assay_type}",
                         'data': [cost_list.get('Archived')],
-                                'stack': 'Archived',
-                                'linkedTo': ':previous',
-                                'color': proj_colour_dict.get(
-                                    project_type, 'purple'
+                        'stack': 'Archived',
+                        'linkedTo': ':previous',
+                        'color': proj_colour_dict.get(
+                            project_type, 'purple'
                         )
                     }
 
