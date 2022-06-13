@@ -659,18 +659,32 @@ def storage_chart(request):
                             Archived = Sum('unique_cost_archived')
                         )
                     
+                    # If empty, returns None which wasn't showing noData message
+                    live = cost_list.get('Live')
+                    if live:
+                        live = [live]
+                    else:
+                        live = []
+
                     live_data = {
                         'name': f"{project_type}*{assay_type}",
-                        'data': [cost_list.get('Live')],
+                        'data': live,
                         'stack': 'Live',
                         'color': proj_colour_dict.get(
                             project_type,'purple'
                         )
                     }
 
+                    # If empty, returns None which wasn't showing noData message
+                    archived = cost_list.get('Archived')
+                    if archived:
+                        archived = [archived]
+                    else:
+                        archived = []
+
                     archived_data = {
                         'name': f"{project_type}*{assay_type}",
-                        'data': [cost_list.get('Archived')],
+                        'data': archived,
                         'stack': 'Archived',
                         'linkedTo': ':previous',
                         'color': proj_colour_dict.get(
@@ -679,7 +693,6 @@ def storage_chart(request):
                         'opacity': 0.8
                     }
 
-                    
                     category_data_source.append(live_data)
                     category_data_source.append(archived_data)
 
@@ -729,7 +742,7 @@ def storage_chart(request):
                         },
                         'series': category_data_source
                     }
-                    print(category_chart_data)
+                    
                     context = {
                         'storage_data': json.dumps(category_chart_data),
                         'form': form
@@ -750,18 +763,31 @@ def storage_chart(request):
                                 Archived= Sum('unique_cost_archived')
                             )
                         
+                        # If empty, returns None which wasn't showing noData message
+                        live = cost_list.get('Live')
+                        if live:
+                            live = [live]
+                        else:
+                            live = []
+
                         live_data = {
                             'name': proj_type,
-                            'data': [cost_list.get('Live')],
+                            'data': live,
                             'stack': 'Live',
                             'color' : proj_colour_dict.get(
                                     proj_type, 'purple'
                             )
                         }
 
+                        archived = cost_list.get('Archived')
+                        if archived:
+                            archived = [archived]
+                        else:
+                            archived = []
+
                         archived_data = {
                             'name' : proj_type,
-                            'data': [cost_list.get('Archived')],
+                            'data': archived,
                             'stack': 'Archived',
                             'linkedTo' : ':previous',
                             'color' : proj_colour_dict.get(
@@ -840,18 +866,30 @@ def storage_chart(request):
                                 Archived= Sum('unique_cost_archived')
                             )
 
+                        live = cost_list.get('Live')
+                        if live:
+                            live = [live]
+                        else:
+                            live = []
+
                         live_data = {
                             'name': assay_type,
-                            'data': [cost_list.get('Live')],
+                            'data': live,
                             'stack': 'Live',
                             'color' : assay_colour_dict.get(
                                 assay_type, 'red'
                             )
                         }
 
+                        archived = cost_list.get('Archived')
+                        if archived:
+                            archived = [archived]
+                        else:
+                            archived = []
+                        
                         archived_data = {
                             'name' : assay_type,
-                            'data': [cost_list.get('Archived')],
+                            'data': archived,
                             'stack': 'Archived',
                             'linkedTo' : ':previous',
                             'color': assay_colour_dict.get(
