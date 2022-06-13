@@ -152,7 +152,8 @@ def index(request):
                     'font_size': 24,
                     'xanchor': 'center',
                     'x': 0.5
-            })
+                }
+            )
 
             chart = fig.to_html()
             context = {'chart': chart, 'form': form}
@@ -229,7 +230,7 @@ def storage_chart(request):
         'SNP': assay_colours[4],
         'CP': assay_colours[5],
         'WES': assay_colours[6],
-        'FH':assay_colours[7],
+        'FH': assay_colours[7],
     }
 
     # Find the months that exist in the db as categories for the graph
@@ -311,7 +312,8 @@ def storage_chart(request):
                             'linkedTo': ':previous',
                             'color': proj_colour_dict.get(
                                 project_type, 'purple'
-                                )
+                                ),
+                            'opacity': 0.8
                     }
 
                     category_data_source.append(live_data)
@@ -370,7 +372,7 @@ def storage_chart(request):
                     if form.cleaned_data.get('project_type'):
                         # Remove all whitespace + add to list, split by commas
                         proj_string = form.cleaned_data.get('project_type')
-                        proj_types = proj_string.replace(" ", "").split(",")
+                        proj_types = proj_string.rstrip(",").replace(" ", "").split(",")
                         
                         # Filter by 'startswith' for each searched project type
                         for proj_type in proj_types:
@@ -403,9 +405,10 @@ def storage_chart(request):
                                     ),
                                 'stack': 'Archived',
                                 'linkedTo': ':previous',
-                                'color': proj_colour_dict.get(
+                                'color':proj_colour_dict.get(
                                     proj_type, 'purple'
-                                )
+                                ),
+                                'opacity': 0.8
                             }
 
                             category_data_source.append(live_data)
@@ -464,7 +467,7 @@ def storage_chart(request):
                     # If there only assays searched for
                     elif form.cleaned_data.get('assay_type'):
                         assay_string = form.cleaned_data.get('assay_type')
-                        assay_types = assay_string.replace(" ", "").split(",")
+                        assay_types = assay_string.rstrip(",").replace(" ", "").split(",")
 
                         # Filter by 'endswith' for each searched assay type
                         for assay_type in assay_types:
@@ -499,7 +502,8 @@ def storage_chart(request):
                                 'linkedTo': ':previous',
                                 'color': assay_colour_dict.get(
                                     assay_type, 'red'
-                                )
+                                ),
+                                'opacity': 0.8
                             }
 
                             category_data_source.append(live_data)
@@ -629,8 +633,8 @@ def storage_chart(request):
                         }
 
                         context = {
-                        'storage_data': json.dumps(category_chart_data),
-                        'form': form
+                            'storage_data': json.dumps(category_chart_data),
+                            'form': form
                         }
             else:
                 # A specific month has been selected
@@ -642,7 +646,7 @@ def storage_chart(request):
                     assay_type = form.cleaned_data.get('assay_type')
 
                     cost_list = StorageCosts.objects.filter(
-                        project__name__startswith = project_type, project__name__endswith = assay_type, 
+                        project__name__startswith = project_type, project__name__endswith = assay_type,
                         date__date__year = year,
                         date__date__month = month
                         ).aggregate(
@@ -666,7 +670,8 @@ def storage_chart(request):
                         'linkedTo': ':previous',
                         'color': proj_colour_dict.get(
                             project_type, 'purple'
-                        )
+                        ),
+                        'opacity': 0.8
                     }
 
                     
@@ -727,7 +732,7 @@ def storage_chart(request):
                 elif form.cleaned_data.get('project_type'):
                     
                     proj_string = form.cleaned_data.get('project_type')
-                    proj_types = proj_string.replace(" ", "").split(",")
+                    proj_types = proj_string.rstrip(",").replace(" ", "").split(",")
 
                     for proj_type in proj_types:
                         cost_list = StorageCosts.objects.filter(
@@ -755,7 +760,8 @@ def storage_chart(request):
                             'linkedTo' : ':previous',
                             'color' : proj_colour_dict.get(
                                     proj_type, 'purple'
-                            )
+                            ),
+                            'opacity': 0.8
                         }
 
                         category_data_source.append(live_data)
@@ -816,7 +822,7 @@ def storage_chart(request):
                 elif form.cleaned_data.get('assay_type'):
                     
                     assay_string = form.cleaned_data.get('assay_type')
-                    assay_types = assay_string.replace(" ", "").split(",")
+                    assay_types = assay_string.rstrip(",").replace(" ", "").split(",")
 
                     for assay_type in assay_types:
                         cost_list = StorageCosts.objects.filter(
@@ -844,7 +850,8 @@ def storage_chart(request):
                             'linkedTo' : ':previous',
                             'color' : assay_colour_dict.get(
                                     assay_type, 'red'
-                            )
+                            ),
+                            'opacity': 0.8
                         }
                     
 
@@ -1060,8 +1067,8 @@ def storage_chart(request):
                 "name": "All projects",
                 "data": list(storage_totals.values_list(
                     'Live', flat = True
-                    )
-                ),
+                        )
+                    ),
                 'stack': 'Live'
             },
 
