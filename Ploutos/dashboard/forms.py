@@ -10,14 +10,14 @@ class DateForm(forms.Form):
         ('All','All'),
         ('Storage', 'Storage'),
         ('Compute', 'Compute'),
-        ('Egress','Egress'),
+        ('Egress', 'Egress'),
     )
 
     start = forms.DateField(
         widget=forms.DateInput(
             attrs={
-                'class':'datepicker',
-                'type':'date'
+                'class': 'datepicker',
+                'type': 'date'
             }
         )
     )
@@ -32,7 +32,7 @@ class DateForm(forms.Form):
     )
 
     charge_type = forms.ChoiceField(
-        choices = CHARGE_CHOICES,
+        choices=CHARGE_CHOICES,
         required=True
     )
 
@@ -115,12 +115,12 @@ class StorageForm(forms.Form):
         )
     )
     year = forms.ChoiceField(
-        choices = YEAR_CHOICES,
+        choices=YEAR_CHOICES,
         required=True
     )
 
     month = forms.ChoiceField(
-        choices = MONTH_CHOICES,
+        choices=MONTH_CHOICES,
         required=True
     )
     
