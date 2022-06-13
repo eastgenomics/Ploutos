@@ -4,6 +4,7 @@ DNAnexus queries script
 
 import concurrent.futures
 import datetime as dt
+import itertools
 import json
 import numpy as np
 import pandas as pd
@@ -49,6 +50,7 @@ def login() -> None:
     except Exception as e:
         print(f'Error logging into DNAnexus: {e}')
         sys.exit(1)
+
 
 def no_of_days_in_month():
     """
@@ -292,6 +294,7 @@ def make_file_df(list_project_files_dictionary):
 
     return file_df
 
+
 def count_how_many_lost(df_of_files, projs_list):
     """
     Count how many projects are lost when making the file df because they have no files
@@ -321,6 +324,7 @@ def count_how_many_lost(df_of_files, projs_list):
     how_many_empty = len(empty_projs)
     print(f"There are {how_many_empty} projects with\n no files so they weren't added to the df")
     return unique_after_empty_projs_removed, empty_projs
+
 
 def merge_files_and_proj_dfs(file_df, proj_df):
     """
@@ -388,6 +392,7 @@ def merge_files_and_proj_dfs(file_df, proj_df):
         'unarchiving', 'archived')
 
     return files_with_proj_created
+
 
 def remove_duplicates(merged_df, unique_without_empty_projs):
     """
@@ -616,6 +621,155 @@ def put_into_dict_write_to_file(final_all_projs_df):
 
     return all_proj_dict
 
+def threadify_analyses(project_list):
+    """
+    Use pool of threads to asynchronously get_files() on multiple projects
+
+    Parameters
+    ----------
+    project_list : list
+        list of all the projects in DNAnexus
+    get_files_function: function
+        the function which gets files per project
+
+    Returns
+    -------
+     list_of_project_file_dicts : list
+        list of dictionaries with all the files per project in each dict
+     e.g.
+    [{
+        'project-X': {'files': [
+            {
+                'file_id': 'file-1',
+                'name': "IamFile1.json",
+                'size': 4803,
+                'archivalState': 'live'
+            }, {
+                'file_id': 'file-2',
+                'name': "IamFile2.json",
+                'size': 702,
+                'archivalState': 'archived'
+            }
+        ]}
+    },
+    {
+        'project-Y': {'files': [
+            {
+                'file_id': 'file-4',
+                'name': "IamFile4.json",
+                'size': 3281,
+                'archivalState': 'live'
+            }
+        ]}
+    }]
+    """
+    list_of_project_file_dicts = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        futures = []
+        # Submit the get_files function for a project
+        for project in project_list:
+            futures.append(executor.submit(get_analyses, proj=project))
+        # Once all project files are retrieved, append the final dict
+        for future in concurrent.futures.as_completed(futures):
+            if future.result() == None:
+                pass
+            else:
+                list_of_project_file_dicts.append(future.result())
+    print(list_of_project_file_dicts)
+    return list_of_project_file_dicts
+
+
+
+def make_analyses_df(list_project_analyses):
+    """
+    Get all analyses for the project in DNAnexus,
+    storing each file and its size, name and archival state.
+    Used with ThreadExecutorPool
+
+    Parameters
+    ----------
+    proj : project_id for the DNAnexus project
+
+    Returns
+    -------
+     project_files_dict : collections.defaultdict
+        dictionary with all the files per project
+
+    """
+
+    # Find analyses in each project, only returning specified fields in item
+    project_analyses_dict = defaultdict(lambda: {"analyses": []})
+
+    for d in list_project_analyses:
+        print(d)
+        proj = d['describe']['project']
+        subjobs = []
+        info = dx.bindings.search.find_executions(
+                state="done",
+                parent_analysis=d['describe']['id'],
+                describe={'fields': {
+                    'id': True,
+                    'startedRunning': True,
+                    'stoppedRunning': True}},
+                first_page_size=200,
+                include_subjobs=True)
+        for i in info:
+            i['describe']["runtime"] = ((((i['describe']['stoppedRunning'] - i['describe']['startedRunning'])/1000))/60)
+            subjobs.append(i)
+
+        project_analyses_dict[proj]["analyses"].append({
+                "id": d["id"],
+                "name": d['describe']['name'],
+                "cost": d['describe']['totalPrice'],
+                "class": d['describe']['class'],
+                "executable": d['describe']['executable'],
+                "state": d['describe']['state'],
+                "created": d['describe']['created'],
+                "modified": d['describe']['modified'],
+                "launchedBy": d['describe']['launchedBy'],
+                "createdBy": d['describe']['workflow']['createdBy'],
+                "Executions": subjobs
+                })
+
+    df = make_analyses_subjobs_df(project_analyses_dict)
+    print(df.info())
+    print(df['id'])
+    print(df['Executions'])
+
+    result = []
+    for index, row in df.iterrows():
+        sum = 0
+        for value in row['Executions']:
+            print("-------------------")
+            print(row['Executions'])
+            print("-------------------")
+            sum += float(value['describe']['runtime'])
+        print(sum)
+        result.append(str(dt.timedelta(minutes=sum))
+    )
+    print(result)
+    df["Result"] = result
+    print(df['Result'])
+
+    return project_analyses_dict
+
+
+def peek(iterable):
+    """peek
+    This function is used to check if a generator contains any data.
+
+    Args:
+        iterable (_type_): generator object returned by DNAnexus API call.
+
+    Returns:
+        _type_: _description_
+    """
+    try:
+        first = next(iterable)
+    except StopIteration:
+        return None
+    return first, itertools.chain([first], iterable)
+
 
 def get_analyses(proj):
     """
@@ -635,32 +789,119 @@ def get_analyses(proj):
     """
 
     # Find analyses in each project, only returning specified fields in item
-    project_analyses_dict = defaultdict(lambda: {"analysis": []})
+
     jobs = dx.bindings.search.find_executions(
             classname="analysis",
             project=proj,
             state="done",
             no_parent_analysis=True,
             created_after="-1d",
-            describe=True
-        )
+            describe=True)
+    #print(jobs)
+    check = peek(jobs)
+    if check is None:
+        print(f'No data in {proj}, exited process')
+        # sys.exit(1)
+    else:
+        print("data found")
+        project_analyses_dict = defaultdict(lambda: {"analysis": []})
+        for job in jobs:
+            # print(job)
+            proj = job['describe']['id']
 
-    for job in jobs:
-        proj = job['describe']['project']
+            project_analyses_dict[proj]["analysis"].append({
+                    "id": job["id"],
+                    "name": job['describe']['name'],
+                    "cost": job['describe']['totalPrice'],
+                    "class": job['describe']['class'],
+                    "executable": job['describe']['executable'],
+                    "state": job['describe']['state'],
+                    "created": job['describe']['created'],
+                    "modified": job['describe']['modified'],
+                    "launchedBy": job['describe']['launchedBy'],
+                    "createdBy": job['describe']['workflow']['createdBy'],
+                    "Stages": job['describe']['stages']
+                })
 
-        project_analyses_dict[proj]["analysis"].append({
-                "id": job["id"],
-                "name": job['describe']['name'],
-                "cost": job['describe']['totalPrice'],
-                "class": job['describe']['class'],
-                "executable": job['describe']['executable'],
-                "state": job['describe']['state'],
-                "created": job['describe']['created'],
-                "modified": job['describe']['modified'],
-                "launchedBy": job['describe']['launchedBy'],
-                "createdBy": job['describe']['workflow']['createdBy']
-            })
-    return project_analyses_dict
+        return project_analyses_dict
+
+
+def orchestrate_get_analyses(proj_list):
+    """
+    Orchestates all the functions for getting API data for analyses and returning
+    only files with unique parent projects.
+    paramaters
+    ----------
+    proj_list: list
+        all the project IDs in a list
+    proj_df: dataframe
+        dataframe with a row for each project
+    """
+    project_analyses_dicts_list = threadify_analyses(proj_list)
+    analyses_df = make_analyses_df(project_analyses_dicts_list)
+
+    # print(analyses_df)
+
+    return analyses_df
+
+
+def get_runtime(analyses):
+    """
+    get_runtime() function to take each analysis that was run
+    and find the run time of the analysis.
+    Paramaters
+    ----------
+    analyses: list of ids for all analyses run in last 24 hrs.
+
+    Returns
+    -------
+
+    """
+    analyses = list(analyses)
+    for analysis in analyses:
+        info = dx.bindings.search.find_executions(
+                classname=None,
+                state="done",origin_job=None,
+                parent_job=None,
+                no_parent_job=False,
+                parent_analysis=None,
+                no_parent_analysis=False,
+                describe=True,
+                first_page_size=200,
+                include_subjobs=True)
+
+
+def make_analyses_subjobs_df(list_project_analyses_dictionary):
+    """
+    Get all analyses from the list of analyses per proj dict
+    and add it into a df.
+    Parameters
+    ----------
+    list_project_analyses_dictionary: list of all analyses for each project.
+
+    Returns
+    -------
+    list_of_project_analyses_dicts: list
+        list of dictionaries for analyses for each project.
+    """
+
+    rows = []
+    # For each project dictionary with its associated analyses
+    for project_dict in list_project_analyses_dictionary:
+        # For the project and its associated analyses
+        for proj, data in project_dict.items():
+            # Get the analyses info
+            data_row = data['analysis']
+            # Assign the project as the parent key
+            project = proj
+
+            # Add the project name to the row 'project'
+            for row in data_row:
+                row['project'] = project
+                # Append each analyses info as info to the other columns
+                rows.append(row)
+
+    return pd.DataFrame(rows)
 
 
 def make_analyses_df(list_project_analyses_dictionary):
@@ -692,6 +933,88 @@ def make_analyses_df(list_project_analyses_dictionary):
                 rows.append(row)
 
     return pd.DataFrame(rows)
+
+
+def make_file_df2(list_project_files_dictionary):
+    """
+    Get all files from the list of files per proj dict and put into a df
+
+    Parameters
+    ----------
+    list_project_files_dictionary : list
+        list of dictionaries with all the files per project in each dict
+
+    Returns
+    -------
+     file_df : pd.DataFrame
+        dataframe with row for each file including project, file ID, size and state
+
+    >>> make_file_df(all_files, all_projects)
+    -------------------------------------------------------------------
+    List of files with describe data
+    -------------------------------------------------------------------
+     e.g.
+    [{
+        'project-X': {'files': [
+            {
+                'file_id': 'file-1',
+                'name': "IamFile1.json",
+                'size': 4803,
+                'archivalState': 'live'
+            }, {
+                'file_id': 'file-2',
+                'name': "IamFile2.json",
+                'size': 702,
+                'archivalState': 'archived'
+            }
+        ]}
+    },
+    {
+        'project-Y': {'files': [
+            {
+                'file_id': 'file-4',
+                'name': "IamFile4.json",
+                'size': 3281,
+                'archivalState': 'live'
+            }
+        ]}
+    }]
+    --------------------------------------------------------------------
+                                      |
+                                      |
+                                      ▼
+                                  DataFrame
+    +-----------+--------+---------------+---------------+------+
+    |  project  |   id   |     name      | archivalState | size |
+    +-----------+--------+---------------+---------------+------+
+    | project-X | file-1 | IamFile1.json | live          | 4803 |
+    | project-X | file-2 | IamFile2.json | archived      |  702 |
+    | project-Y | file-4 | IamFile4.json | live          | 3281 |
+    +-----------+--------+---------------+---------------+------+
+    """
+
+    rows = []
+    # For each project dictionary with its associated files
+    for project_dict in list_project_files_dictionary:
+        # For the project and its associated files
+        for proj, data in project_dict.items():
+            # Get the file info
+            data_row = data['files']
+            # Assign the project as the parent key
+            project = proj
+
+            # Add the project name to the row 'project'
+            for row in data_row:
+                row['project'] = project
+                # Append each file's info as info to the other columns
+                rows.append(row)
+
+    # Convert to data frame
+    # Drop the name column as it's not used later
+    file_df = pd.DataFrame(rows)
+    file_df.drop(columns=['name'], inplace=True)
+
+    return file_df
 
 
 def orchestrate_get_files(proj_list, proj_df):

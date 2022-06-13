@@ -134,17 +134,17 @@ def populate_analyses(all_projects) -> None:
 
     Parameters
     ----------
-    all_projects: list of all projects in the DNAnexus ORG.
 
     Returns
     -------
     None
     """
-    all_analyses = []
-    for proj in all_projects:
-        analyses = q.get_analyses(proj['dx_id'])
-        all_analyses.append(analyses)
-    all_analyses_df = q.make_analyses_df(all_analyses)
+    # all_analyses = []
+    # for proj in all_projects:
+    #     #print(proj)
+    #     analyses = q.get_analyses(proj['dx_id'])
+    #     all_analyses.append(analyses)
+    # all_analyses_df = q.make_analyses_df(all_analyses)
 
     for index, row in all_analyses_df.iterrows():
         print(row)
@@ -156,29 +156,31 @@ def populate_analyses(all_projects) -> None:
                 (int(row['created'])) / 1000).strftime('%Y-%m-%d')
         )
 
-        # Add data to DB - Executables Table
-        project_row_id = Projects.objects.get(dx_id=row['project'])
-        project_row_id = project_row_id.values()
-        new_analysis, created = Executables.objects.get_or_create(
-            dx_id=row['executable'],
-            excutable_name=row['name'],
-            project_id=project_row_id['project']
-        )
-        # Add date for analysis started.
-        user, created = Users.objects.get_or_create(
-            user_name=row['launchedBy'],)
-        print(user)
-        # Add data to DB - ComputeCosts Table
-        new_analysis_costs, created = ComputeCosts.objects.get_or_create(
-            # Get the project ID from the projects table by project dx id
-            # project=Projects.objects.get(dx_id=key),
-            executable_id=new_analysis,
-            # instance_id = row['']
-            # runtime = row['']
-            total_cost = row['cost'],
-            launched_by=user,
-            date_id=a_new_date
-        )
+        # # Add data to DB - Executables Table
+        # project_row_id = Projects.objects.get(dx_id=row['project'])
+        # project_row_id = project_row_id.values()
+        # new_analysis, created = Executables.objects.get_or_create(
+        #     dx_id=row['executable'],
+        #     excutable_name=row['name'],
+        #     project_id=project_row_id['project']
+        # )
+
+        # # #Add date for analysis started.
+        # # user, created = Users.objects.get_or_create(
+        # #     user_name=row['launchedBy'],)
+        # # print(user)
+
+        # # Add data to DB - ComputeCosts Table
+        # new_analysis_costs, created = ComputeCosts.objects.get_or_create(
+        #     # Get the project ID from the projects table by project dx id
+        #     # project=Projects.objects.get(dx_id=key),
+        #     executable_id=new_analysis,
+        #     # instance_id = row['']
+        #     # runtime = row['']
+        #     total_cost = row['cost'],
+        #     launched_by=user,
+        #     date_id=a_new_date
+        # )
         print("done")
 
 
@@ -191,11 +193,12 @@ def run():
 
     q.login()
     all_projects, proj_list, proj_df = q.get_projects()
-    populate_projects(all_projects)
-    populate_running_totals()
-    final_dict = q.orchestrate_get_files(proj_list, proj_df)
-    populate_database_files(final_dict)
-    # populate_analyses(all_projects)
+    # populate_projects(all_projects)
+    # populate_running_totals()
+    # final_dict = q.orchestrate_get_files(proj_list, proj_df)
+    # populate_database_files(final_dict)
+    analyses_df = q.orchestrate_get_analyses(proj_list)
+    populate_analyses(analyses_df)
     end = time()
     total = (end - start) / 60
     print(f"Total time was {total} minutes")
