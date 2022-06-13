@@ -168,9 +168,6 @@ def threadify(project_list):
     ----------
     project_list : list
         list of all the projects in DNAnexus
-    get_files_function: function
-        the function which gets files per project
-
     Returns
     -------
      list_of_project_file_dicts : list
@@ -277,11 +274,9 @@ def make_file_df(list_project_files_dictionary):
     # For each project dictionary with its associated files
     for project_dict in list_project_files_dictionary:
         # For the project and its associated files
-        for proj, data in project_dict.items():
+        for project, data in project_dict.items():
             # Get the file info
             data_row = data['files']
-            # Assign the project as the parent key
-            project = proj
 
             # Add the project name to the row 'project'
             for row in data_row:
@@ -677,11 +672,9 @@ def make_analyses_df(list_project_analyses_dictionary):
     # For each project dictionary with its associated analyses
     for project_dict in list_project_analyses_dictionary:
         # For the project and its associated analyses
-        for proj, data in project_dict.items():
+        for project, data in project_dict.items():
             # Get the analyses info
             data_row = data['analysis']
-            # Assign the project as the parent key
-            project = proj
 
             # Add the project name to the row 'project'
             for row in data_row:
