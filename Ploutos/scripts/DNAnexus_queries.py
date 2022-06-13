@@ -18,9 +18,6 @@ from django.conf import settings
 from time import time, localtime, strftime
 
 
-
-
-
 def login():
     """
         Logs into DNAnexus
@@ -92,8 +89,8 @@ def get_projects():
         dataframe with a row for each project
     """
     project_response = list(dx.find_projects(
-        billed_to=settings.ORG, 
-        level='VIEW', 
+        billed_to=settings.ORG,
+        level='VIEW',
         describe={'fields': {
             'id': True, 'name': True, 'createdBy': True, 'created': True
             }
@@ -123,7 +120,8 @@ def get_projects():
 
 def get_files(proj):
     """
-    Get all files for the project in DNAnexus, storing each file and its size, name and archival state.
+    Get all files for the project in DNAnexus, storing each file
+    with its size, name and archival state.
     Used with ThreadExecutorPool
 
     Parameters
@@ -414,7 +412,8 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     unique_projects_after_dups_removed = len(unique_df.project.unique())
 
     total_removed = unique_without_empty_projs - unique_projects_after_dups_removed
-    print(f"{total_removed} projects are no longer in the table as they only contained duplicate files")
+    print(f"""{total_removed} projects are no longer in
+          the table as they only contained duplicate files""")
     return unique_df
 
 def group_by_project_and_rename(df_name, string_to_replace):
@@ -478,7 +477,8 @@ def calculate_totals(my_grouped_df, type):
     +-----------+-----------------+---------------+----------+
     """
     days_in_month = no_of_days_in_month()[1]
-    # If the state of the file is live, convert total size to GB and times by storage cost per month
+    # If the state of the file is live, converts total size to GB
+    # and times by storage cost per month.
     # Then divide by the number of days in current month
     # Else if state not live (archived) then times by archived storage cost price
 
@@ -502,7 +502,8 @@ def merge_together_add_empty_rows(df1, df2):
     Returns
     -------
     total_merged_df : pd.DataFrame
-        merged dataframe with project, all file states (total_live, total_archived, unique_live, unique_archived),
+        merged dataframe with project, all file states
+        (total_live, total_archived, unique_live, unique_archived),
         cost and size with zeros if did not exist
     e.g.
     +-----------+-----------------+---------------+----------+
@@ -541,7 +542,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
     Returns
     -------
     final_all_projs_df : pd.DataFrame
-        final dataframe with project, file state, total size and cost for all projects 
+        final dataframe with project, file state, total size and cost for all projects
     """
     # For the projects that were removed at the beginning because they are empty
     # Create a list of dictionaries with all the fields as zero
@@ -573,7 +574,8 @@ def put_into_dict_write_to_file(final_all_projs_df):
     Returns
     -------
     all_proj_dict : dict
-        final dictionary with key project and nested keys total_live, total_archived, unique_live, unique_archived
+        final dictionary with key project and nested keys total_live,
+        total_archived, unique_live, unique_archived
          (and nested size and cost within) for all projects
     e.g. {"project-XYZ": {
         "total_live": {
