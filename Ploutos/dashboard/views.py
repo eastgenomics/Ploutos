@@ -31,7 +31,7 @@ def index(request):
                 totals = totals.filter(
                     date__id__in = (
                         Dates.objects.filter(
-                            date__range = [start, end]
+                            date__range=[start, end]
                         ).values_list(
                             'id', flat=True
                         )
