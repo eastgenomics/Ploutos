@@ -18,7 +18,7 @@ from django.conf import settings
 from time import time, localtime, strftime
 
 
-def login():
+def login() -> None:
     """
         Logs into DNAnexus
         Parameters
@@ -414,7 +414,9 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     total_removed = unique_without_empty_projs - unique_projects_after_dups_removed
     print(f"""{total_removed} projects are no longer in
           the table as they only contained duplicate files""")
+
     return unique_df
+
 
 def group_by_project_and_rename(df_name, string_to_replace):
     """
@@ -450,6 +452,7 @@ def group_by_project_and_rename(df_name, string_to_replace):
         'archived', string_to_replace+"_archived")
 
     return grouped_df
+
 
 def calculate_totals(my_grouped_df, type):
     """
@@ -488,6 +491,7 @@ def calculate_totals(my_grouped_df, type):
         my_grouped_df['size'] / (2**30) * settings.ARCHIVED_STORAGE_COST_MONTH / days_in_month)
 
     return my_grouped_df
+
 
 def merge_together_add_empty_rows(df1, df2):
     """
@@ -530,6 +534,7 @@ def merge_together_add_empty_rows(df1, df2):
 
     return total_merged_df
 
+
 def add_empty_projs_back_in(empty_projs, total_merged_df):
     """
     Add entries for projects which do not contain any files so all projects are represented
@@ -563,6 +568,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
         empty_project_rows, ignore_index=True, sort=False)
 
     return final_all_projs_df
+
 
 def put_into_dict_write_to_file(final_all_projs_df):
     """
@@ -609,6 +615,7 @@ def put_into_dict_write_to_file(final_all_projs_df):
         outfile.write(final_project_storage_totals)
 
     return all_proj_dict
+
 
 def get_analyses(proj):
     """
@@ -687,7 +694,6 @@ def make_analyses_df(list_project_analyses_dictionary):
     return pd.DataFrame(rows)
 
 
-
 def orchestrate_get_files(proj_list, proj_df):
     """
     Orchestates all the functions for getting API data for files and returning
@@ -715,4 +721,3 @@ def orchestrate_get_files(proj_list, proj_df):
     final_dict = put_into_dict_write_to_file(final_all_projs_df)
 
     return final_dict
-

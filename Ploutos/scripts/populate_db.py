@@ -16,7 +16,7 @@ from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Users, Dates, P
 from scripts import DNAnexus_queries as q
 
 
-def populate_projects(all_projects):
+def populate_projects(all_projects) -> None:
     """
     Checks whether user exists or creates it to get ID
     Checks whether date exists or creates it to get ID
@@ -49,7 +49,7 @@ def populate_projects(all_projects):
         )
 
 
-def populate_running_totals():
+def populate_running_totals() -> None:
     """
     populate_running_totals():
 
@@ -90,7 +90,7 @@ def populate_running_totals():
     )
 
 
-def populate_database_files(all_projects_dict):
+def populate_database_files(all_projects_dict) -> None:
     """
     Puts the file storage data into the db.
     Parameters
@@ -123,7 +123,7 @@ def populate_database_files(all_projects_dict):
         )
 
 
-def populate_analyses(all_projects):
+def populate_analyses(all_projects) -> None:
     """
     Populate database with data from API query.
     This function iterates over all projects and returns all parent executions
