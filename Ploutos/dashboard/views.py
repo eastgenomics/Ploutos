@@ -34,9 +34,9 @@ def index(request):
                             date__range = [start, end]
                         ).values_list(
                             'id', flat = True
-                            )
                         )
                     )
+                )
 
                 # If user wants to see all charge types, render whole graph
                 if charge_type == 'All':
@@ -90,8 +90,8 @@ def index(request):
                         y=y_data,
                         title=updated_title,
                         labels={
-                            'x':'Date',
-                            'y':'Charges ($)'
+                            'x': 'Date',
+                            'y': 'Charges ($)'
                         },
                         width=1200,
                         height=600
@@ -122,8 +122,8 @@ def index(request):
                 y=compute,
                 title="Running total charges",
                 labels={
-                    'x':'Date',
-                    'y':'Charges ($)'
+                    'x': 'Date',
+                    'y': 'Charges ($)'
                 },
                 width=1200,
                 height=600
@@ -204,6 +204,7 @@ def index(request):
 
         chart = fig.to_html()
         context = {'chart': chart, 'form': form}
+
     return render(request, 'index.html', context)
 
 
@@ -288,31 +289,33 @@ def storage_chart(request):
                             ).annotate(
                                 Live = Sum('unique_cost_live'),
                                 Archived = Sum('unique_cost_archived')
-                                )
+                    )
                     
                     live_data = {
                         'name': f"{project_type}*{assay_type}",
                         'data': list(
                             cost_list.values_list(
-                                'Live', flat = True)
-                                ),
+                                'Live', flat = True
+                                )
+                        ),
                         'stack': 'Live',
                         'color': proj_colour_dict.get(
                             project_type, 'purple'
-                            )
+                        )
                     }
 
                     archived_data = {
                             'name': f"{project_type}*{assay_type}",
                             'data': list(
                                 cost_list.values_list(
-                                    'Archived',flat=True)
-                                ),
+                                    'Archived',flat=True
+                                )
+                            ),
                             'stack': 'Archived',
                             'linkedTo': ':previous',
                             'color': proj_colour_dict.get(
                                 project_type, 'purple'
-                                ),
+                            ),
                             'opacity': 0.8
                     }
 
@@ -326,13 +329,14 @@ def storage_chart(request):
                             'height': 500,
                             'style': {
                                 'float': 'center'
-                            }},
+                            }
+                        },
                         'title': {
                             'text': 'Storage Costs'
-                            },
+                        },
                         'xAxis': {
                             'categories': string_months
-                            },
+                        },
                         'yAxis': {
                             'allowDecimals': 'false',
                             'min': '0',
@@ -347,7 +351,8 @@ def storage_chart(request):
                                     'color': 'gray'
                                 },
                                 'format': "{stack}"
-                            }}
+                            }
+                        }
                         ,
                         'setOptions': {
                             'lang': {
@@ -359,7 +364,7 @@ def storage_chart(request):
                             'column': {
                                 'stacking': 'normal'
                                 }
-                            },
+                        },
                         'series': category_data_source
                     }
                     
@@ -373,26 +378,28 @@ def storage_chart(request):
                     if form.cleaned_data.get('project_type'):
                         # Remove all whitespace + add to list, split by commas
                         proj_string = form.cleaned_data.get('project_type')
-                        proj_types = proj_string.strip(",").replace(" ", "").split(",")
+                        proj_types = proj_string.strip(",").replace(
+                            " ", ""
+                            ).split(",")
                         
                         # Filter by 'startswith' for each searched project type
                         for proj_type in proj_types:
                             cost_list = StorageCosts.objects.filter(
                                 project__name__startswith = proj_type,
                                 date__date__year = year
-                                ).order_by().values(
-                                    'date__date__month'
-                                    ).annotate(
-                                        Live = Sum('unique_cost_live'),
-                                        Archived = Sum('unique_cost_archived')
-                                )
+                            ).order_by().values(
+                                'date__date__month'
+                                ).annotate(
+                                    Live = Sum('unique_cost_live'),
+                                    Archived = Sum('unique_cost_archived')
+                            )
 
                             live_data = {
                                 'name': proj_type,
                                 'data': list(
                                     cost_list.values_list(
                                         'Live', flat = True)
-                                    ),
+                                ),
                                 'stack': 'Live',
                                 'color': proj_colour_dict.get(
                                     proj_type, 'purple'
@@ -403,7 +410,7 @@ def storage_chart(request):
                                 'data': list(
                                     cost_list.values_list(
                                         'Archived', flat = True)
-                                    ),
+                                ),
                                 'stack': 'Archived',
                                 'linkedTo': ':previous',
                                 'color':proj_colour_dict.get(
@@ -469,7 +476,9 @@ def storage_chart(request):
                     # If there only assays searched for
                     elif form.cleaned_data.get('assay_type'):
                         assay_string = form.cleaned_data.get('assay_type')
-                        assay_types = assay_string.strip(",").replace(" ", "").split(",")
+                        assay_types = assay_string.strip(",").replace(
+                            " ", ""
+                            ).split(",")
 
                         # Filter by 'endswith' for each searched assay type
                         for assay_type in assay_types:
@@ -561,6 +570,7 @@ def storage_chart(request):
                             'storage_data': json.dumps(category_chart_data),
                             'form': form
                         }
+                    
                     else:
                         # If form is submitted
                         # But no assay type or project type is searched for
@@ -578,16 +588,20 @@ def storage_chart(request):
                         {
                             "name": "All projects",
                             "data": list(storage_totals.values_list(
-                                'Live', flat = True)),
+                                'Live', flat = True
+                                )
+                            ),
                             'stack': 'Live'
-                            },
+                        },
                         {
                             "name": "All projects",
                             "data": list(storage_totals.values_list(
-                                'Archived', flat = True)),
+                                'Archived', flat = True
+                                )
+                            ),
                             'stack': 'Archived',
                             'linkedTo': ':previous'
-                            }
+                        }
                         ]
 
                         category_chart_data = {
@@ -640,6 +654,7 @@ def storage_chart(request):
                             'storage_data': json.dumps(category_chart_data),
                             'form': form
                         }
+            
             else:
                 # A specific month has been selected
                 converted_month = date_conversion_dict[int(month)]
@@ -671,11 +686,13 @@ def storage_chart(request):
                         'data': live,
                         'stack': 'Live',
                         'color': proj_colour_dict.get(
-                            project_type,'purple'
+                            project_type, 'purple'
                         )
                     }
 
-                    # If empty, returns None which wasn't showing noData message
+                    # If queryset empty, returns None
+                    # This wasn't showing noData message
+                    # This keeps data as list or if None converts to empty list
                     archived = cost_list.get('Archived')
                     if archived:
                         archived = [archived]
@@ -748,10 +765,13 @@ def storage_chart(request):
                         'form': form
                     }
 
+                # A specific month with project type(s)
                 elif form.cleaned_data.get('project_type'):
                     
                     proj_string = form.cleaned_data.get('project_type')
-                    proj_types = proj_string.strip(",").replace(" ", "").split(",")
+                    proj_types = proj_string.strip(",").replace(
+                        " ", ""
+                        ).split(",")
 
                     for proj_type in proj_types:
                         cost_list = StorageCosts.objects.filter(
@@ -775,7 +795,7 @@ def storage_chart(request):
                             'data': live,
                             'stack': 'Live',
                             'color' : proj_colour_dict.get(
-                                    proj_type, 'purple'
+                                proj_type, 'purple'
                             )
                         }
 
@@ -791,7 +811,7 @@ def storage_chart(request):
                             'stack': 'Archived',
                             'linkedTo' : ':previous',
                             'color' : proj_colour_dict.get(
-                                    proj_type, 'purple'
+                                proj_type, 'purple'
                             ),
                             'opacity': 0.8
                         }
@@ -851,10 +871,12 @@ def storage_chart(request):
                         'form': form
                     }
 
-                
+                # A specific month with assay type(s)
                 elif form.cleaned_data.get('assay_type'):
                     assay_string = form.cleaned_data.get('assay_type')
-                    assay_types = assay_string.strip(",").replace(" ", "").split(",")
+                    assay_types = assay_string.strip(",").replace(
+                        " ", ""
+                        ).split(",")
 
                     for assay_type in assay_types:
                         cost_list = StorageCosts.objects.filter(
@@ -893,7 +915,7 @@ def storage_chart(request):
                             'stack': 'Archived',
                             'linkedTo' : ':previous',
                             'color': assay_colour_dict.get(
-                                    assay_type, 'red'
+                                assay_type, 'red'
                             ),
                             'opacity': 0.8
                         }
@@ -955,7 +977,7 @@ def storage_chart(request):
                     }
                 
                 else:
-                    # If no proj type or assay type but a specific month is selected
+                    # If no proj or assay type but specific year/month selected
                     cost_list = StorageCosts.objects.filter(
                         date__date__year = year,
                         date__date__month=month
@@ -970,7 +992,6 @@ def storage_chart(request):
                             "data": [cost_list.get('Live')],
                             'stack': 'Live'
                         },
-
                         {
                             'name': 'All projects',
                             'data': [cost_list.get('Archived')],
@@ -980,14 +1001,22 @@ def storage_chart(request):
                     ]
 
                     category_chart_data = {
-                        'chart': {'type': 'column', 'width': 1200,
-                    'height': 500, 'style': {
-                    'float': 'center'
-                    }},
-                        'title': {'text': 'Storage Costs'},
+                        'chart': {
+                            'type': 'column',
+                            'width': 1200,
+                            'height': 500,
+                            'style': {
+                                'float': 'center'
+                            }
+                        },
+                        'title': {
+                            'text': 'Storage Costs'
+                        },
                         'xAxis': {	
-                        'categories': [converted_month]},
-                        'yAxis': {'allowDecimals': 'false',
+                            'categories': [converted_month]
+                        },
+                        'yAxis': {
+                            'allowDecimals': 'false',
                             'min': '0',
                             'title': {
                                 'text': 'Total estimated storage cost ($)'
@@ -998,8 +1027,10 @@ def storage_chart(request):
                                 'style': {
                                     'fontWeight': 'bold',
                                     'color': 'gray'
-                                }, 'format': "{stack}"
-                            }}
+                                }, 
+                                'format': "{stack}"
+                            }
+                        }
                         ,
                         'setOptions': {
                             'lang': {
@@ -1007,13 +1038,17 @@ def storage_chart(request):
                                 'noData': 'No data to display'
                             }
                         },
-                        'plotOptions': {'column': {'stacking': 'normal'}},
+                        'plotOptions': {
+                            'column': {
+                                'stacking': 'normal'
+                            }
+                        },
                         'series': category_data_source
                     }
 
                     context = {
-                    'storage_data': json.dumps(category_chart_data),
-                    'form': form
+                        'storage_data': json.dumps(category_chart_data),
+                        'form': form
                     }
 
         else:
@@ -1031,18 +1066,20 @@ def storage_chart(request):
             {
                 "name": "All projects",
                 "data": list(storage_totals.values_list(
-                    'Live', flat = True)
-                    ),
+                    'Live', flat = True
+                    )
+                 ),
                 'stack': 'Live'
             },
             {
                 "name": "All projects",
                 "data": list(storage_totals.values_list(
-                    'Archived', flat = True)
-                    ),
+                    'Archived', flat = True
+                    )
+                ),
                 'stack': 'Archived',
                 'linkedTo': ':previous'
-                }
+            }
             ]
 
             category_chart_data = {
