@@ -29,7 +29,7 @@ def index(request):
             # Filter totals to get desired date range
             if start:
                 totals = totals.filter(
-                    date__id__in = (
+                    date__id__in=(
                         Dates.objects.filter(
                             date__range=[start, end]
                         ).values_list(
@@ -291,13 +291,13 @@ def storage_chart(request):
                     # Group by all available months
                     # Sum by live vs archived
                     cost_list = StorageCosts.objects.filter(
-                        project__name__startswith = project_type,
-                        project__name__endswith = assay_type,
+                        project__name__startswith=project_type,
+                        project__name__endswith=assay_type,
                         date__date__year = year
                         ).order_by().values(
                             'date__date__month'
                             ).annotate(
-                                Live = Sum('unique_cost_live'),
+                                Live=Sum('unique_cost_live'),
                                 Archived = Sum('unique_cost_archived')
                     )
                     
@@ -407,13 +407,13 @@ def storage_chart(request):
                         # For each proj add data to dict
                         for proj_type in proj_types:
                             cost_list = StorageCosts.objects.filter(
-                                project__name__startswith = proj_type,
-                                date__date__year = year
+                                project__name__startswith=proj_type,
+                                date__date__year=year
                             ).order_by().values(
                                 'date__date__month'
                                 ).annotate(
-                                    Live = Sum('unique_cost_live'),
-                                    Archived = Sum('unique_cost_archived')
+                                    Live=Sum('unique_cost_live'),
+                                    Archived=Sum('unique_cost_archived')
                             )
 
                             live_data = {
@@ -507,13 +507,13 @@ def storage_chart(request):
                         # Filter by 'endswith' for each searched assay type
                         for assay_type in assay_types:
                             cost_list = StorageCosts.objects.filter(
-                                project__name__endswith = assay_type,
-                                date__date__year = year
+                                project__name__endswith=assay_type,
+                                date__date__year=year
                                 ).order_by().values(
                                     'date__date__month'
                                     ).annotate(
-                                        Live = Sum('unique_cost_live'),
-                                        Archived = Sum('unique_cost_archived')
+                                        Live=Sum('unique_cost_live'),
+                                        Archived=Sum('unique_cost_archived')
                                     )
                             
                             live_data = {
@@ -604,12 +604,12 @@ def storage_chart(request):
                         # And want to see all months
                         # Display all the projects grouped by available months
                         storage_totals = StorageCosts.objects.filter(
-                            date__date__year = year
+                            date__date__year=year
                             ).order_by().values(
                                 'date__date__month'
                                 ).annotate(
-                                    Live = Sum('unique_cost_live'),
-                                    Archived = Sum('unique_cost_archived')
+                                    Live=Sum('unique_cost_live'),
+                                    Archived=Sum('unique_cost_archived')
                                 )
 
                         # No need to loop over anything
@@ -697,12 +697,12 @@ def storage_chart(request):
                     # Proj name starts wth project type and ends with assay type
                     # Filter for specific year and month
                     cost_list = StorageCosts.objects.filter(
-                        project__name__startswith = project_type, project__name__endswith = assay_type,
-                        date__date__year = year,
-                        date__date__month = month
+                        project__name__startswith=project_type, project__name__endswith=assay_type,
+                        date__date__year=year,
+                        date__date__month=month
                         ).aggregate(
-                            Live = Sum('unique_cost_live'),
-                            Archived = Sum('unique_cost_archived')
+                            Live=Sum('unique_cost_live'),
+                            Archived=Sum('unique_cost_archived')
                         )
                     
                     # Get the live aggregate for those projects
@@ -811,12 +811,12 @@ def storage_chart(request):
 
                     for proj_type in proj_types:
                         cost_list = StorageCosts.objects.filter(
-                            project__name__startswith = proj_type,
-                            date__date__year = year,
-                            date__date__month = month
+                            project__name__startswith=proj_type,
+                            date__date__year=year,
+                            date__date__month=month
                         ).aggregate(
-                                Live = Sum('unique_cost_live'),
-                                Archived= Sum('unique_cost_archived')
+                                Live=Sum('unique_cost_live'),
+                                Archived=Sum('unique_cost_archived')
                             )
                         
                         # If empty, returns None which wasn't showing noData message
@@ -916,12 +916,12 @@ def storage_chart(request):
 
                     for assay_type in assay_types:
                         cost_list = StorageCosts.objects.filter(
-                            project__name__endswith = assay_type,
-                            date__date__year = year,
-                            date__date__month = month
+                            project__name__endswith=assay_type,
+                            date__date__year=year,
+                            date__date__month=month
                         ).aggregate(
-                                Live = Sum('unique_cost_live'),
-                                Archived= Sum('unique_cost_archived')
+                                Live=Sum('unique_cost_live'),
+                                Archived=Sum('unique_cost_archived')
                             )
 
                         live = cost_list.get('Live')
@@ -1017,11 +1017,11 @@ def storage_chart(request):
                     # But no proj or assay type but specific year/month selected
                     # Because those fields are required
                     cost_list = StorageCosts.objects.filter(
-                        date__date__year = year,
+                        date__date__year=year,
                         date__date__month=month
                     ).aggregate(
-                        Live = Sum('unique_cost_live'),
-                        Archived = Sum('unique_cost_archived')
+                        Live=Sum('unique_cost_live'),
+                        Archived=Sum('unique_cost_archived')
                         )
                     
                     category_data_source = [
@@ -1094,11 +1094,11 @@ def storage_chart(request):
             # Of this year, grouped by available months
             # For all projects
             storage_totals = StorageCosts.objects.filter(
-                date__date__year = '2022'
+                date__date__year='2022'
                 ).order_by().values(
                     'date__date__month'
                     ).annotate(
-                        Live = Sum('unique_cost_live'),
+                        Live=Sum('unique_cost_live'),
                         Archived=Sum('unique_cost_archived')
                         )
 
@@ -1178,12 +1178,12 @@ def storage_chart(request):
         # Display the all projects graph grouped by available months
         form = StorageForm()
         storage_totals = StorageCosts.objects.filter(
-            date__date__year = '2022'
+            date__date__year='2022'
             ).order_by().values(
                 'date__date__month'
                 ).annotate(
-                    Live = Sum('unique_cost_live'),
-                    Archived = Sum('unique_cost_archived')
+                    Live=Sum('unique_cost_live'),
+                    Archived=Sum('unique_cost_archived')
             )
 
         category_data_source = [
