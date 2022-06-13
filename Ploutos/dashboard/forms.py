@@ -13,13 +13,28 @@ class DateForm(forms.Form):
         ('Egress','Egress'),
     )
 
-    start = forms.DateField(widget=forms.DateInput(attrs={
-        'class':'datepicker', 'type':'date'
-        }))
-    end = forms.DateField(widget=forms.DateInput(attrs={
-        'class':'datepicker', 'type':'date'
-        }))
-    charge_type = forms.ChoiceField(choices = CHARGE_CHOICES, required=True)
+    start = forms.DateField(
+        widget=forms.DateInput(
+            attrs={
+                'class':'datepicker',
+                'type':'date'
+            }
+        )
+    )
+
+    end = forms.DateField(
+        widget=forms.DateInput(
+            attrs={
+                'class':'datepicker',
+                'type':'date'
+            }
+        )
+    )
+
+    charge_type = forms.ChoiceField(
+        choices = CHARGE_CHOICES,
+        required=True
+    )
 
     def clean(self):
         start = self.cleaned_data['start']
@@ -39,7 +54,7 @@ class DateForm(forms.Form):
         return self.cleaned_data
 
 class StorageForm(forms.Form):
-    """Project type and assay type picker for the storage costs"""
+    """Project type, assay type and monthyear picker for the storage costs"""
 
     TYPE_CHOICES= (
         ('001','001'),
@@ -58,7 +73,10 @@ class StorageForm(forms.Form):
         ('FH','FH'),
         )
     
-    years = list(StorageCosts.objects.order_by().values_list('date__date__year',flat=True).distinct())
+    years = list(StorageCosts.objects.order_by().values_list(
+        'date__date__year', flat=True
+        ).distinct())
+
     YEAR_CHOICES = ((year, year) for year in years)
 
     MONTH_CHOICES = (
@@ -77,12 +95,34 @@ class StorageForm(forms.Form):
         ('12', 'December')
     )
 
-    project_type = forms.CharField(required=False, label='Project type', 
-                    widget=forms.TextInput(attrs={'placeholder': 'Enter project types, separated by commas', 'style': 'width:300px'}))
-    assay_type = forms.CharField(required=False, label='Assay type', 
-                    widget=forms.TextInput(attrs={'placeholder': 'Enter assay types, separated by commas', 'style': 'width:300px'}))
-    year = forms.ChoiceField(choices = YEAR_CHOICES, required=True)
-    month = forms.ChoiceField(choices = MONTH_CHOICES, required=True)
+    project_type = forms.CharField(
+        required=False,
+        label='Project type',
+        widget=forms.TextInput(
+            attrs={
+                'placeholder': 'Enter project types, separated by commas', 'style': 'width:300px'
+            }
+        )
+    )
+
+    assay_type = forms.CharField(
+        required=False,
+        label='Assay type',
+        widget=forms.TextInput(
+            attrs={
+                'placeholder': 'Enter assay types, separated by commas', 'style': 'width:300px'
+            }
+        )
+    )
+    year = forms.ChoiceField(
+        choices = YEAR_CHOICES,
+        required=True
+    )
+
+    month = forms.ChoiceField(
+        choices = MONTH_CHOICES,
+        required=True
+    )
     
     def clean(self):
         project_type = self.cleaned_data["project_type"]
@@ -91,11 +131,16 @@ class StorageForm(forms.Form):
         month = self.cleaned_data["month"]
 
         # Only May and June are in the db currently
-        acceptable_months = ['All', '5', '6']
+        acceptable_months = [
+            'All',
+            '5',
+            '6'
+        ]
 
         # Check whether >1 entries are in both proj and assay type by comma
         if project_type and assay_type:
-            if project_type.find(",") !=-1 or assay_type.find(",") != -1:
+            if ((project_type.find(",") !=-1) or
+            (assay_type.find(",") != -1)):
                 raise ValidationError(
                     "If using both project type and assay type filters, "
                     "please only enter one of each"
@@ -106,5 +151,5 @@ class StorageForm(forms.Form):
             raise ValidationError(
                 "There are no database entries for the specified month"
             )
+        
         return self.cleaned_data
-
