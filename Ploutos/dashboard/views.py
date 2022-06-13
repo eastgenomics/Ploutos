@@ -6,7 +6,7 @@ import datetime
 
 def index(request):
     """
-    View to display running total charges via Plotly 
+    View to display running total charges via Plotly
     """
     # Get start and end from form
     start = request.GET.get('start')
@@ -19,7 +19,7 @@ def index(request):
     if start:
         totals = totals.filter(date__id__in = (
             Dates.objects.filter(date__range=[start,end]).values_list(
-                'id',flat=True)))
+                'id', flat=True)))
 
     # Stuff to work out delta of storage compared to day before
     # my_date = "2022-04-25"
