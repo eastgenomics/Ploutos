@@ -209,13 +209,19 @@ def index(request):
 
 
 def storage_chart(request):
-    """Grouped bar chart with project type + assay type filtering by month"""
+    """
+    Creates a bar chart grouped by month with each month having two bars
+    Denoting live vs archived status
+    Each bar is stacked with either project type
+    Or assay type depending on the filters entered
+    """
 
-    # Get colour schemes from plotly discrete colours
+    # Get colour schemes from Plotly discrete colours
     project_colours = px.colors.qualitative.Set1
     assay_colours = px.colors.qualitative.Bold
 
-    # Specify colours for specific types so these don't change after filtering
+    # Specify colours for specific types of projects or assays
+    # So these don't change on different filtering
     proj_colour_dict = {
         '001': project_colours[0],
         '002': project_colours[1],
@@ -234,14 +240,14 @@ def storage_chart(request):
         'FH': assay_colours[7],
     }
 
-    # Find the months that exist in the db as categories for the graph
+    # Find the months that exist in the db as categories for the graph as list
     month_categories = list(
         StorageCosts.objects.order_by().values_list(
             'date__date__month', flat=True
             ).distinct()
     )
 
-    # Dict to convert integer month to named month
+    # Dictionary to convert integer month from database to named month
     date_conversion_dict = {
         1: 'January',
         2: 'February',
@@ -257,29 +263,33 @@ def storage_chart(request):
         12: 'December'
     }
 
-    # Convert the months present in the db
+    # Convert the integer months present in the db to strings
     string_months = [month if month not in date_conversion_dict
     else date_conversion_dict[month] for month in month_categories]
 
+    # If the user has submitted the form
     if 'submit' in request.GET:
         form = StorageForm(request.GET)
-        # If not >1 entry in project_types and assay_types at same time
+        # If form is valid
+        # i.e. not >1 entry in project_types and assay_types at same time
         if form.is_valid():
             year = form.cleaned_data.get('year')
             month = form.cleaned_data.get('month')
             
+            # Initialise list of the series to pass to Highcharts
             category_data_source = []
             # If user wants to see all the months in the db
             if month == 'All':
-            
                 # If there are both a project type and assay type entered
-                # Validated to be only one of each so get the string from each
+                # Get the single string from each
                 if (form.cleaned_data.get('project_type') and
                     form.cleaned_data.get('assay_type')):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 
                     # Filter by startswith project type and ends with assay type
+                    # Group by all available months
+                    # Sum by live vs archived
                     cost_list = StorageCosts.objects.filter(
                         project__name__startswith = project_type,
                         project__name__endswith = assay_type,
@@ -291,6 +301,9 @@ def storage_chart(request):
                                 Archived = Sum('unique_cost_archived')
                     )
                     
+                    # Set name of series
+                    # Get live values as list
+                    # Colour with dict or if proj type not in dict make purple
                     live_data = {
                         'name': f"{project_type}*{assay_type}",
                         'data': list(
@@ -304,6 +317,8 @@ def storage_chart(request):
                         )
                     }
 
+                    # linkedTo means it is linked to live
+                    # Change opacity to slightly differentiate live vs archived
                     archived_data = {
                             'name': f"{project_type}*{assay_type}",
                             'data': list(
@@ -322,6 +337,10 @@ def storage_chart(request):
                     category_data_source.append(live_data)
                     category_data_source.append(archived_data)
 
+                    # Stacked grouped bar chart
+                    # Set categories to the stringified months present in the db
+                    # StackLabels format sets Live or Archived above bar
+                    # noData sets what to display when data == []
                     category_chart_data = {
                         'chart': {
                             'type': 'column',
@@ -374,15 +393,18 @@ def storage_chart(request):
                     }
                 
                 else:
-                    # If there are only projects searched for
+                    # If 'All' months selected and
+                    # There are only projects searched for
                     if form.cleaned_data.get('project_type'):
-                        # Remove all whitespace + add to list, split by commas
+                        # Remove all whitespace + start + end commas
+                        # Split by commas and add each to new list
                         proj_string = form.cleaned_data.get('project_type')
                         proj_types = proj_string.strip(",").replace(
                             " ", ""
                             ).split(",")
                         
                         # Filter by 'startswith' for each searched project type
+                        # For each proj add data to dict
                         for proj_type in proj_types:
                             cost_list = StorageCosts.objects.filter(
                                 project__name__startswith = proj_type,
@@ -473,7 +495,9 @@ def storage_chart(request):
                             'form': form
                         }
 
-                    # If there only assays searched for
+                    # If all months only assay(s) searched for
+                    # Strip start and end commas, remove whitespace
+                    # Split on commas and add to list
                     elif form.cleaned_data.get('assay_type'):
                         assay_string = form.cleaned_data.get('assay_type')
                         assay_types = assay_string.strip(",").replace(
@@ -491,11 +515,14 @@ def storage_chart(request):
                                         Live = Sum('unique_cost_live'),
                                         Archived = Sum('unique_cost_archived')
                                     )
+                            
                             live_data = {
                                 'name': assay_type,
                                 'data': list(
-                                    cost_list.values_list('Live', flat=True)
-                                    ),
+                                    cost_list.values_list(
+                                        'Live', flat=True
+                                    )
+                                ),
                                 'stack': 'Live',
                                 'color': assay_colour_dict.get(
                                     assay_type, 'red'
@@ -574,7 +601,8 @@ def storage_chart(request):
                     else:
                         # If form is submitted
                         # But no assay type or project type is searched for
-                        # Display all the projects
+                        # And want to see all months
+                        # Display all the projects grouped by available months
                         storage_totals = StorageCosts.objects.filter(
                             date__date__year = year
                             ).order_by().values(
@@ -584,11 +612,12 @@ def storage_chart(request):
                                     Archived = Sum('unique_cost_archived')
                                 )
 
+                        # No need to loop over anything
                         category_data_source = [
                         {
                             "name": "All projects",
                             "data": list(storage_totals.values_list(
-                                'Live',flat=True
+                                'Live', flat=True
                                 )
                             ),
                             'stack': 'Live'
@@ -654,9 +683,9 @@ def storage_chart(request):
                             'storage_data': json.dumps(category_chart_data),
                             'form': form
                         }
-            
+            # A specific month has been selected
             else:
-                # A specific month has been selected
+                # Convert the integer month to a string
                 converted_month = date_conversion_dict[int(month)]
 
                 # If a project type and an assay type entered
@@ -665,6 +694,8 @@ def storage_chart(request):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 
+                    # Proj name starts wth project type and ends with assay type
+                    # Filter for specific year and month
                     cost_list = StorageCosts.objects.filter(
                         project__name__startswith = project_type, project__name__endswith = assay_type,
                         date__date__year = year,
@@ -674,7 +705,9 @@ def storage_chart(request):
                             Archived = Sum('unique_cost_archived')
                         )
                     
-                    # If empty, returns None which wasn't showing noData message
+                    # Get the live aggregate for those projects
+                    # If QS empty, returns None which affects noData message
+                    # Keep as list with actual data or convert [None] to []
                     live = cost_list.get('Live')
                     if live:
                         live = [live]
@@ -690,9 +723,9 @@ def storage_chart(request):
                         )
                     }
 
-                    # If queryset empty, returns None
-                    # This wasn't showing noData message
-                    # This keeps data as list or if None converts to empty list
+                    # Get the archived aggregate for those projects
+                    # If QS empty, returns None which affects noData message
+                    # Keep as list with actual data or convert [None] to []
                     archived = cost_list.get('Archived')
                     if archived:
                         archived = [archived]
@@ -713,7 +746,9 @@ def storage_chart(request):
                     category_data_source.append(live_data)
                     category_data_source.append(archived_data)
 
-                    
+                    # As only one series, categories must be a list
+                    # Or Highcharts bug means it
+                    # Only shows the first letter of the category
                     category_chart_data = {
                         'chart': {
                             'type': 'column',
@@ -765,10 +800,11 @@ def storage_chart(request):
                         'form': form
                     }
 
-                # A specific month with project type(s)
+                # A specific month with only project type(s)
                 elif form.cleaned_data.get('project_type'):
-                    
                     proj_string = form.cleaned_data.get('project_type')
+                    # Strip commas from start and end
+                    # Remove whitespace, split into list on commas
                     proj_types = proj_string.strip(",").replace(
                         " ", ""
                         ).split(",")
@@ -977,7 +1013,9 @@ def storage_chart(request):
                     }
                 
                 else:
-                    # If no proj or assay type but specific year/month selected
+                    # If form submitted
+                    # But no proj or assay type but specific year/month selected
+                    # Because those fields are required
                     cost_list = StorageCosts.objects.filter(
                         date__date__year = year,
                         date__date__month=month
@@ -1053,6 +1091,8 @@ def storage_chart(request):
 
         else:
             # If the form is not valid, display just the standard graph
+            # Of this year, grouped by available months
+            # For all projects
             storage_totals = StorageCosts.objects.filter(
                 date__date__year = '2022'
                 ).order_by().values(
@@ -1135,7 +1175,7 @@ def storage_chart(request):
     
     else:
         # If nothing is submitted on the form (normal landing page)
-        # Display all projects graph
+        # Display the all projects graph grouped by available months
         form = StorageForm()
         storage_totals = StorageCosts.objects.filter(
             date__date__year = '2022'
