@@ -28,7 +28,7 @@ def login():
         ----------
         token : str
             authorisation token for DNAnexus, from settings.py
-        
+
         Raises
         ------
         Error
@@ -146,7 +146,7 @@ def get_files(proj):
         classname='file', project=proj,
         describe={'fields': {
             'archivalState': True,
-            'size': True, 
+            'size': True,
             'name': True
         }}
     ))
@@ -170,8 +170,6 @@ def threadify(project_list):
     ----------
     project_list : list
         list of all the projects in DNAnexus
-    get_files_function: function
-        the function which gets files per project
 
     Returns
     -------
@@ -210,7 +208,7 @@ def threadify(project_list):
         # Submit the get_files function for a project
         for project in project_list:
             futures.append(executor.submit(get_files, proj=project))
-        # Once all project files are retrieved, append the final dict  
+        # Once all project files are retrieved, append the final dict
         for future in concurrent.futures.as_completed(futures):
             list_of_project_file_dicts.append(future.result())
 
@@ -279,11 +277,9 @@ def make_file_df(list_project_files_dictionary):
     # For each project dictionary with its associated files
     for project_dict in list_project_files_dictionary:
         # For the project and its associated files
-        for proj, data in project_dict.items():
+        for project, data in project_dict.items():
             # Get the file info
             data_row = data['files']
-            # Assign the project as the parent key
-            project = proj
 
             # Add the project name to the row 'project'
             for row in data_row:
@@ -676,11 +672,9 @@ def make_analyses_df(list_project_analyses_dictionary):
     # For each project dictionary with its associated analyses
     for project_dict in list_project_analyses_dictionary:
         # For the project and its associated analyses
-        for proj, data in project_dict.items():
+        for project, data in project_dict.items():
             # Get the analyses info
             data_row = data['analysis']
-            # Assign the project as the parent key
-            project = proj
 
             # Add the project name to the row 'project'
             for row in data_row:

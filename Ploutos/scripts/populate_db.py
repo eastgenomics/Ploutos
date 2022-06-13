@@ -68,10 +68,10 @@ def populate_running_totals():
     # Add running totals to totals table with date foreign key
     total, created = DailyOrgRunningTotal.objects.get_or_create(
         date=new_date,
-        storage_charges = org_totals['storage_charges'],
-        compute_charges = org_totals['compute_charges'],
-        egress_charges = org_totals['egress_charges'],
-        estimated_balance = org_totals['estimated_balance'],
+        storage_charges=org_totals['storage_charges'],
+        compute_charges=org_totals['compute_charges'],
+        egress_charges=org_totals['egress_charges'],
+        estimated_balance=org_totals['estimated_balance'],
     )
 
 
@@ -127,7 +127,6 @@ def populate_analyses(all_projects):
     """
     all_analyses = []
     for proj in all_projects:
-        #print(proj)
         analyses = q.get_analyses(proj['dx_id'])
         all_analyses.append(analyses)
     all_analyses_df = q.make_analyses_df(all_analyses)
@@ -136,7 +135,7 @@ def populate_analyses(all_projects):
         print(row)
         print("---\n")
 
-        #Add date for analysis started.
+        # Add date for analysis started.
         a_new_date, created = Dates.objects.get_or_create(
             date=dt.datetime.fromtimestamp(
                 (int(row['created'])) / 1000).strftime('%Y-%m-%d')
@@ -150,7 +149,7 @@ def populate_analyses(all_projects):
             excutable_name=row['name'],
             project_id=project_row_id['project']
         )
-        #Add date for analysis started.
+        # Add date for analysis started.
         user, created = Users.objects.get_or_create(
             user_name=row['launchedBy'],)
         print(user)
