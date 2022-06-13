@@ -52,9 +52,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'debug_toolbar',
     'django_extensions',
-    'django_filters',
-    'django_static_jquery3',
-    'django_yearmonth_widget',
 ]
 
 MIDDLEWARE = [

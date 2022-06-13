@@ -211,7 +211,8 @@ def storage_chart(request):
     month_categories = list(
         StorageCosts.objects.order_by().values_list(
             'date__date__month',flat=True
-            ).distinct())
+            ).distinct()
+    )
 
     # Dict to convert integer month to named month
     date_conversion_dict = {
@@ -234,16 +235,17 @@ def storage_chart(request):
 
     if 'submit' in request.GET:
         form = StorageForm(request.GET)
-        # If only one type of filter is check-boxed
+        # If not >1 entry in project_types and assay_types at same time
         if form.is_valid():
             year = form.cleaned_data.get('year')
             month = form.cleaned_data.get('month')
             
             category_data_source = []
+            # If user wants to see all the months in the db
             if month == 'All':
             
-            # If there are both a project type and assay type entered
-            # Validated to be only one of each so get the string from each
+                # If there are both a project type and assay type entered
+                # Validated to be only one of each so get the string from each
                 if form.cleaned_data.get('project_type') and form.cleaned_data.get('assay_type'):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')

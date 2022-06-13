@@ -1,7 +1,6 @@
 from django import forms
 import datetime
 from django.core.exceptions import ValidationError
-from django_yearmonth_widget.widgets import DjangoYearMonthWidget
 from dashboard.models import StorageCosts
 
 class DateForm(forms.Form):
@@ -25,7 +24,6 @@ class DateForm(forms.Form):
         start = self.cleaned_data['start']
         end = self.cleaned_data['end']
         charge_type = self.cleaned_data['charge_type']
-        #error_messages = []
 
         if str(start) < "2022-05-06":
             self.add_error("start", "Start date is earlier than the earliest entry in the database")
