@@ -51,7 +51,22 @@ def populate_projects(all_projects):
 
 def populate_running_totals():
     """
-    Adds org running totals into the db, getting the date IDs or creating them first
+    populate_running_totals():
+
+    Populates the database with data
+    from API query for organisation level costs.
+    The organisation ID is set in config file (CREDENTIALS.json).
+
+    Adds org running totals into the db,
+    getting the date IDs or creating them first.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
     """
 
     # Get today's date in YYY-MM-DD format
@@ -77,7 +92,8 @@ def populate_running_totals():
 
 def populate_database_files(all_projects_dict):
     """
-    Puts the storage data into the db
+    Puts the file storage data into the db.
+    Parameters
     ----------
     all_projects_dict : dict
         final dictionary from put_into_dict_write_to_file function
@@ -85,7 +101,6 @@ def populate_database_files(all_projects_dict):
     Returns
     -------
     none
-    N.B. Move this to new script and import other query script.
     """
 
     today_date = q.no_of_days_in_month()[0]
