@@ -218,32 +218,6 @@ def storage_chart(request):
     Each bar is stacked with either project type
     Or assay type depending on the filters entered
     """
-    # Get current year
-    current_year = q.no_of_days_in_month()[0].split('-')[0]
-
-    # Get colour schemes from Plotly discrete colours
-    project_colours = px.colors.qualitative.Set1
-    assay_colours = px.colors.qualitative.Bold
-
-    # Specify colours for specific types of projects or assays
-    # So these don't change on different filtering
-    proj_colour_dict = {
-        '001': project_colours[0],
-        '002': project_colours[1],
-        '003': project_colours[2],
-        '004': project_colours[3]
-    }
-
-    assay_colour_dict = {
-        'CEN': assay_colours[0],
-        'MYE': assay_colours[1],
-        'TWE': assay_colours[2],
-        'TSO500': assay_colours[3],
-        'SNP': assay_colours[4],
-        'CP': assay_colours[5],
-        'WES': assay_colours[6],
-        'FH': assay_colours[7],
-    }
 
     # Find the months that exist in the db as categories for the graph as list
     month_categories = list(
@@ -292,12 +266,10 @@ def storage_chart(request):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 
-                    context = sp.all_months_assay_type_and_proj_type(
+                    context = sp.StoragePlotFunctions().all_months_assay_type_and_proj_type(
                         project_type,
                         assay_type,
                         year,
-                        project_colours,
-                        proj_colour_dict,
                         string_months,
                         form
                     )
@@ -313,11 +285,9 @@ def storage_chart(request):
                             " ", ""
                             ).split(",")
                         
-                        context = sp.all_months_only_project_types(
+                        context = sp.StoragePlotFunctions().all_months_only_project_types(
                             proj_types,
                             year,
-                            proj_colour_dict,
-                            project_colours,
                             string_months,
                             form
                         )
@@ -331,11 +301,9 @@ def storage_chart(request):
                             " ", ""
                             ).split(",")
 
-                        context = sp.all_months_only_assay_types(
+                        context = sp.StoragePlotFunctions().all_months_only_assay_types(
                             assay_types,
                             year,
-                            assay_colour_dict,
-                            assay_colours,
                             string_months,
                             form
                         )
@@ -346,7 +314,7 @@ def storage_chart(request):
                         # And want to see all months
                         # Display all the projects grouped by available months
 
-                        context = sp.all_months_form_submitted_no_proj_or_assay(
+                        context = sp.StoragePlotFunctions().all_months_form_submitted_no_proj_or_assay(
                             year,
                             string_months,
                             form
@@ -363,13 +331,11 @@ def storage_chart(request):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 
-                    context = sp.specific_month_proj_and_assay(
+                    context = sp.StoragePlotFunctions().specific_month_proj_and_assay(
                         project_type,
                         assay_type,
                         year,
                         month,
-                        proj_colour_dict,
-                        project_colours,
                         converted_month,
                         form
                     )
@@ -383,12 +349,10 @@ def storage_chart(request):
                         " ", ""
                         ).split(",")
                     
-                    context = sp.specific_month_only_proj_types(
+                    context = sp.StoragePlotFunctions().specific_month_only_proj_types(
                         proj_types,
                         year,
                         month,
-                        proj_colour_dict,
-                        project_colours,
                         converted_month,
                         form
                     )
@@ -400,12 +364,10 @@ def storage_chart(request):
                         " ", ""
                         ).split(",")
 
-                    context = sp.specific_month_only_assay_types(
+                    context = sp.StoragePlotFunctions().specific_month_only_assay_types(
                         assay_types,
                         year,
                         month,
-                        assay_colour_dict,
-                        assay_colours,
                         converted_month,
                         form
                     )
@@ -414,7 +376,7 @@ def storage_chart(request):
                     # If form submitted
                     # But no proj or assay type but specific year/month selected
                     # Because those fields are required
-                    context = sp.specific_month_no_proj_or_assay(
+                    context = sp.StoragePlotFunctions().specific_month_no_proj_or_assay(
                         year,
                         month,
                         converted_month,
@@ -425,8 +387,7 @@ def storage_chart(request):
             # If the form is not valid, display just the standard graph
             # Of this year, grouped by available months
             # For all projects
-            context = sp.form_is_not_valid(
-                current_year,
+            context = sp.StoragePlotFunctions().form_is_not_valid(
                 string_months,
                 form
             )
@@ -435,8 +396,7 @@ def storage_chart(request):
         # If nothing is submitted on the form (normal landing page)
         # Display the all projects graph grouped by available months
         form = StorageForm()
-        context = sp.form_is_not_submitted(
-            current_year,
+        context = sp.StoragePlotFunctions().form_is_not_submitted(
             string_months,
             form
         )
