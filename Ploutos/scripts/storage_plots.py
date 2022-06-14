@@ -1,11 +1,230 @@
 import json
+from tkinter import E
 import plotly.express as px
 import plotly.graph_objects as pgo
 
 from dashboard.forms import DateForm, StorageForm
-from dashboard.models import StorageCosts
+from dashboard.models import StorageCosts, DailyOrgRunningTotal
 from django.db.models import Sum
 from scripts import DNAnexus_queries as q
+from scripts import date_conversion as dc
+
+class RunningTotPlotFunctions():
+    """Class for all the running total plotting functions"""
+
+    def all_charge_types(self, totals):
+        """
+        Set context when all charge types are searched for
+        Parameters
+        ----------
+        totals :  queryset
+            queryset already filtered by the specified daterange
+
+        Returns
+        -------
+        fig : Plotly figure object
+        """
+
+        compute = [c.compute_charges for c in totals]
+        storage = [c.storage_charges for c in totals]
+        egress = [c.egress_charges for c in totals]
+        fig = px.line(
+            x=[x.date.date for x in totals],
+            y=compute,
+            title="Running charges",
+            labels={
+                'x': 'Date',
+                'y': 'Charges ($)'
+            },
+            width=1200,
+            height=600
+        )
+
+        fig.data[0].name = "Compute"
+        fig.update_traces(showlegend=True)
+        fig.add_scatter(
+            x=[x.date.date for x in totals],
+            y=storage,
+            mode='lines',
+            name="Storage"
+        )
+        fig.add_scatter(
+            x=[x.date.date for x in totals],
+            y=egress,
+            mode='lines',
+            name="Egress"
+        )
+
+        return fig
+
+    def specific_charge_type(self, totals, charge_type):
+        """
+        Set context when a specific charge types is searched for
+        Parameters
+        ----------
+        totals :  queryset
+            queryset already filtered by the specified daterange
+        charge_type : str
+            the charge type the user wants to see e.g. 'Egress'
+
+        Returns
+        -------
+        fig : Plotly figure object
+        """
+
+        if charge_type == "Egress":
+            y_data = [c.egress_charges for c in totals]
+            updated_title = "Egress running total charges"
+            colour = '#00CC96'
+        elif charge_type == "Compute":
+            y_data = [c.compute_charges for c in totals]
+            updated_title = "Compute running total charges"
+            colour = '#EF553B'
+        elif charge_type == "Storage":
+            y_data = [c.storage_charges for c in totals]
+            updated_title = "Storage running total charges"
+            colour = '#636EFA'
+
+        fig = px.line(
+            x=[x.date.date for x in totals],
+            y=y_data,
+            title=updated_title,
+            labels={
+                'x': 'Date',
+                'y': 'Charges ($)'
+            },
+            width=1200,
+            height=600
+        )
+        # Set the colour so it's the same as on the all charges plot
+        fig['data'][0]['line']['color'] = colour
+
+        return fig
+
+    def totals_form_not_valid(self, totals, form):
+        """
+        Set context when the form is not valid (wrong dates)
+        Parameters
+        ----------
+        totals :  queryset
+            queryset already filtered by the specified daterange
+        form : Django form object
+            form either as Form(request.GET) or Form()
+        Returns
+        -------
+        context : dict
+            context to pass to HTML
+
+        """
+        totals = DailyOrgRunningTotal.objects.all()
+        compute = [c.compute_charges for c in totals]
+        storage = [c.storage_charges for c in totals]
+        egress = [c.egress_charges for c in totals]
+        fig = px.line(
+            x=[x.date.date for x in totals],
+            y=compute,
+            title="Running total charges",
+            labels={
+                'x': 'Date',
+                'y': 'Charges ($)'
+            },
+            width=1200,
+            height=600
+        )
+
+        # Add all scatters and update legend labels
+        fig.data[0].name = "Compute"
+        fig.update_traces(showlegend=True)
+        fig.add_scatter(
+            x=[x.date.date for x in totals],
+            y=storage,
+            mode='lines',
+            name='Storage'
+        )
+
+        fig.add_scatter(
+            x=[x.date.date for x in totals],
+            y=egress,
+            mode='lines',
+            name='Egress'
+        )
+
+        # Change formatting of title
+        fig.update_layout(
+            title={
+                'font_size': 24,
+                'xanchor': 'center',
+                'x': 0.5
+            }
+        )
+
+        chart = fig.to_html()
+        context = {'chart': chart, 'form': form}
+
+        return context
+
+    def form_not_submitted(self, totals, form):
+        """
+        Set context when the form is not submitted
+        Includes all dates present in db and all charge types
+        Parameters
+        ----------
+        totals :  queryset
+            queryset already filtered by the specified daterange
+        form : Django form object
+            form either as Form(request.GET) or Form()
+        Returns
+        -------
+        context : dict
+            context to pass to HTML
+        
+        """
+        # Plot the date and storage charges as line graph
+        totals = DailyOrgRunningTotal.objects.all()
+        compute = [c.compute_charges for c in totals]
+        storage = [c.storage_charges for c in totals]
+        egress = [c.egress_charges for c in totals]
+        fig = px.line(
+            x=[x.date.date for x in totals],
+            y=compute,
+            title="Running total charges",
+            labels={
+                'x':'Date',
+                'y':'Charges ($)'
+            },
+            width=1200,
+            height=600
+        )
+
+        fig.data[0].name = "Compute"
+        fig.update_traces(showlegend=True)
+        fig.add_scatter(
+            x=[x.date.date for x in totals],
+            y=storage,
+            mode='lines',
+            name="Storage"
+        )
+        fig.add_scatter(
+            x=[x.date.date for x in totals],
+            y=egress,
+            mode='lines',
+            name="Egress"
+        )
+
+        # Change formatting of title
+        fig.update_layout(
+            title={
+                'font_size': 24,
+                'xanchor': 'center',
+                'x': 0.5
+            }
+        )
+
+        chart = fig.to_html()
+        context = {'chart': chart, 'form': form}
+
+        return context
+
 
 class StoragePlotFunctions():
     """Class for all of the storage plotting functions"""
@@ -18,7 +237,7 @@ class StoragePlotFunctions():
     assay_colours = px.colors.qualitative.Bold
 
     # Specify colours for specific types of projects or assays
-    # So these don't change on different filtering
+    # So these don't change on diff numbers of types/assays during filtering
     proj_colour_dict = {
         '001': project_colours[0],
         '002': project_colours[1],
@@ -37,8 +256,19 @@ class StoragePlotFunctions():
         'FH': assay_colours[7],
     }
 
+    # Find the months that exist in the db as categories for the graph as list
+    month_categories = list(
+        StorageCosts.objects.order_by().values_list(
+            'date__date__month', flat=True
+            ).distinct()
+        )
+
+    # Convert the integer months present in the db to strings
+    string_months = [month if month not in dc.date_conversion_dict
+    else dc.date_conversion_dict[month] for month in month_categories]
+
     def all_months_assay_type_and_proj_type(self, project_type, assay_type,
-        year, string_months, form):
+        year, form):
         """
         Sets context when 'All' months are selected, with one project type
         And one assay type
@@ -51,8 +281,6 @@ class StoragePlotFunctions():
             string that the project name ends with
         year : str
             year that the date of the objects should belong to
-        string_months : list
-            list of months present in the database e.g. ['January', 'February']
         form : Django form object
             the related Django form in forms.py
 
@@ -77,7 +305,7 @@ class StoragePlotFunctions():
                     Live=Sum('unique_cost_live'),
                     Archived=Sum('unique_cost_archived')
         )
-        
+
         # Set name of series
         # Get live values as list
         # Colour with dict or if proj type not in dict make purple
@@ -131,7 +359,7 @@ class StoragePlotFunctions():
                 'text': 'Storage Costs'
             },
             'xAxis': {
-                'categories': string_months
+                'categories': self.string_months
             },
             'yAxis': {
                 'allowDecimals': 'false',
@@ -171,9 +399,7 @@ class StoragePlotFunctions():
 
         return context
 
-    def all_months_only_project_types(self, proj_types, year,
-        string_months, form
-        ):
+    def all_months_only_project_types(self, proj_types, year, form):
         """
         Sets context when 'All' months selected, with only project type(s)
 
@@ -183,8 +409,6 @@ class StoragePlotFunctions():
             list of project types searched for e.g. ['001','002','003']
         year : str
             year that the date of the objects should belong to
-        string_months : list
-            list of months present in the database e.g. ['January', 'February']
         form : Django form object
             the related Django form in forms.py
 
@@ -251,7 +475,7 @@ class StoragePlotFunctions():
                 'text': 'Storage Costs'
             },
             'xAxis': {
-                'categories': string_months
+                'categories': self.string_months
             },
             'yAxis': {
                 'allowDecimals': 'false',
@@ -291,9 +515,7 @@ class StoragePlotFunctions():
 
         return context
 
-    def all_months_only_assay_types(self, assay_types, year,
-        string_months, form
-        ):
+    def all_months_only_assay_types(self, assay_types, year, form):
         """
         Sets context when 'All' months selected, with only assay type(s)
 
@@ -303,8 +525,6 @@ class StoragePlotFunctions():
             list of assay types searched for e.g. ['CEN','TWE','TSO500']
         year : str
             year that the date of the objects should belong to
-        string_months : list
-            list of months present in the database e.g. ['January', 'February']
         form : Django form object
             the related Django form in forms.py
 
@@ -373,7 +593,7 @@ class StoragePlotFunctions():
                 'text': 'Storage Costs'
             },
             'xAxis': {
-                'categories': string_months
+                'categories': self.string_months
             },
             'yAxis': {
                 'allowDecimals': 'false',
@@ -413,8 +633,7 @@ class StoragePlotFunctions():
 
         return context
 
-    def all_months_form_submitted_no_proj_or_assay(self, year, string_months,
-        form):
+    def all_months_form_submitted_no_proj_or_assay(self, year, form):
         """
         Sets context when 'All' months selected
         But no project types or assay types (only year + month)
@@ -423,8 +642,6 @@ class StoragePlotFunctions():
         ----------
         year : str
             year that the date of the objects should belong to
-        string_months : list
-            list of months present in the database e.g. ['January', 'February']
         form : Django form object
             the related Django form in forms.py
 
@@ -480,7 +697,7 @@ class StoragePlotFunctions():
                 'text': 'Storage Costs'
             },
             'xAxis': {
-                'categories': string_months
+                'categories': self.string_months
             },
             'yAxis': {
                 'allowDecimals': 'false',
@@ -1017,15 +1234,13 @@ class StoragePlotFunctions():
 
         return context
 
-    def form_is_not_valid(self, string_months, form):
+    def form_is_not_valid(self, form):
         """
         Sets context to all projects all months when the form is not valid
         i.e. >1 project type and >1 assay type are entered
 
         Parameters
         ----------
-        string_months : list
-            list of months present in the database e.g. ['January', 'February']
         form : Django form object
             the related Django form in forms.py
 
@@ -1080,7 +1295,7 @@ class StoragePlotFunctions():
                 'text': 'Storage Costs'
             },
             'xAxis': {
-                'categories': string_months
+                'categories': self.string_months
             },
             'yAxis': {
                 'allowDecimals': 'false',
@@ -1120,15 +1335,13 @@ class StoragePlotFunctions():
 
         return context
 
-    def form_is_not_submitted(self, string_months, form):
+    def form_is_not_submitted(self, form):
         """
         Sets context for the landing page where no form is submitted
         Sets graph to all projects for all months grouped by month
 
         Parameters
         ----------
-        string_months : list
-            list of months present in the database e.g. ['January', 'February']
         form : Django form object
             the related Django form in forms.py
 
@@ -1184,7 +1397,7 @@ class StoragePlotFunctions():
                 'text': 'Storage Costs'
             },
             'xAxis': {
-                'categories': string_months
+                'categories': self.string_months
             },
             'yAxis': {
                 'allowDecimals': 'false',
