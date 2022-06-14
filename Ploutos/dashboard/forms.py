@@ -7,7 +7,7 @@ from dashboard.models import StorageCosts
 class DateForm(forms.Form):
     """Date and charge type picker for the running totals"""
     CHARGE_CHOICES = (
-        ('All','All'),
+        ('All', 'All'),
         ('Storage', 'Storage'),
         ('Compute', 'Compute'),
         ('Egress', 'Egress'),
@@ -25,8 +25,8 @@ class DateForm(forms.Form):
     end = forms.DateField(
         widget=forms.DateInput(
             attrs={
-                'class':'datepicker',
-                'type':'date'
+                'class': 'datepicker',
+                'type': 'date'
             }
         )
     )
@@ -44,7 +44,8 @@ class DateForm(forms.Form):
         # Check start date isn't before earliest db entry
         # Assign error to the specific field
         if str(start) < "2022-05-06":
-            self.add_error("start", "Start date is earlier than the earliest entry in the database")
+            self.add_error("start", "Start date is earlier than the earliest entry in the database."
+            " Current earliest date is May 6th")
 
         # Check end date isn't after today
         # Assign error to the specific field
@@ -80,7 +81,7 @@ class StorageForm(forms.Form):
     YEAR_CHOICES = ((year, year) for year in years)
 
     MONTH_CHOICES = (
-        ('All','All'),
+        ('All', 'All'),
         ('1', 'January'),
         ('2', 'February'),
         ('3', 'March'),

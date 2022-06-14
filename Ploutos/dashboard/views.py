@@ -3,12 +3,13 @@ import json
 import plotly.express as px
 import plotly.graph_objects as pgo
 
-from django.db.models import Sum
 from dashboard.forms import DateForm, StorageForm
 from dashboard.models import (
     Users, Projects, Dates, DailyOrgRunningTotal, StorageCosts
 )
+from django.db.models import Sum
 from django.shortcuts import render
+from scripts import DNAnexus_queries as q
 
 
 def index(request):
@@ -215,6 +216,8 @@ def storage_chart(request):
     Each bar is stacked with either project type
     Or assay type depending on the filters entered
     """
+    # Get current year
+    current_year = q.no_of_days_in_month()[0].split('-')[0]
 
     # Get colour schemes from Plotly discrete colours
     project_colours = px.colors.qualitative.Set1
@@ -298,7 +301,7 @@ def storage_chart(request):
                             'date__date__month'
                             ).annotate(
                                 Live=Sum('unique_cost_live'),
-                                Archived = Sum('unique_cost_archived')
+                                Archived=Sum('unique_cost_archived')
                     )
                     
                     # Set name of series
@@ -313,7 +316,7 @@ def storage_chart(request):
                         ),
                         'stack': 'Live',
                         'color': proj_colour_dict.get(
-                            project_type, 'purple'
+                            project_type, project_colours[0]
                         )
                     }
 
@@ -329,7 +332,7 @@ def storage_chart(request):
                             'stack': 'Archived',
                             'linkedTo': ':previous',
                             'color': proj_colour_dict.get(
-                                project_type, 'purple'
+                                project_type, project_colours[0]
                             ),
                             'opacity': 0.8
                     }
@@ -405,7 +408,9 @@ def storage_chart(request):
                         
                         # Filter by 'startswith' for each searched project type
                         # For each proj add data to dict
+                        count = -1
                         for proj_type in proj_types:
+                            count+=1
                             cost_list = StorageCosts.objects.filter(
                                 project__name__startswith=proj_type,
                                 date__date__year=year
@@ -424,7 +429,7 @@ def storage_chart(request):
                                 ),
                                 'stack': 'Live',
                                 'color': proj_colour_dict.get(
-                                    proj_type, 'purple'
+                                    proj_type, project_colours[count]
                                 )
                             }
                             archived_data = {
@@ -436,7 +441,7 @@ def storage_chart(request):
                                 'stack': 'Archived',
                                 'linkedTo': ':previous',
                                 'color':proj_colour_dict.get(
-                                    proj_type, 'purple'
+                                    proj_type, project_colours[count]
                                 ),
                                 'opacity': 0.8
                             }
@@ -505,7 +510,9 @@ def storage_chart(request):
                             ).split(",")
 
                         # Filter by 'endswith' for each searched assay type
+                        count = -1
                         for assay_type in assay_types:
+                            count+=1
                             cost_list = StorageCosts.objects.filter(
                                 project__name__endswith=assay_type,
                                 date__date__year=year
@@ -525,7 +532,7 @@ def storage_chart(request):
                                 ),
                                 'stack': 'Live',
                                 'color': assay_colour_dict.get(
-                                    assay_type, 'red'
+                                    assay_type, assay_colours[count]
                                 )
                             }
 
@@ -539,7 +546,7 @@ def storage_chart(request):
                                 'stack': 'Archived',
                                 'linkedTo': ':previous',
                                 'color': assay_colour_dict.get(
-                                    assay_type, 'red'
+                                    assay_type, assay_colours[count]
                                 ),
                                 'opacity': 0.8
                             }
@@ -620,7 +627,8 @@ def storage_chart(request):
                                 'Live', flat=True
                                 )
                             ),
-                            'stack': 'Live'
+                            'stack': 'Live',
+                            'color': 'rgb(217,95,2)'
                         },
                         {
                             "name": "All projects",
@@ -629,7 +637,9 @@ def storage_chart(request):
                                 )
                             ),
                             'stack': 'Archived',
-                            'linkedTo': ':previous'
+                            'linkedTo': ':previous',
+                            'color': 'rgb(217,95,2)',
+                            'opacity': 0.8
                         }
                         ]
 
@@ -697,7 +707,8 @@ def storage_chart(request):
                     # Proj name starts wth project type and ends with assay type
                     # Filter for specific year and month
                     cost_list = StorageCosts.objects.filter(
-                        project__name__startswith=project_type, project__name__endswith=assay_type,
+                        project__name__startswith=project_type,
+                        project__name__endswith=assay_type,
                         date__date__year=year,
                         date__date__month=month
                         ).aggregate(
@@ -719,7 +730,7 @@ def storage_chart(request):
                         'data': live,
                         'stack': 'Live',
                         'color': proj_colour_dict.get(
-                            project_type, 'purple'
+                            project_type, project_colours[0]
                         )
                     }
 
@@ -738,7 +749,7 @@ def storage_chart(request):
                         'stack': 'Archived',
                         'linkedTo': ':previous',
                         'color': proj_colour_dict.get(
-                            project_type, 'purple'
+                            project_type, project_colours[0]
                         ),
                         'opacity': 0.8
                     }
@@ -808,8 +819,9 @@ def storage_chart(request):
                     proj_types = proj_string.strip(",").replace(
                         " ", ""
                         ).split(",")
-
+                    count=-1
                     for proj_type in proj_types:
+                        count+=1
                         cost_list = StorageCosts.objects.filter(
                             project__name__startswith=proj_type,
                             date__date__year=year,
@@ -831,7 +843,7 @@ def storage_chart(request):
                             'data': live,
                             'stack': 'Live',
                             'color' : proj_colour_dict.get(
-                                proj_type, 'purple'
+                                proj_type, project_colours[count]
                             )
                         }
 
@@ -845,9 +857,9 @@ def storage_chart(request):
                             'name' : proj_type,
                             'data': archived,
                             'stack': 'Archived',
-                            'linkedTo' : ':previous',
+                            'linkedTo': ':previous',
                             'color' : proj_colour_dict.get(
-                                proj_type, 'purple'
+                                proj_type, project_colours[count]
                             ),
                             'opacity': 0.8
                         }
@@ -913,8 +925,9 @@ def storage_chart(request):
                     assay_types = assay_string.strip(",").replace(
                         " ", ""
                         ).split(",")
-
+                    count=-1
                     for assay_type in assay_types:
+                        count+=1
                         cost_list = StorageCosts.objects.filter(
                             project__name__endswith=assay_type,
                             date__date__year=year,
@@ -935,7 +948,7 @@ def storage_chart(request):
                             'data': live,
                             'stack': 'Live',
                             'color' : assay_colour_dict.get(
-                                assay_type, 'red'
+                                assay_type, assay_colours[count]
                             )
                         }
 
@@ -949,9 +962,9 @@ def storage_chart(request):
                             'name' : assay_type,
                             'data': archived,
                             'stack': 'Archived',
-                            'linkedTo' : ':previous',
+                            'linkedTo': ':previous',
                             'color': assay_colour_dict.get(
-                                assay_type, 'red'
+                                assay_type, assay_colours[count]
                             ),
                             'opacity': 0.8
                         }
@@ -1028,13 +1041,16 @@ def storage_chart(request):
                         {
                             "name": "All projects",
                             "data": [cost_list.get('Live')],
-                            'stack': 'Live'
+                            'stack': 'Live',
+                            'color': 'rgb(217,95,2)'
                         },
                         {
                             'name': 'All projects',
                             'data': [cost_list.get('Archived')],
                             'stack': 'Archived',
-                            'linkedTo': ':previous'
+                            'linkedTo': ':previous',
+                            'color': 'rgb(217,95,2)',
+                            'opacity': 0.8
                         }
                     ]
 
@@ -1050,7 +1066,7 @@ def storage_chart(request):
                         'title': {
                             'text': 'Storage Costs'
                         },
-                        'xAxis': {	
+                        'xAxis': {
                             'categories': [converted_month]
                         },
                         'yAxis': {
@@ -1065,7 +1081,7 @@ def storage_chart(request):
                                 'style': {
                                     'fontWeight': 'bold',
                                     'color': 'gray'
-                                }, 
+                                },
                                 'format': "{stack}"
                             }
                         }
@@ -1094,7 +1110,7 @@ def storage_chart(request):
             # Of this year, grouped by available months
             # For all projects
             storage_totals = StorageCosts.objects.filter(
-                date__date__year='2022'
+                date__date__year=current_year
                 ).order_by().values(
                     'date__date__month'
                     ).annotate(
@@ -1109,7 +1125,8 @@ def storage_chart(request):
                     'Live', flat=True
                     )
                  ),
-                'stack': 'Live'
+                'stack': 'Live',
+                'color': 'rgb(217,95,2)'
             },
             {
                 "name": "All projects",
@@ -1118,7 +1135,9 @@ def storage_chart(request):
                     )
                 ),
                 'stack': 'Archived',
-                'linkedTo': ':previous'
+                'linkedTo': ':previous',
+                'color': 'rgb(217,95,2)',
+                'opacity': 0.8
             }
             ]
 
@@ -1178,7 +1197,7 @@ def storage_chart(request):
         # Display the all projects graph grouped by available months
         form = StorageForm()
         storage_totals = StorageCosts.objects.filter(
-            date__date__year='2022'
+            date__date__year=current_year
             ).order_by().values(
                 'date__date__month'
                 ).annotate(
@@ -1193,7 +1212,8 @@ def storage_chart(request):
                     'Live', flat=True
                         )
                     ),
-                'stack': 'Live'
+                'stack': 'Live',
+                'color': 'rgb(217,95,2)'
             },
 
             {
@@ -1203,7 +1223,9 @@ def storage_chart(request):
                     )
                 ),
                 'stack': 'Archived',
-                'linkedTo': ':previous'
+                'linkedTo': ':previous',
+                'color': 'rgb(217,95,2)',
+                'opacity': 0.8
             }
         ]
 
