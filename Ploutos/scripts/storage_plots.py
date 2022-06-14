@@ -3,7 +3,37 @@ import json
 from dashboard.models import StorageCosts
 from django.db.models import Sum
 
-def all_months_assay_type_and_proj_type(project_type, assay_type, year, project_colours, proj_colour_dict, string_months, form):
+def all_months_assay_type_and_proj_type(
+    project_type, assay_type, year, project_colours, proj_colour_dict,
+    string_months, form):
+    """
+    Sets context when 'All' months are selected, with one project type
+    And one assay type
+
+    Parameters
+    ----------
+    project type :  str
+        string that the project name begins with
+    assay type : str
+        string that the project name ends with
+    year : str
+        year that the date of the objects should belong to
+    project_colours : list
+        list of discrete colours (from Plotly)
+    proj_colour_dict : dict
+        lookup dict for specific project types to assign bar colours
+    string_months : list
+        list of months present in the database e.g. ['January', 'February']
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
+
     category_data_source = []
     # Filter by startswith project type and ends with assay type
     # Group by all available months
@@ -112,8 +142,33 @@ def all_months_assay_type_and_proj_type(project_type, assay_type, year, project_
 
     return context
 
-def all_months_only_project_types(proj_types, year, proj_colour_dict,
-    project_colours, string_months, form):
+def all_months_only_project_types(
+    proj_types, year, proj_colour_dict, project_colours, string_months, form
+    ):
+    """
+    Sets context when 'All' months selected, with only project type(s)
+
+    Parameters
+    ----------
+    proj_types :  list
+        list of project types searched for e.g. ['001','002','003']
+    year : str
+        year that the date of the objects should belong to
+    proj_colour_dict : dict
+        lookup dict for specific project types to assign bar colours
+    project_colours : list
+        list of discrete colours (from Plotly)
+    string_months : list
+        list of months present in the database e.g. ['January', 'February']
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     # Filter by 'startswith' for each searched project type
     # For each proj add data to dict
     category_data_source = []
@@ -211,8 +266,33 @@ def all_months_only_project_types(proj_types, year, proj_colour_dict,
 
     return context
 
-def all_months_only_assay_types(assay_types, year, assay_colour_dict, assay_colours,
-    string_months, form):
+def all_months_only_assay_types(
+    assay_types, year, assay_colour_dict, assay_colours, string_months, form
+    ):
+    """
+    Sets context when 'All' months selected, with only assay type(s)
+
+    Parameters
+    ----------
+    assay_types :  list
+        list of assay types searched for e.g. ['CEN','TWE','TSO500']
+    year : str
+        year that the date of the objects should belong to
+    assay_colour_dict : dict
+        lookup dict for specific assay types to assign bar colours
+    assay_colours : list
+        list of discrete colours (from Plotly)
+    string_months : list
+        list of months present in the database e.g. ['January', 'February']
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     category_data_source = []
     # Filter by 'endswith' for each searched assay type
     count = -1
@@ -313,7 +393,25 @@ def all_months_only_assay_types(assay_types, year, assay_colour_dict, assay_colo
     return context
 
 def all_months_form_submitted_no_proj_or_assay(year, string_months, form):
+    """
+    Sets context when 'All' months selected
+    But no project types or assay types (only year + month)
 
+    Parameters
+    ----------
+    year : str
+        year that the date of the objects should belong to
+    string_months : list
+        list of months present in the database e.g. ['January', 'February']
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     storage_totals = StorageCosts.objects.filter(
     date__date__year=year
     ).order_by().values(
@@ -400,7 +498,38 @@ def all_months_form_submitted_no_proj_or_assay(year, string_months, form):
 
     return context
 
-def specific_month_proj_and_assay(project_type, assay_type, year, month, proj_colour_dict, project_colours, converted_month, form):
+def specific_month_proj_and_assay(project_type, assay_type, year,
+    month, proj_colour_dict, project_colours, converted_month, form
+    ):
+    """
+    Sets context when specific month is selected
+    With one project type and one assay type
+
+    Parameters
+    ----------
+    project_type: str
+        string that the project name starts with
+    assay_type :  str
+        string that the project name ends with
+    year : str
+        year that the date of the objects should belong to e.g. '2022'
+    month : str
+        month that the date of the objects should belong to e.g. '5'
+    proj_colour_dict : dict
+        lookup dict for specific project types to assign bar colours
+    project_colours : list
+        list of discrete colours (from Plotly)
+    converted_month : str
+        the specified month as a string e.g. "May"
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     category_data_source = []
     # Proj name starts wth project type and ends with assay type
     # Filter for specific year and month
@@ -511,7 +640,36 @@ def specific_month_proj_and_assay(project_type, assay_type, year, month, proj_co
 
     return context
 
-def specific_month_only_proj_types(proj_types, year, month, proj_colour_dict, project_colours, converted_month, form):
+def specific_month_only_proj_types(proj_types, year, month, proj_colour_dict,
+    project_colours, converted_month, form
+    ):
+    """
+    Sets context when specific month is selected
+    With only project type(s) entered
+
+    Parameters
+    ----------
+    proj_types: list
+        list of project types searched for e.g. ['001','002','003']
+    year : str
+        year that the date of the objects should belong to e.g. '2022'
+    month : str
+        month that the date of the objects should belong to e.g. '5'
+    proj_colour_dict : dict
+        lookup dict for specific project types to assign bar colours
+    project_colours : list
+        list of discrete colours (from Plotly)
+    converted_month : str
+        the specified month as a string e.g. "May"
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     category_data_source = []
     count=-1
     for proj_type in proj_types:
@@ -615,8 +773,36 @@ def specific_month_only_proj_types(proj_types, year, month, proj_colour_dict, pr
 
     return context
 
-def specific_month_only_assay_types(assay_types, year, month, assay_colour_dict, assay_colours, converted_month, form):
+def specific_month_only_assay_types(assay_types, year, month,
+    assay_colour_dict, assay_colours, converted_month, form
+    ):
+    """
+    Sets context when specific month is selected
+    With only assay type(s) entered
 
+    Parameters
+    ----------
+    assay_types: list
+        list of assay types searched for e.g. ['CEN','TWE','TSO500']
+    year : str
+        year that the date of the objects should belong to e.g. '2022'
+    month : str
+        month that the date of the objects should belong to e.g. '5'
+    assay_colour_dict : dict
+        lookup dict for specific assay types to assign bar colours
+    assay_colours : list
+        list of discrete colours (from Plotly)
+    converted_month : str
+        the specified month as a string e.g. "May"
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     category_data_source = []
     count=-1
     for assay_type in assay_types:
@@ -721,6 +907,27 @@ def specific_month_only_assay_types(assay_types, year, month, assay_colour_dict,
     return context
 
 def specific_month_no_proj_or_assay(year, month, converted_month, form):
+    """
+    Sets context when specific month is selected
+    With no project or assay types entered
+
+    Parameters
+    ----------
+    year : str
+        year that the date of the objects should belong to e.g. '2022'
+    month : str
+        month that the date of the objects should belong to e.g. '5'
+    converted_month : str
+        the specified month as a string e.g. "May"
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     cost_list = StorageCosts.objects.filter(
         date__date__year=year,
         date__date__month=month
@@ -800,6 +1007,25 @@ def specific_month_no_proj_or_assay(year, month, converted_month, form):
     return context
 
 def form_is_not_valid(current_year, string_months, form):
+    """
+    Sets context to all projects all months when the form is not valid
+    i.e. >1 project type and >1 assay type are entered
+
+    Parameters
+    ----------
+    current_year : str
+        the current year e.g. '2022'
+    string_months : list
+        list of months present in the database e.g. ['January', 'February']
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     storage_totals = StorageCosts.objects.filter(
         date__date__year=current_year
         ).order_by().values(
@@ -886,6 +1112,25 @@ def form_is_not_valid(current_year, string_months, form):
     return context
 
 def form_is_not_submitted(current_year, string_months, form):
+    """
+    Sets context for the landing page where no form is submitted
+    Sets graph to all projects for all months grouped by month
+
+    Parameters
+    ----------
+    current_year : str
+        the current year e.g. '2022'
+    string_months : list
+        list of months present in the database e.g. ['January', 'February']
+    form : Django form object
+        the related Django form in forms.py
+
+    Returns
+    -------
+    context : dict
+        'storage_data': data to pass to Highcharts,
+        'form': the form to pass to HTML
+    """
     storage_totals = StorageCosts.objects.filter(
         date__date__year=current_year
         ).order_by().values(
