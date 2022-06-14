@@ -2,7 +2,7 @@
 Webapp for tracking DNAnexus billing project.
 
 ## Configuration
-Credentials should be passed in a CREDENTIALS.json file.
+Config variables should be passed in a CREDENTIALS.json file.
 
 This should be placed within Ploutos/Ploutos, within the same directory level as settings.py.
 
