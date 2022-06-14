@@ -2,8 +2,9 @@
 Webapp for tracking DNAnexus billing project.
 
 ## Configuration
-Credentials should be passed in a CREDENTIALS.json file 
-This should be placed within Ploutos/Ploutos, within the same directory level as settings.py
+Credentials should be passed in a CREDENTIALS.json file.
+
+This should be placed within Ploutos/Ploutos, within the same directory level as settings.py.
 
 ```json
 {
@@ -22,4 +23,3 @@ This can be run via the command line:
 
 `python manage.py runscript populate_db`
 
-## Database schema
