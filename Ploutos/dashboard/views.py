@@ -4,12 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as pgo
 
 from dashboard.forms import DateForm, StorageForm
-from dashboard.models import (
-    Users, Projects, Dates, DailyOrgRunningTotal, StorageCosts
-)
-from django.db.models import Sum
+from dashboard.models import Dates, DailyOrgRunningTotal
 from django.shortcuts import render
-from scripts import DNAnexus_queries as q
 from scripts import storage_plots as sp
 from scripts import date_conversion as dc
 

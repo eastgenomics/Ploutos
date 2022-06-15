@@ -1,16 +1,17 @@
+"""This script holds plotting functions used in views.py"""
+
 import json
-from tkinter import E
 import plotly.express as px
 import plotly.graph_objects as pgo
 
-from dashboard.forms import DateForm, StorageForm
 from dashboard.models import StorageCosts, DailyOrgRunningTotal
+from django.conf import settings
 from django.db.models import Sum
 from scripts import DNAnexus_queries as q
 from scripts import date_conversion as dc
 
 class RunningTotPlotFunctions():
-    """Class for all the running total plotting functions"""
+    """Class for plotting functions for the running total graph"""
 
     def all_charge_types(self, totals):
         """
@@ -238,23 +239,9 @@ class StoragePlotFunctions():
 
     # Specify colours for specific types of projects or assays
     # So these don't change on diff numbers of types/assays during filtering
-    proj_colour_dict = {
-        '001': project_colours[0],
-        '002': project_colours[1],
-        '003': project_colours[2],
-        '004': project_colours[3]
-    }
-
-    assay_colour_dict = {
-        'CEN': assay_colours[0],
-        'MYE': assay_colours[1],
-        'TWE': assay_colours[2],
-        'TSO500': assay_colours[3],
-        'SNP': assay_colours[4],
-        'CP': assay_colours[5],
-        'WES': assay_colours[6],
-        'FH': assay_colours[7],
-    }
+    # Gets from the config file
+    proj_colour_dict = settings.PROJ_COLOUR_DICT
+    assay_colour_dict = settings.ASSAY_COLOUR_DICT
 
     # Find the months that exist in the db as categories for the graph as list
     month_categories = list(
@@ -264,6 +251,8 @@ class StoragePlotFunctions():
         )
 
     # Convert the integer months present in the db to strings
+    # Importing the date conversion dict because for some reason Python
+    # Wouldn't find it even though it's literally defined above
     string_months = [month if month not in dc.date_conversion_dict
     else dc.date_conversion_dict[month] for month in month_categories]
 
@@ -308,7 +297,8 @@ class StoragePlotFunctions():
 
         # Set name of series
         # Get live values as list
-        # Colour with dict or if proj type not in dict make purple
+        # Colour with dict or if proj type not in dict
+        # Get colour from project_colours
         live_data = {
             'name': f"{project_type}*{assay_type}",
             'data': list(
@@ -401,7 +391,7 @@ class StoragePlotFunctions():
 
     def all_months_only_project_types(self, proj_types, year, form):
         """
-        Sets context when 'All' months selected, with only project type(s)
+        Sets context when 'All' months selected with only project type(s)
 
         Parameters
         ----------
@@ -434,6 +424,7 @@ class StoragePlotFunctions():
                     Archived=Sum('unique_cost_archived')
             )
 
+            # Either get bar colour from dict or iterate through project_colours
             live_data = {
                 'name': proj_type,
                 'data': list(
@@ -901,6 +892,7 @@ class StoragePlotFunctions():
             'storage_data': data to pass to Highcharts,
             'form': the form to pass to HTML
         """
+        # Increase count per proj_type to assign new colours to bars
         category_data_source = []
         count=-1
         for proj_type in proj_types:
@@ -914,8 +906,9 @@ class StoragePlotFunctions():
                     Archived=Sum('unique_cost_archived')
                 )
             
-            # If empty, returns None which wasn't showing noData message
             live = cost_list.get('Live')
+            # If empty, returns None which wasn't showing noData message
+            # Converted to empty list instead if [None]
             if live:
                 live = [live]
             else:
