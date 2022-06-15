@@ -15,7 +15,7 @@ from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Users, Dates, P
 from scripts import DNAnexus_queries as q
 
 
-def populate_projects(all_projects):
+def populate_projects(all_projects) -> None:
     """
     Checks whether user exists or creates it to get ID
     Checks whether date exists or creates it to get ID
@@ -69,9 +69,24 @@ def populate_projects(all_projects):
         )
 
 
-def populate_running_totals():
+def populate_running_totals() -> None:
     """
-    Adds org running totals into the db, getting the date IDs or creating them first
+    populate_running_totals():
+
+    Populates the database with data
+    from API query for organisation level costs.
+    The organisation ID is set in config file (CREDENTIALS.json).
+
+    Adds org running totals into the db,
+    getting the date IDs or creating them first.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
     """
 
     # Get today's date in YYY-MM-DD format
@@ -95,9 +110,10 @@ def populate_running_totals():
     )
 
 
-def populate_database_files(all_projects_dict):
+def populate_database_files(all_projects_dict) -> None:
     """
-    Puts the storage data into the db
+    Puts the file storage data into the db.
+    Parameters
     ----------
     all_projects_dict : dict
         final dictionary from put_into_dict_write_to_file function
@@ -127,7 +143,7 @@ def populate_database_files(all_projects_dict):
         )
 
 
-def populate_analyses(all_projects):
+def populate_analyses(all_projects) -> None:
     """
     Populate database with data from API query.
     This function iterates over all projects and returns all parent executions
@@ -146,7 +162,6 @@ def populate_analyses(all_projects):
     """
     all_analyses = []
     for proj in all_projects:
-        #print(proj)
         analyses = q.get_analyses(proj['dx_id'])
         all_analyses.append(analyses)
     all_analyses_df = q.make_analyses_df(all_analyses)
@@ -155,7 +170,7 @@ def populate_analyses(all_projects):
         print(row)
         print("---\n")
 
-        #Add date for analysis started.
+        # Add date for analysis started.
         a_new_date, created = Dates.objects.get_or_create(
             date=dt.datetime.fromtimestamp(
                 (int(row['created'])) / 1000).strftime('%Y-%m-%d')
@@ -169,7 +184,7 @@ def populate_analyses(all_projects):
             excutable_name=row['name'],
             project_id=project_row_id['project']
         )
-        #Add date for analysis started.
+        # Add date for analysis started.
         user, created = Users.objects.get_or_create(
             user_name=row['launchedBy'],)
         print(user)

@@ -19,14 +19,15 @@ from django.apps import apps
 from django.conf import settings
 
 
-def login():
+def login() -> None:
+
     """
         Logs into DNAnexus
         Parameters
         ----------
         token : str
             authorisation token for DNAnexus, from settings.py
-        
+
         Raises
         ------
         Error
@@ -90,8 +91,8 @@ def get_projects():
         dataframe with a row for each project
     """
     project_response = list(dx.find_projects(
-        billed_to=settings.ORG, 
-        level='VIEW', 
+        billed_to=settings.ORG,
+        level='VIEW',
         describe={'fields': {
             'id': True, 'name': True, 'createdBy': True, 'created': True
             }
@@ -121,7 +122,8 @@ def get_projects():
 
 def get_files(proj):
     """
-    Get all files for the project in DNAnexus, storing each file and its size, name and archival state.
+    Get all files for the project in DNAnexus, storing each file
+    with its size, name and archival state.
     Used with ThreadExecutorPool
 
     Parameters
@@ -144,7 +146,7 @@ def get_files(proj):
         classname='file', project=proj,
         describe={'fields': {
             'archivalState': True,
-            'size': True, 
+            'size': True,
             'name': True
         }}
     ))
@@ -205,7 +207,7 @@ def threadify(project_list):
         # Submit the get_files function for a project
         for project in project_list:
             futures.append(executor.submit(get_files, proj=project))
-        # Once all project files are retrieved, append the final dict  
+        # Once all project files are retrieved, append the final dict
         for future in concurrent.futures.as_completed(futures):
             list_of_project_file_dicts.append(future.result())
 
@@ -411,8 +413,11 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     unique_projects_after_dups_removed = len(unique_df.project.unique())
 
     total_removed = unique_without_empty_projs - unique_projects_after_dups_removed
-    print(f"{total_removed} projects are no longer in the table as they only contained duplicate files")
+    print(f"""{total_removed} projects are no longer in
+          the table as they only contained duplicate files""")
+
     return unique_df
+
 
 def group_by_project_and_rename(df_name, string_to_replace):
     """
@@ -449,6 +454,7 @@ def group_by_project_and_rename(df_name, string_to_replace):
 
     return grouped_df
 
+
 def calculate_totals(my_grouped_df, type):
     """
     Calculate the total cost of storing per project
@@ -475,7 +481,8 @@ def calculate_totals(my_grouped_df, type):
     +-----------+-----------------+---------------+----------+
     """
     days_in_month = no_of_days_in_month()[1]
-    # If the state of the file is live, convert total size to GB and times by storage cost per month
+    # If the state of the file is live, converts total size to GB
+    # and times by storage cost per month.
     # Then divide by the number of days in current month
     # Else if state not live (archived) then times by archived storage cost price
 
@@ -485,6 +492,7 @@ def calculate_totals(my_grouped_df, type):
         my_grouped_df['size'] / (2**30) * settings.ARCHIVED_STORAGE_COST_MONTH / days_in_month)
 
     return my_grouped_df
+
 
 def merge_together_add_empty_rows(df1, df2):
     """
@@ -499,7 +507,8 @@ def merge_together_add_empty_rows(df1, df2):
     Returns
     -------
     total_merged_df : pd.DataFrame
-        merged dataframe with project, all file states (total_live, total_archived, unique_live, unique_archived),
+        merged dataframe with project, all file states
+        (total_live, total_archived, unique_live, unique_archived),
         cost and size with zeros if did not exist
     e.g.
     
@@ -528,6 +537,7 @@ def merge_together_add_empty_rows(df1, df2):
         iterables, names=['project', 'state']), fill_value=0).reset_index()
 
     return total_merged_df
+
 
 def add_empty_projs_back_in(empty_projs, total_merged_df):
     """
@@ -563,6 +573,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
 
     return final_all_projs_df
 
+
 def put_into_dict_write_to_file(final_all_projs_df):
     """
     Put back into a dict for easy adding to the db
@@ -573,7 +584,8 @@ def put_into_dict_write_to_file(final_all_projs_df):
     Returns
     -------
     all_proj_dict : dict
-        final dictionary with key project and nested keys total_live, total_archived, unique_live, unique_archived
+        final dictionary with key project and nested keys total_live,
+        total_archived, unique_live, unique_archived
          (and nested size and cost within) for all projects
     e.g. {"project-XYZ": {
         "total_live": {
@@ -607,6 +619,7 @@ def put_into_dict_write_to_file(final_all_projs_df):
         outfile.write(final_project_storage_totals)
 
     return all_proj_dict
+
 
 def get_analyses(proj):
     """
@@ -685,7 +698,6 @@ def make_analyses_df(list_project_analyses_dictionary):
     return pd.DataFrame(rows)
 
 
-
 def orchestrate_get_files(proj_list, proj_df):
     """
     Orchestates all the functions for getting API data for files and returning
@@ -713,4 +725,3 @@ def orchestrate_get_files(proj_list, proj_df):
     final_dict = put_into_dict_write_to_file(final_all_projs_df)
 
     return final_dict
-
