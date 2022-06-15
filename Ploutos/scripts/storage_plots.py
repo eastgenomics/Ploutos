@@ -160,7 +160,10 @@ class RunningTotPlotFunctions():
         )
 
         chart = fig.to_html()
-        context = {'chart': chart, 'form': form}
+        context = {
+            'chart': chart,
+            'form': form
+        }
 
         return context
 
@@ -222,7 +225,10 @@ class RunningTotPlotFunctions():
         )
 
         chart = fig.to_html()
-        context = {'chart': chart, 'form': form}
+        context = {
+            'chart': chart,
+            'form': form
+        }
 
         return context
 
@@ -252,7 +258,7 @@ class StoragePlotFunctions():
 
     # Convert the integer months present in the db to strings
     # Importing the date conversion dict because for some reason Python
-    # Wouldn't find it even though it's literally defined above
+    # Wouldn't find it even though it's literally defined above ?
     string_months = [month if month not in dc.date_conversion_dict
     else dc.date_conversion_dict[month] for month in month_categories]
 

@@ -11,13 +11,13 @@ from scripts import date_conversion as dc
 
 def index(request):
     """View to display running total charges via Plotly"""
-
+    # Get all running total objects from db
     totals = DailyOrgRunningTotal.objects.all()
 
     # If the form is submitted
     if 'submit' in request.GET:
         form = DateForm(request.GET)
-        # If the dates entered are validated fine
+        # If the dates entered are validated ok
         if form.is_valid():
             # Get the data entered
             start = form.cleaned_data.get("start")
@@ -45,7 +45,7 @@ def index(request):
                     totals,
                     charge_type
                 )
-            
+
             # Update layout
             fig.update_layout(
                 title={
@@ -62,7 +62,8 @@ def index(request):
             # If form not valid
             # Display unfiltered graph for all dates and show errors
             context = sp.RunningTotPlotFunctions().totals_form_not_valid(
-                totals, form
+                totals,
+                form
             )
 
     else:
@@ -93,7 +94,7 @@ def storage_chart(request):
         if form.is_valid():
             year = form.cleaned_data.get('year')
             month = form.cleaned_data.get('month')
-            
+
             # If user wants to see all the months in the db
             if month == 'All':
                 # If there are both a project type and assay type entered
@@ -110,7 +111,7 @@ def storage_chart(request):
                         year,
                         form
                     )
-                
+
                 else:
                     # If 'All' months selected and
                     # There are only projects searched for
@@ -121,7 +122,7 @@ def storage_chart(request):
                         proj_types = proj_string.strip(",").replace(
                             " ", ""
                             ).split(",")
-                        
+
                         context = sp.StoragePlotFunctions(
                         ).all_months_only_project_types(
                             proj_types,
@@ -144,7 +145,7 @@ def storage_chart(request):
                             year,
                             form
                         )
-                    
+
                     else:
                         # If form is submitted
                         # But no assay type or project type is searched for
@@ -186,7 +187,7 @@ def storage_chart(request):
                     proj_types = proj_string.strip(",").replace(
                         " ", ""
                         ).split(",")
-                    
+
                     context = sp.StoragePlotFunctions(
                     ).specific_month_only_proj_types(
                         proj_types,
@@ -211,7 +212,7 @@ def storage_chart(request):
                         converted_month,
                         form
                     )
-                
+
                 else:
                     # If form submitted
                     # But no proj or assay type but specific year/month selected
@@ -231,7 +232,7 @@ def storage_chart(request):
             context = sp.StoragePlotFunctions().form_is_not_valid(
                 form
             )
-    
+
     else:
         # If nothing is submitted on the form (normal landing page)
         # Display the all projects graph grouped by available months

@@ -25,7 +25,8 @@ def populate_projects(all_projects):
     """
     # In case project names have been changed in DX
     # Get all project objects in db to filter on later
-    # projects_data = Projects.objects.all()
+    # Update_or_create wasn't working so this does for now
+    projects_data = Projects.objects.all()
 
     # Iterate over list of project dicts
     for entry in all_projects:
@@ -34,10 +35,30 @@ def populate_projects(all_projects):
             user_name=entry['created_by'],
         )
 
-        # Add project created dates to Dates table to create IDs
+        # Add project created dates to Dates table to create or get IDs
         new_date, created = Dates.objects.get_or_create(
             date=entry['created'],
         )
+
+        # Get names of projects from our dict
+        new_name = entry['name']
+
+        # Dict to filter on dx_id
+        filter_dict = {
+            "dx_id": entry['dx_id'],
+        }
+
+        # Filter the projects to see if dx_id already exists
+        found_entry = projects_data.filter(**filter_dict)
+
+        # If already in db, get the name
+        if found_entry:
+            existing_project = found_entry.values_list(
+                "name", flat=True
+            ).get()
+        
+            if existing_project != new_name:
+                found_entry.update(name=new_name)
 
         # Get or create objs in Projects with attributes from other tables
         project, created = Projects.objects.update_or_create(
