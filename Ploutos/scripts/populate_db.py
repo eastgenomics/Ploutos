@@ -82,16 +82,16 @@ def populate_running_totals():
 
     # Make date entry
     new_date, created = Dates.objects.get_or_create(
-        date = today_date,
+        date=today_date,
     )
 
     # Add running totals to totals table with date foreign key
     total, created = DailyOrgRunningTotal.objects.get_or_create(
-        date= new_date,
-        storage_charges = org_totals['storageCharges'],
-        compute_charges = org_totals['computeCharges'],
-        egress_charges = org_totals['dataEgressCharges'],
-        estimated_balance = org_totals['estSpendingLimitLeft'],
+        date=new_date,
+        storage_charges=org_totals['storageCharges'],
+        compute_charges=org_totals['computeCharges'],
+        egress_charges=org_totals['dataEgressCharges'],
+        estimated_balance=org_totals['estSpendingLimitLeft'],
     )
 
 
@@ -112,16 +112,16 @@ def populate_database_files(all_projects_dict):
     for key, value in all_projects_dict.items():
         new_storage, created = StorageCosts.objects.get_or_create(
             # Get project ID from the projects table by project dx_id
-            project = Projects.objects.get(dx_id=key),
-            unique_size_live = value['unique_live']['size'],
-            unique_cost_live = value['unique_live']['cost'],
-            unique_size_archived = value['unique_archived']['size'],
-            unique_cost_archived = value['unique_archived']['cost'],
+            project=Projects.objects.get(dx_id=key),
+            unique_size_live=value['unique_live']['size'],
+            unique_cost_live=value['unique_live']['cost'],
+            unique_size_archived=value['unique_archived']['size'],
+            unique_cost_archived=value['unique_archived']['cost'],
 
-            total_size_live= value['total_live']['size'],
-            total_cost_live= value['total_live']['cost'],
-            total_size_archived= value['total_archived']['size'],
-            total_cost_archived= value['total_archived']['cost'],
+            total_size_live=value['total_live']['size'],
+            total_cost_live=value['total_live']['cost'],
+            total_size_archived=value['total_archived']['size'],
+            total_cost_archived=value['total_archived']['cost'],
             # Get date object from the dates table
             date= Dates.objects.get(date=today_date),
         )
