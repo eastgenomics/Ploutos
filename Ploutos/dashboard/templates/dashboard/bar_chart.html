@@ -1,6 +1,18 @@
 {% extends 'dashboard/base.html' %}
 
 {% block content %}
+<style>
+    form {
+        padding-top: 30px;
+        padding-bottom: 30px;
+    }
+</style>
+<style>
+    .col-sm-6 {
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+</style>
 
 <form method="GET" action="{% url 'storage' %}">
    
@@ -15,7 +27,7 @@
         <!-- Display each field's label and the field itself -->
         {% for field in form  %}
           <div class="col-sm-6">
-            <b >{{ field.label_tag }}</b> {{ field }} 
+            <b>{{ field.label_tag }}</b> {{ field }} 
           </div>
         {% endfor %}
         </div>
@@ -25,13 +37,6 @@
 &nbsp; 
 </form>
 
-<!-- Remove active class from the previous page, add to current page -->
-<script>
-    $(document).ready(function(){
-    $(".active").removeClass("active");
-    $("#link-storage").addClass("active");
-    });
-</script>
 <div id="container_data" align="center"></div>
 <script>
        Highcharts.chart('container_data', {{ storage_data|safe }});

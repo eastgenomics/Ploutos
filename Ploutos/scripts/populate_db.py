@@ -56,7 +56,7 @@ def populate_projects(all_projects):
             existing_project = found_entry.values_list(
                 "name", flat=True
             ).get()
-        
+
             if existing_project != new_name:
                 found_entry.update(name=new_name)
 
@@ -123,7 +123,7 @@ def populate_database_files(all_projects_dict):
             total_size_archived=value['total_archived']['size'],
             total_cost_archived=value['total_archived']['cost'],
             # Get date object from the dates table
-            date= Dates.objects.get(date=today_date),
+            date=Dates.objects.get(date=today_date),
         )
 
 

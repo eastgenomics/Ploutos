@@ -1,11 +1,31 @@
-import datetime
+import datetime as dt
 
 from django import forms
 from django.core.exceptions import ValidationError
-from dashboard.models import StorageCosts
+from dashboard.models import DailyOrgRunningTotal, StorageCosts
 
 class DateForm(forms.Form):
     """Date and charge type picker for the running totals"""
+
+    # Find earliest object in runningtotals by date + get date
+    # This is to set initial date for datepicker + validate
+    first_date = str(
+        DailyOrgRunningTotal.objects.order_by(
+        'date__date'
+        ).first().date
+    )
+
+    # Get this as date object so datepicker can use as initial
+    dateified_earliest_date = dt.datetime.strptime(
+        first_date, '%Y-%m-%d'
+    ).date()
+
+    # Convert YYY-MM-DD to DD-MM-YYYY for validation message
+    # So this fits with what is displayed by the datepicker
+    earliest_date = dt.datetime.strptime(
+        first_date, "%Y-%m-%d"
+    ).strftime("%d/%m/%Y")
+
     CHARGE_CHOICES = (
         ('All', 'All'),
         ('Storage', 'Storage'),
@@ -14,6 +34,7 @@ class DateForm(forms.Form):
     )
 
     start = forms.DateField(
+        initial=dateified_earliest_date,
         widget=forms.DateInput(
             attrs={
                 'class': 'datepicker',
@@ -23,6 +44,7 @@ class DateForm(forms.Form):
     )
 
     end = forms.DateField(
+        initial=dt.date.today(),
         widget=forms.DateInput(
             attrs={
                 'class': 'datepicker',
@@ -43,39 +65,49 @@ class DateForm(forms.Form):
 
         # Check start date isn't before earliest db entry
         # Assign error to the specific field
-        if str(start) < "2022-05-06":
-            self.add_error("start", "Start date is earlier than the earliest entry in the database."
-            " Current earliest date is May 6th")
+        if str(start) < self.first_date:
+            self.add_error("start",
+            "Start date is earlier than the earliest entry in the database."
+                f" Current earliest date is {self.earliest_date}"
+        )
 
         # Check end date isn't after today
         # Assign error to the specific field
-        if str(end) > str(datetime.date.today()):
-            self.add_error("end", "End date is in the future")
+        if str(end) > str(dt.date.today()):
+            self.add_error("end", "The end date is in the future")
 
         return self.cleaned_data
+
 
 class StorageForm(forms.Form):
     """Project type, assay type and monthyear picker for the storage costs"""
 
-    TYPE_CHOICES= (
-        ('001','001'),
-        ('002','002'),
-        ('003','003'),
-        ('004','004'),
+    TYPE_CHOICES = (
+        ('001', '001'),
+        ('002', '002'),
+        ('003', '003'),
+        ('004', '004'),
         )
-    ASSAY_CHOICES= (
-        ('CEN','CEN'),
-        ('MYE','MYE'),
-        ('TWE','TWE'),
-        ('TSO500','TSO500'),
-        ('SNP','SNP'),
-        ('CP','CP'),
-        ('WES','WES'),
-        ('FH','FH'),
+
+    ASSAY_CHOICES = (
+        ('CEN', 'CEN'),
+        ('MYE', 'MYE'),
+        ('TWE', 'TWE'),
+        ('TSO500', 'TSO500'),
+        ('SNP', 'SNP'),
+        ('CP', 'CP'),
+        ('WES', 'WES'),
+        ('FH', 'FH'),
         )
-    
+
+    # Find years from db
     years = list(StorageCosts.objects.order_by().values_list(
         'date__date__year', flat=True
+        ).distinct())
+
+    # Find months from db
+    months = list(StorageCosts.objects.order_by().values_list(
+        'date__date__month', flat=True
         ).distinct())
 
     YEAR_CHOICES = ((year, year) for year in years)
@@ -101,7 +133,8 @@ class StorageForm(forms.Form):
         label='Project type',
         widget=forms.TextInput(
             attrs={
-                'placeholder': 'Enter project types, separated by commas', 'style': 'width:300px'
+                'placeholder': 'Enter project types, separated by commas',
+                'style': 'width:320px'
             }
         )
     )
@@ -111,7 +144,8 @@ class StorageForm(forms.Form):
         label='Assay type',
         widget=forms.TextInput(
             attrs={
-                'placeholder': 'Enter assay types, separated by commas', 'style': 'width:300px'
+                'placeholder': 'Enter assay types, separated by commas',
+                'style': 'width:320px'
             }
         )
     )
@@ -124,7 +158,7 @@ class StorageForm(forms.Form):
         choices=MONTH_CHOICES,
         required=True
     )
-    
+
     def clean(self):
         project_type = self.cleaned_data["project_type"]
         assay_type = self.cleaned_data["assay_type"]
@@ -132,11 +166,11 @@ class StorageForm(forms.Form):
         month = self.cleaned_data["month"]
 
         # Only May and June are in the db currently
-        acceptable_months = [
-            'All',
-            '5',
-            '6'
+        stringified_months = [
+            str(x) for x in self.months
         ]
+
+        acceptable_months = stringified_months + ['All']
 
         # Check whether >1 entries are in both proj and assay type by comma
         if project_type and assay_type:
@@ -144,7 +178,7 @@ class StorageForm(forms.Form):
             (assay_type.find(",") != -1)):
                 raise ValidationError(
                     "If using both project type and assay type filters, "
-                    "please only enter one of each"
+                        "please only enter one of each"
                 )
 
         # Check whether user is choosing months with no data currently
@@ -152,5 +186,5 @@ class StorageForm(forms.Form):
             raise ValidationError(
                 "There are no database entries for the specified month"
             )
-        
+
         return self.cleaned_data

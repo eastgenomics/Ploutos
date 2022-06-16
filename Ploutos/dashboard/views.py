@@ -9,6 +9,7 @@ from django.shortcuts import render
 from scripts import storage_plots as sp
 from scripts import date_conversion as dc
 
+
 def index(request):
     """View to display running total charges via Plotly"""
     # Get all running total objects from db
@@ -52,7 +53,8 @@ def index(request):
                     'font_size': 24,
                     'xanchor': 'center',
                     'x': 0.5
-            })
+                }
+            )
 
             # Send to context
             chart = fig.to_html()
@@ -100,7 +102,7 @@ def storage_chart(request):
                 # If there are both a project type and assay type entered
                 # Get the single string from each
                 if (form.cleaned_data.get('project_type') and
-                    form.cleaned_data.get('assay_type')):
+                form.cleaned_data.get('assay_type')):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 
@@ -119,9 +121,8 @@ def storage_chart(request):
                         # Remove all whitespace + start + end commas
                         # Split by commas and add each to new list
                         proj_string = form.cleaned_data.get('project_type')
-                        proj_types = proj_string.strip(",").replace(
-                            " ", ""
-                            ).split(",")
+                        proj_types = sp.StoragePlotFunctions(
+                        ).str_to_list(proj_string)
 
                         context = sp.StoragePlotFunctions(
                         ).all_months_only_project_types(
@@ -135,9 +136,8 @@ def storage_chart(request):
                     # Split on commas and add to list
                     elif form.cleaned_data.get('assay_type'):
                         assay_string = form.cleaned_data.get('assay_type')
-                        assay_types = assay_string.strip(",").replace(
-                            " ", ""
-                            ).split(",")
+                        assay_types = sp.StoragePlotFunctions(
+                        ).str_to_list(assay_string)
 
                         context = sp.StoragePlotFunctions(
                         ).all_months_only_assay_types(
@@ -184,9 +184,8 @@ def storage_chart(request):
                     proj_string = form.cleaned_data.get('project_type')
                     # Strip commas from start and end
                     # Remove whitespace, split into list on commas
-                    proj_types = proj_string.strip(",").replace(
-                        " ", ""
-                        ).split(",")
+                    proj_types = sp.StoragePlotFunctions(
+                        ).str_to_list(proj_string)
 
                     context = sp.StoragePlotFunctions(
                     ).specific_month_only_proj_types(
@@ -200,9 +199,8 @@ def storage_chart(request):
                 # A specific month with assay type(s)
                 elif form.cleaned_data.get('assay_type'):
                     assay_string = form.cleaned_data.get('assay_type')
-                    assay_types = assay_string.strip(",").replace(
-                        " ", ""
-                        ).split(",")
+                    assay_types = sp.StoragePlotFunctions(
+                        ).str_to_list(assay_string)
 
                     context = sp.StoragePlotFunctions(
                     ).specific_month_only_assay_types(
@@ -214,9 +212,8 @@ def storage_chart(request):
                     )
 
                 else:
-                    # If form submitted
-                    # But no proj or assay type but specific year/month selected
-                    # Because those fields are required
+                    # If form submitted + no proj or assay type
+                    # But specific year/month selected (required fields)
                     context = sp.StoragePlotFunctions(
                     ).specific_month_no_proj_or_assay(
                         year,
@@ -242,6 +239,7 @@ def storage_chart(request):
         )
 
     return render(request, 'bar_chart.html', context)
+
 
 def jobs(request):
     """View to display the jobs data"""

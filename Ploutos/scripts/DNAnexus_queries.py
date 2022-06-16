@@ -502,7 +502,6 @@ def merge_together_add_empty_rows(df1, df2):
         merged dataframe with project, all file states (total_live, total_archived, unique_live, unique_archived),
         cost and size with zeros if did not exist
     e.g.
-    
     +-----------+-----------------+---------------+----------+
     |  project  |      state      |     size      |   cost   |
     +-----------+-----------------+---------------+----------+
