@@ -341,8 +341,9 @@ class StoragePlotFunctions():
         """
         return string.strip(',').replace(' ', '').split(',')
 
-    def all_months_assay_type_and_proj_type(self, project_type, assay_type,
-            year, form):
+    def all_months_assay_type_and_proj_type(
+        self, project_type, assay_type, year, form
+    ):
         """
         Sets context when 'All' months are selected, with one project type
         And one assay type
@@ -645,8 +646,10 @@ class StoragePlotFunctions():
 
         return context
 
-    def specific_month_proj_and_assay(self, project_type, assay_type, year,
-            month, converted_month, form):
+    def specific_month_proj_and_assay(
+            self, project_type, assay_type, year,
+            month, converted_month, form
+    ):
         """
         Sets context when specific month is selected
         With one project type and one assay type
@@ -740,8 +743,9 @@ class StoragePlotFunctions():
 
         return context
 
-    def specific_month_only_proj_types(self, proj_types, year, month,
-            converted_month, form):
+    def specific_month_only_proj_types(
+        self, proj_types, year, month, converted_month, form
+    ):
         """
         Sets context when specific month is selected
         With only project type(s) entered
@@ -827,8 +831,9 @@ class StoragePlotFunctions():
 
         return context
 
-    def specific_month_only_assay_types(self, assay_types, year, month,
-            converted_month, form):
+    def specific_month_only_assay_types(
+        self, assay_types, year, month, converted_month, form
+    ):
         """
         Sets context when specific month is selected
         With only assay type(s) entered
@@ -911,8 +916,9 @@ class StoragePlotFunctions():
 
         return context
 
-    def specific_month_no_proj_or_assay(self, year, month,
-            converted_month, form):
+    def specific_month_no_proj_or_assay(
+        self, year, month, converted_month, form
+    ):
         """
         Sets context when specific month is selected
         With no project or assay types entered

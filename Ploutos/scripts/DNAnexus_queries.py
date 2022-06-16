@@ -540,7 +540,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
     Returns
     -------
     final_all_projs_df : pd.DataFrame
-        final dataframe with project, file state, total size and cost for all projects
+        final df with proj, file state, total size+cost for all projects
     """
     # For the projects that were removed at the beginning because they are empty
     # Create a list of dictionaries with all the fields as zero

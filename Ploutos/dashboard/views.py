@@ -102,7 +102,7 @@ def storage_chart(request):
                 # If there are both a project type and assay type entered
                 # Get the single string from each
                 if (form.cleaned_data.get('project_type') and
-                form.cleaned_data.get('assay_type')):
+                    form.cleaned_data.get('assay_type')):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 
@@ -165,7 +165,7 @@ def storage_chart(request):
 
                 # If a project type and an assay type entered
                 if (form.cleaned_data.get('project_type') and
-                form.cleaned_data.get('assay_type')):
+                    form.cleaned_data.get('assay_type')):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 

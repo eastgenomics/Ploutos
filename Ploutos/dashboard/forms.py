@@ -11,7 +11,7 @@ class DateForm(forms.Form):
     # This is to set initial date for datepicker + validate
     first_date = str(
         DailyOrgRunningTotal.objects.order_by(
-        'date__date'
+            'date__date'
         ).first().date
     )
 
@@ -67,9 +67,9 @@ class DateForm(forms.Form):
         # Assign error to the specific field
         if str(start) < self.first_date:
             self.add_error("start",
-            "Start date is earlier than the earliest entry in the database."
-                f" Current earliest date is {self.earliest_date}"
-        )
+                "Start date earlier than the earliest entry in the database."
+                    f" Current earliest date is {self.earliest_date}"
+            )
 
         # Check end date isn't after today
         # Assign error to the specific field
@@ -174,8 +174,7 @@ class StorageForm(forms.Form):
 
         # Check whether >1 entries are in both proj and assay type by comma
         if project_type and assay_type:
-            if ((project_type.find(",") !=-1) or
-            (assay_type.find(",") != -1)):
+            if (project_type.find(",") != -1) or (assay_type.find(",") != -1):
                 raise ValidationError(
                     "If using both project type and assay type filters, "
                         "please only enter one of each"
