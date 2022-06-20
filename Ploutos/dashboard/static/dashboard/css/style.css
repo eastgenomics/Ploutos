@@ -1,0 +1,22 @@
+* {
+  font-family: "Roboto", sans-serif !important;
+}
+
+form {
+    padding-top: 20px;
+    padding-bottom: 30px;
+}
+
+.row {
+    padding-bottom: 10px;
+}
+  
+.col-sm-6 {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.alert {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}

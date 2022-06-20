@@ -263,9 +263,7 @@ class RunningTotPlotFunctions():
                 'x': 0.5
             },
             font_family="Helvetica",
-            yaxis=dict(
-                tickformat=",.2f"
-            )
+            yaxis=dict(tickformat=",.2f")
         )
 
         chart = fig.to_html()
@@ -424,6 +422,9 @@ class StoragePlotFunctions():
                         'fontSize': '15px'
                     }
                 },
+                'labels': {
+                    'format': '{value:.2f}'
+                },
                 'stackLabels': {
                     'enabled': 'true',
                     'allowOverlap': 'true',
@@ -445,7 +446,11 @@ class StoragePlotFunctions():
                     'stacking': 'normal'
                     }
             },
-            'series': ""
+            'series': "",
+            "tooltip":{
+                "pointFormat": "{series.name}: <b>${point.y:.2f}"
+                "</b><br>{series.options.stack}<br>"
+            }
         }
 
     def str_to_list(self, string):
@@ -600,7 +605,8 @@ class StoragePlotFunctions():
                 'name': proj_type,
                 'data': list(
                     cost_list.values_list(
-                        'Live', flat=True)
+                        'Live', flat=True
+                    )
                 ),
                 'stack': 'Live',
                 'color': self.proj_colour_dict.get(
@@ -612,7 +618,8 @@ class StoragePlotFunctions():
                 'name': proj_type,
                 'data': list(
                     cost_list.values_list(
-                        'Archived', flat=True)
+                        'Archived', flat=True
+                    )
                 ),
                 'stack': 'Archived',
                 'linkedTo': ':previous',
