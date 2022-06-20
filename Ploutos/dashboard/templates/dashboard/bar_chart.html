@@ -1,18 +1,16 @@
 {% extends 'dashboard/base.html' %}
 
 {% block content %}
-<style>
-    form {
-        padding-top: 30px;
-        padding-bottom: 30px;
-    }
-</style>
-<style>
-    .col-sm-6 {
-        padding-top: 5px;
-        padding-bottom: 5px;
-    }
-</style>
+
+<script>
+    var storage = document.getElementById("storage");
+    storage.classList.add('active');                  
+    storage.setAttribute("aria-current", "page");
+    
+    var home = document.getElementById("home");
+    home.classList.remove('active');
+    home.setAttribute("aria-current","none");
+</script>
 
 <form method="GET" action="{% url 'storage' %}">
    
@@ -34,11 +32,11 @@
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Submit"/>
     </div>
-&nbsp; 
 </form>
 
 <div id="container_data" align="center"></div>
 <script>
        Highcharts.chart('container_data', {{ storage_data|safe }});
 </script>
+
 {% endblock content %}

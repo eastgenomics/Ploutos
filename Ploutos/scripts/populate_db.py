@@ -11,7 +11,7 @@ from time import time, localtime, strftime
 
 from django.apps import apps
 from django.conf import settings
-from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Users, Dates, Projects, Executables, StorageCosts
+from dashboard.models import DailyOrgRunningTotal, Users, Dates, Projects, StorageCosts
 from scripts import DNAnexus_queries as q
 
 
@@ -127,64 +127,64 @@ def populate_database_files(all_projects_dict):
         )
 
 
-def populate_analyses(all_projects):
-    """
-    Populate database with data from API query.
-    This function iterates over all projects and returns all parent executions
-    that have finished in the last 24 hrs.
-    It then populates the database with this data.
+# def populate_analyses(all_projects):
+#     """
+#     Populate database with data from API query.
+#     This function iterates over all projects and returns all parent executions
+#     that have finished in the last 24 hrs.
+#     It then populates the database with this data.
 
-    --- This is still in development with the models.py ---
+#     --- This is still in development with the models.py ---
 
-    Parameters
-    ----------
-    all_projects: list of all projects in the DNAnexus ORG.
+#     Parameters
+#     ----------
+#     all_projects: list of all projects in the DNAnexus ORG.
 
-    Returns
-    -------
-    None
-    """
-    all_analyses = []
-    for proj in all_projects:
-        #print(proj)
-        analyses = q.get_analyses(proj['dx_id'])
-        all_analyses.append(analyses)
-    all_analyses_df = q.make_analyses_df(all_analyses)
+#     Returns
+#     -------
+#     None
+#     """
+#     all_analyses = []
+#     for proj in all_projects:
+#         #print(proj)
+#         analyses = q.get_analyses(proj['dx_id'])
+#         all_analyses.append(analyses)
+#     all_analyses_df = q.make_analyses_df(all_analyses)
 
-    for index, row in all_analyses_df.iterrows():
-        print(row)
-        print("---\n")
+#     for index, row in all_analyses_df.iterrows():
+#         print(row)
+#         print("---\n")
 
-        #Add date for analysis started.
-        a_new_date, created = Dates.objects.get_or_create(
-            date=dt.datetime.fromtimestamp(
-                (int(row['created'])) / 1000).strftime('%Y-%m-%d')
-        )
+#         #Add date for analysis started.
+#         a_new_date, created = Dates.objects.get_or_create(
+#             date=dt.datetime.fromtimestamp(
+#                 (int(row['created'])) / 1000).strftime('%Y-%m-%d')
+#         )
 
-        # Add data to DB - Executables Table
-        project_row_id = Projects.objects.get(dx_id=row['project'])
-        project_row_id = project_row_id.values()
-        new_analysis, created = Executables.objects.get_or_create(
-            dx_id=row['executable'],
-            excutable_name=row['name'],
-            project_id=project_row_id['project']
-        )
-        #Add date for analysis started.
-        user, created = Users.objects.get_or_create(
-            user_name=row['launchedBy'],)
-        print(user)
-        # Add data to DB - ComputeCosts Table
-        new_analysis_costs, created = ComputeCosts.objects.get_or_create(
-            # Get the project ID from the projects table by project dx id
-            # project=Projects.objects.get(dx_id=key),
-            executable_id=new_analysis,
-            # instance_id = row['']
-            # runtime = row['']
-            total_cost = row['cost'],
-            launched_by=user,
-            date_id=a_new_date
-        )
-        print("done")
+#         # Add data to DB - Executables Table
+#         project_row_id = Projects.objects.get(dx_id=row['project'])
+#         project_row_id = project_row_id.values()
+#         new_analysis, created = Executables.objects.get_or_create(
+#             dx_id=row['executable'],
+#             excutable_name=row['name'],
+#             project_id=project_row_id['project']
+#         )
+#         #Add date for analysis started.
+#         user, created = Users.objects.get_or_create(
+#             user_name=row['launchedBy'],)
+#         print(user)
+#         # Add data to DB - ComputeCosts Table
+#         new_analysis_costs, created = ComputeCosts.objects.get_or_create(
+#             # Get the project ID from the projects table by project dx id
+#             # project=Projects.objects.get(dx_id=key),
+#             executable_id=new_analysis,
+#             # instance_id = row['']
+#             # runtime = row['']
+#             total_cost = row['cost'],
+#             launched_by=user,
+#             date_id=a_new_date
+#         )
+#         print("done")
 
 
 def run():

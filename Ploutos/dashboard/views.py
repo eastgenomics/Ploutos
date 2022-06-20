@@ -26,14 +26,8 @@ def index(request):
             charge_type = form.cleaned_data.get("charge_type")
 
             # Filter totals to get desired date range
-            totals = totals.filter(
-                date__id__in=(
-                    Dates.objects.filter(
-                        date__range=[start, end]
-                    ).values_list(
-                        'id', flat=True
-                    )
-                )
+            totals = DailyOrgRunningTotal.objects.filter(
+                date__date__range=[start, end]
             )
 
             # If user wants to see all charge types, render whole graph
@@ -64,7 +58,6 @@ def index(request):
             # If form not valid
             # Display unfiltered graph for all dates and show errors
             context = sp.RunningTotPlotFunctions().totals_form_not_valid(
-                totals,
                 form
             )
 
@@ -73,7 +66,6 @@ def index(request):
         form = DateForm()
 
         context = sp.RunningTotPlotFunctions().form_not_submitted(
-            totals,
             form
         )
 

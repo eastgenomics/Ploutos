@@ -2,28 +2,25 @@
 
 {% block content %}
 
-<style>
-    form {
-        padding-top: 30px;
-        padding-bottom: 30px;
-    }
-</style>
-
-<style>
-    .col-sm-6 {
-        padding-top: 5px;
-        padding-bottom: 5px;
-    }
-</style>
-
 <form method="GET" action="{% url 'index' %}">
     <div class="container">
         <div class="row">
         <!-- If form errors, display each field's error with red banner -->
         {% if form.errors %}
-            <div class="alert alert-danger">
-                {{ form.errors }}
-            </div>
+        <ul class="user-msg error">
+            {% for field in form %}
+                {% for error in field.errors %}
+                <div class="alert alert-danger">
+                    <li>
+                      {% if field != '__all__' %}
+                        <strong>{{ field.label }}:</strong>
+                      {% endif %}
+                      {{ error }}
+                    </li>
+                </div>
+                {% endfor %}
+            {% endfor %}
+            </ul>
         {% endif %}
         <!-- Display each field's label and the field itself -->
         {% for field in form  %}
@@ -31,7 +28,7 @@
             <b>{{ field.label_tag }}</b> {{ field }} 
           </div>
         {% endfor %}
-        </div>  
+        </div>
 
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Submit"/>

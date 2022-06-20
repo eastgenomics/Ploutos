@@ -14,6 +14,27 @@ from scripts import date_conversion as dc
 class RunningTotPlotFunctions():
     """Class for plotting functions for the running total graph"""
 
+    def calculate_diffs(self, list_of_charges):
+        """
+        Creates list of charge differences
+        Where one charge is subtracted from the previous date
+        Parameters
+        ----------
+        list_of_charges :  list
+            date-sorted list of charges for a specific charge type
+
+        Returns
+        -------
+        charge_diff : list
+            list with charge differences from the previous day
+        """
+        charge_diff = [
+            y - x for x, y in zip(list_of_charges, list_of_charges[1:])
+        ]
+
+        return charge_diff
+
+
     def all_charge_types(self, totals):
         """
         Set context when all charge types are searched for
@@ -27,16 +48,38 @@ class RunningTotPlotFunctions():
         fig : Plotly figure object
         """
 
-        compute = [c.compute_charges for c in totals]
-        storage = [c.storage_charges for c in totals]
-        egress = [c.egress_charges for c in totals]
+        # Plot the date and storage charges as line graph
+        charges = totals.order_by(
+            'date__date'
+        ).values_list(
+            'storage_charges', 'compute_charges', 'egress_charges'
+        )
+
+        # Get dates in order from db
+        dates = totals.order_by('date__date').values_list(
+            'date__date', flat=True
+        )
+
+        # Turn date objects into strings
+        stringified_dates = [str(date) for date in dates][:-1]
+
+        # Get the relevant info as a list
+        storage_charges = [i[0] for i in charges]
+        compute_charges = [i[1] for i in charges]
+        egress_charges = [i[2] for i in charges]
+
+        # Calculate one date charges minus previous date
+        storage_charge_diff = self.calculate_diffs(storage_charges)
+        compute_charge_diff = self.calculate_diffs(compute_charges)
+        egress_charge_diff = self.calculate_diffs(egress_charges)
+
         fig = px.line(
-            x=[x.date.date for x in totals],
-            y=compute,
-            title="Running charges",
+            x=stringified_dates,
+            y=compute_charge_diff,
+            title="Daily Running Charges",
             labels={
                 'x': 'Date',
-                'y': 'Charges ($)'
+                'y': 'Daily estimated charge ($)'
             },
             width=1200,
             height=600
@@ -45,19 +88,22 @@ class RunningTotPlotFunctions():
         fig.data[0].name = "Compute"
         fig.update_traces(showlegend=True)
         fig.add_scatter(
-            x=[x.date.date for x in totals],
-            y=storage,
+            x=stringified_dates,
+            y=storage_charge_diff,
             mode='lines',
             name="Storage"
         )
         fig.add_scatter(
-            x=[x.date.date for x in totals],
-            y=egress,
+            x=stringified_dates,
+            y=egress_charge_diff,
             mode='lines',
             name="Egress"
         )
 
-        fig.update_layout(yaxis=dict(tickformat=",.2f"))
+        fig.update_layout(
+            yaxis=dict(tickformat=",.2f"),
+            font_family="Helvetica",
+        )
 
         return fig
 
@@ -75,31 +121,56 @@ class RunningTotPlotFunctions():
         -------
         fig : Plotly figure object
         """
+        # Plot the date and storage charges as line graph
+        charges = totals.order_by(
+            'date__date'
+        ).values_list(
+            'storage_charges', 'compute_charges', 'egress_charges'
+        )
+
+        # Get dates in order from db
+        dates = totals.order_by('date__date').values_list(
+            'date__date', flat=True
+        )
+
+        # Turn date objects into strings
+        stringified_dates = [str(date) for date in dates][:-1]
+
+        # Get relevant charge from tuples
+        storage_charges = [i[0] for i in charges]
+        compute_charges = [i[1] for i in charges]
+        egress_charges = [i[2] for i in charges]
+
+        # Calculate charge relative to previous day
+        storage_charge_diff = self.calculate_diffs(storage_charges)
+        compute_charge_diff = self.calculate_diffs(compute_charges)
+        egress_charge_diff = self.calculate_diffs(egress_charges)
+
         charge_dict = {
             "Egress": {
                 "colour": "#00CC96",
-                "data": [c.egress_charges for c in totals],
-                "title": "Egress running total charges"
+                "data": egress_charge_diff,
+                "title": "Egress daily running charges"
             },
             "Compute": {
-                "colour": '#EF553B',
-                "data": [c.compute_charges for c in totals],
-                "title": "Compute running total charges"
+                "colour": '#636EFA',
+                "data": compute_charge_diff,
+                "title": "Compute daily running charges"
             },
             "Storage": {
-                "colour": '#636EFA',
-                "data": [c.storage_charges for c in totals],
-                "title": "Storage running total charges"
+                "colour": '#EF553B',
+                "data": storage_charge_diff,
+                "title": "Storage daily running charges"
             }
         }
 
         fig = px.line(
-            x=[x.date.date for x in totals],
+            x=stringified_dates,
             y=charge_dict[charge_type]["data"],
             title=charge_dict[charge_type]["title"],
             labels={
                 'x': 'Date',
-                'y': 'Charges ($)'
+                'y': 'Daily estimated charge ($)'
             },
             width=1200,
             height=600
@@ -107,12 +178,17 @@ class RunningTotPlotFunctions():
 
         # Set the colour so it's the same as on the all charges plot
         fig['data'][0]['line']['color'] = charge_dict[charge_type]["colour"]
+        fig.data[0].name = f"{charge_type}"
+        fig.update_traces(showlegend=True)
 
-        fig.update_layout(yaxis=dict(tickformat=",.2f"))
+        fig.update_layout(
+            yaxis=dict(tickformat=",.2f"),
+            font_family="Helvetica",
+        )
 
         return fig
 
-    def totals_form_not_valid(self, totals, form):
+    def totals_form_not_valid(self, form):
         """
         Set context when the form is not valid (wrong dates)
         Parameters
@@ -127,17 +203,36 @@ class RunningTotPlotFunctions():
             context to pass to HTML
 
         """
-        totals = DailyOrgRunningTotal.objects.all()
-        compute = [c.compute_charges for c in totals]
-        storage = [c.storage_charges for c in totals]
-        egress = [c.egress_charges for c in totals]
+        # Plot the date and storage charges as line graph
+        charges = DailyOrgRunningTotal.objects.order_by(
+            'date__date'
+        ).values_list(
+            'storage_charges', 'compute_charges', 'egress_charges'
+        )
+
+        dates = DailyOrgRunningTotal.objects.order_by(
+            'date__date'
+        ).values_list(
+            'date__date', flat=True
+        )
+
+        stringified_dates = [str(date) for date in dates][:-1]
+
+        storage_charges = [i[0] for i in charges]
+        compute_charges = [i[1] for i in charges]
+        egress_charges = [i[2] for i in charges]
+
+        storage_charge_diff = self.calculate_diffs(storage_charges)
+        compute_charge_diff = self.calculate_diffs(compute_charges)
+        egress_charge_diff = self.calculate_diffs(egress_charges)
+
         fig = px.line(
-            x=[x.date.date for x in totals],
-            y=compute,
-            title="Running total charges",
+            x=stringified_dates,
+            y=compute_charge_diff,
+            title="Daily Running Charges",
             labels={
                 'x': 'Date',
-                'y': 'Charges ($)'
+                'y': 'Daily estimated charge ($)'
             },
             width=1200,
             height=600
@@ -147,15 +242,15 @@ class RunningTotPlotFunctions():
         fig.data[0].name = "Compute"
         fig.update_traces(showlegend=True)
         fig.add_scatter(
-            x=[x.date.date for x in totals],
-            y=storage,
+            x=stringified_dates,
+            y=storage_charge_diff,
             mode='lines',
             name='Storage'
         )
 
         fig.add_scatter(
-            x=[x.date.date for x in totals],
-            y=egress,
+            x=stringified_dates,
+            y=egress_charge_diff,
             mode='lines',
             name='Egress'
         )
@@ -167,6 +262,7 @@ class RunningTotPlotFunctions():
                 'xanchor': 'center',
                 'x': 0.5
             },
+            font_family="Helvetica",
             yaxis=dict(
                 tickformat=",.2f"
             )
@@ -180,7 +276,7 @@ class RunningTotPlotFunctions():
 
         return context
 
-    def form_not_submitted(self, totals, form):
+    def form_not_submitted(self, form):
         """
         Set context when the form is not submitted
         Includes all dates present in db and all charge types
@@ -197,17 +293,39 @@ class RunningTotPlotFunctions():
 
         """
         # Plot the date and storage charges as line graph
-        totals = DailyOrgRunningTotal.objects.all()
-        compute = [c.compute_charges for c in totals]
-        storage = [c.storage_charges for c in totals]
-        egress = [c.egress_charges for c in totals]
+        charges = DailyOrgRunningTotal.objects.order_by(
+            'date__date'
+        ).values_list(
+            'storage_charges', 'compute_charges', 'egress_charges'
+        )
+
+        # Get dates in order from the db
+        dates = DailyOrgRunningTotal.objects.order_by(
+            'date__date'
+        ).values_list(
+            'date__date', flat=True
+        )
+
+        # Convert dates to strs, remove last date
+        stringified_dates = [str(date) for date in dates][:-1]
+
+        # Get relevant charge from tuples
+        storage_charges = [i[0] for i in charges]
+        compute_charges = [i[1] for i in charges]
+        egress_charges = [i[2] for i in charges]
+
+        # Calculate charge for the day relative to previous day
+        storage_charge_diff = self.calculate_diffs(storage_charges)
+        compute_charge_diff = self.calculate_diffs(compute_charges)
+        egress_charge_diff = self.calculate_diffs(egress_charges)
+
         fig = px.line(
-            x=[x.date.date for x in totals],
-            y=compute,
-            title="Running total charges",
+            x=stringified_dates,
+            y=compute_charge_diff,
+            title="Daily Running Charges",
             labels={
                 'x': 'Date',
-                'y': 'Charges ($)'
+                'y': 'Daily estimated charge ($)'
             },
             width=1200,
             height=600
@@ -216,14 +334,14 @@ class RunningTotPlotFunctions():
         fig.data[0].name = "Compute"
         fig.update_traces(showlegend=True)
         fig.add_scatter(
-            x=[x.date.date for x in totals],
-            y=storage,
+            x=stringified_dates,
+            y=storage_charge_diff,
             mode='lines',
             name="Storage"
         )
         fig.add_scatter(
-            x=[x.date.date for x in totals],
-            y=egress,
+            x=stringified_dates,
+            y=egress_charge_diff,
             mode='lines',
             name="Egress"
         )
@@ -235,6 +353,7 @@ class RunningTotPlotFunctions():
                 'xanchor': 'center',
                 'x': 0.5
             },
+            font_family="Helvetica",
             yaxis=dict(
                 tickformat=",.2f"
             )
@@ -286,16 +405,24 @@ class StoragePlotFunctions():
                 }
             },
             'title': {
-                'text': 'Storage Costs'
+                'text': 'Monthly Storage Cost'
             },
             'xAxis': {
-                'categories': ""
+                'categories': "",
+                'labels': {
+                    'style': {
+                        'fontSize': '12px'
+                    }
+                }
             },
             'yAxis': {
                 'allowDecimals': 'false',
                 'min': '0',
                 'title': {
-                    'text': 'Total estimated storage cost ($)'
+                    'text': 'Total estimated storage cost ($)',
+                    'style': {
+                        'fontSize': '15px'
+                    }
                 },
                 'stackLabels': {
                     'enabled': 'true',
@@ -327,7 +454,7 @@ class StoragePlotFunctions():
 
         Parameters
         ----------
-        list_to_strip :  str
+        string :  str
             string of types enterered by user
 
         Returns
@@ -480,6 +607,7 @@ class StoragePlotFunctions():
                     proj_type, self.project_colours[count]
                 )
             }
+
             archived_data = {
                 'name': proj_type,
                 'data': list(

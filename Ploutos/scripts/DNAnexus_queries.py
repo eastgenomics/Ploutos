@@ -19,19 +19,17 @@ from django.apps import apps
 from django.conf import settings
 
 
-def login():
+def login() -> None:
     """
         Logs into DNAnexus
         Parameters
         ----------
         token : str
             authorisation token for DNAnexus, from settings.py
-        
         Raises
         ------
         Error
             Raised when DNAnexus user authentification check fails
-
         Returns
         -------
         None
@@ -144,7 +142,7 @@ def get_files(proj):
         classname='file', project=proj,
         describe={'fields': {
             'archivalState': True,
-            'size': True, 
+            'size': True,
             'name': True
         }}
     ))
@@ -318,7 +316,7 @@ def count_how_many_lost(df_of_files, projs_list):
 
     empty_projs = [i for i in projs_list if i not in how_many_unique]
     how_many_empty = len(empty_projs)
-    print(f"There are {how_many_empty} projects with\n no files so they weren't added to the df")
+    print(f"There are {how_many_empty} projects with no files so they weren't added to the df")
     return unique_after_empty_projs_removed, empty_projs
 
 def merge_files_and_proj_dfs(file_df, proj_df):

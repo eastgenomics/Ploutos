@@ -4,4 +4,15 @@
 
     Jobs will be shown on this page
 
+<script>
+    var jobs = document.getElementById("jobs");
+    jobs.classList.add('active');                  
+    jobs.setAttribute("aria-current", "page");
+    
+    var home = document.getElementById("home");
+    home.classList.remove('active');
+    home.setAttribute("aria-current","none");
+    
+</script>
+
 {% endblock content %}
