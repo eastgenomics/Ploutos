@@ -643,256 +643,6 @@ def put_into_dict_write_to_file(final_all_projs_df):
 
     return all_proj_dict
 
-def threadify_executions(project_list):
-    """
-    Use pool of threads to asynchronously get_files() on multiple projects
-
-    Parameters
-    ----------
-    project_list : list
-        list of all the projects in DNAnexus
-    get_files_function: function
-        the function which gets files per project
-
-    Returns
-    -------
-     list_of_project_file_dicts : list
-        list of dictionaries with all the files per project in each dict
-     e.g.
-    [{
-        'project-X': {'files': [
-            {
-                'file_id': 'file-1',
-                'name': "IamFile1.json",
-                'size': 4803,
-                'archivalState': 'live'
-            }, {
-                'file_id': 'file-2',
-                'name': "IamFile2.json",
-                'size': 702,
-                'archivalState': 'archived'
-            }
-        ]}
-    },
-    {
-        'project-Y': {'files': [
-            {
-                'file_id': 'file-4',
-                'name': "IamFile4.json",
-                'size': 3281,
-                'archivalState': 'live'
-            }
-        ]}
-    }]
-    """
-    list_of_project_file_dicts = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-        futures = []
-        # Submit the get_files function for a project
-        for project in project_list:
-            futures.append(executor.submit(get_executions, proj=project))
-        # Once all project files are retrieved, append the final dict
-        for future in concurrent.futures.as_completed(futures):
-            if future.result() == None:
-                pass
-            else:
-                list_of_project_file_dicts.append(future.result())
-    print(list_of_project_file_dicts)
-    return list_of_project_file_dicts
-
-
-def make_job_executions_df(list_project_executions):
-    """
-    Get all executions for the project in DNAnexus,
-    storing each file and its size, name and archival state.
-    Used with ThreadExecutorPool
-
-    Parameters
-    ----------
-    list_project_executions : list of dictionaries
-        of executions from DNAnexus API call.
-
-    Returns
-    -------
-     project_files_dict : collections.defaultdict
-        dictionary with all the files per project
-
-    """
-
-    # Find executions in each project, only returning specified fields in item
-    project_executions_dict = defaultdict(lambda: {"executions": []})
-
-    for execution in list_project_executions:
-        # Explain the logic here!
-        keys = [key for key in execution.keys()]
-        data = execution[keys[0]]
-        project_id = keys[0]
-        subjobs_list = []
-        for entry in data['executions']:
-            if entry["id"][0] == "a":
-                subjobs_info = dx.bindings.search.find_executions(
-                    parent_analysis=str(entry['id']),
-                    describe=True,
-                    first_page_size=200,
-                    include_subjobs=True)
-                for subjob in subjobs_info:
-                    if subjob['describe']["totalPrice"] == 0:
-                        print("no cost - skipped")
-                    elif 'stoppedRunning' not in subjob['describe']:
-                        print("error job doesn't contain describe")
-                    else:
-                        subjob['describe']["runtime"] = (subjob['describe']['stoppedRunning'] - subjob['describe']['startedRunning'])
-                        subjobs_list.append(subjob)
-
-                project_executions_dict[project_id]["executions"].append({
-                    "id": entry["id"],
-                    "name": entry['name'],
-                    "cost": entry['cost'],
-                    "class": entry['class'],
-                    "executable": entry['executable'],
-                    "state": entry['state'],
-                    "created": entry['created'],
-                    "modified": entry['modified'],
-                    "launchedBy": entry['launchedBy'],
-                    "Executions": subjobs_list})
-            elif entry["id"][0] == "j":
-                subjobs_info = dx.bindings.search.find_executions(
-                    origin_job=str(entry['id']),
-                    describe=True,
-                    first_page_size=200,
-                    include_subjobs=True)
-                for subjob in subjobs_info:
-                    duration = subjob['describe']['stoppedRunning'] - subjob['describe']['startedRunning']
-                    subjob['describe']["runtime"] = duration
-                    subjobs_list.append(subjob)
-
-                project_executions_dict[project_id]["executions"].append({
-                    "id": entry["id"],
-                    "name": entry['name'],
-                    "cost": entry['cost'],
-                    "class": entry['class'],
-                    "executable": entry['executable'],
-                    "state": entry['state'],
-                    "created": entry['created'],
-                    "modified": entry['modified'],
-                    "launchedBy": entry['launchedBy'],
-                    "Executions": subjobs_list})
-
-    df = make_executions_subjobs_df(project_executions_dict)
-    print(df.info())
-
-    print("find runtime")
-    result = []
-    for index, row in df.iterrows():
-        sum = 0
-        print(row)
-        print("-")
-        for value in row['Executions']:
-            print("-------------------")
-            print(row['Executions'])
-            print("-------------------")
-            sum += int(value['describe']['runtime'])
-        print(sum)
-        result.append(dt.timedelta(milliseconds=sum))
-        print(result)
-    df["Result"] = result
-    print(df['Result'])
-    print(df.info())
-    return df
-
-
-
-def make_executions_df(list_project_executions):
-    """
-    Get all executions for the project in DNAnexus,
-    storing each file and its size, name and archival state.
-    Used with ThreadExecutorPool
-
-    Parameters
-    ----------
-    list_project_executions : list of dictionaries
-        of executions from DNAnexus API call.
-
-    Returns
-    -------
-     project_files_dict : collections.defaultdict
-        dictionary with all the files per project
-
-    """
-
-    # Find executions in each project, only returning specified fields in item
-    project_executions_dict = defaultdict(lambda: {"executions": []})
-
-    for project in list_project_executions:
-        print("---")
-        print(project)
-        print("---")
-        for execution in project:
-            project = execution
-            subjobs = []
-
-            subjobs_info = dx.bindings.search.find_executions(
-                    parent_analysis=str(execution['executions']),
-                    describe={'fields': {
-                        'id': True,
-                        'startedRunning': True,
-                        'stoppedRunning': True}},
-                    first_page_size=200,
-                    include_subjobs=True)
-            for subjob in subjobs_info:
-                subjob['describe']["runtime"] = ((((subjob['describe']['stoppedRunning'] - subjob['describe']['startedRunning'])/1000))/60)
-                subjobs.append(subjob)
-
-            project_executions_dict[project]["executions"].append({
-                "id": execution["id"],
-                "name": execution['describe']['name'],
-                "cost": execution['describe']['totalPrice'],
-                "class": execution['describe']['class'],
-                "executable": execution['describe']['executable'],
-                "state": execution['describe']['state'],
-                "created": execution['describe']['created'],
-                "modified": execution['describe']['modified'],
-                "launchedBy": execution['describe']['launchedBy'],
-                "createdBy": execution['describe']['workflow']['createdBy'],
-                "Executions": subjobs})
-
-    df = make_executions_subjobs_df(project_executions_dict)
-    print(df.info())
-    print(df['id'])
-    print(df['Executions'])
-
-    result = []
-    for index, row in df.iterrows():
-        sum = 0
-        for value in row['Executions']:
-            print("-------------------")
-            print(row['Executions'])
-            print("-------------------")
-            sum += float(value['describe']['runtime'])
-        print(sum)
-        result.append(sum)
-        print(result)
-        df["Result"] = result
-        print(df['Result'])
-
-    return project_executions_dict
-
-
-def peek(iterable):
-    """peek
-    This function is used to check if a generator contains any data.
-
-    Args:
-        iterable (_type_): generator object returned by DNAnexus API call.
-
-    Returns:
-        _type_: _description_
-    """
-    try:
-        first = next(iterable)
-    except StopIteration:
-        return None
-    return first, itertools.chain([first], iterable)
 
 
 def get_executions(proj):
@@ -984,9 +734,159 @@ def get_executions(proj):
                     logger.error(f"New executable type found {type}")
 
 
+def threadify_executions(project_list):
+    """
+    Use pool of threads to asynchronously get_files() on multiple projects
+
+    Parameters
+    ----------
+    project_list : list
+        list of all the projects in DNAnexus
+    get_files_function: function
+        the function which gets files per project
+
+    Returns
+    -------
+     list_of_project_file_dicts : list
+        list of dictionaries with all the files per project in each dict
+     e.g.
+    [{
+        'project-X': {'files': [
+            {
+                'file_id': 'file-1',
+                'name': "IamFile1.json",
+                'size': 4803,
+                'archivalState': 'live'
+            }, {
+                'file_id': 'file-2',
+                'name': "IamFile2.json",
+                'size': 702,
+                'archivalState': 'archived'
+            }
+        ]}
+    },
+    {
+        'project-Y': {'files': [
+            {
+                'file_id': 'file-4',
+                'name': "IamFile4.json",
+                'size': 3281,
+                'archivalState': 'live'
+            }
+        ]}
+    }]
+    """
+    list_of_project_file_dicts = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        futures = []
+        # Submit the get_files function for a project
+        for project in project_list:
+            futures.append(executor.submit(get_executions, proj=project))
+        # Once all project files are retrieved, append the final dict
+        for future in concurrent.futures.as_completed(futures):
+            if future.result() == None:
+                pass
+            else:
+                list_of_project_file_dicts.append(future.result())
+    print(list_of_project_file_dicts)
+    return list_of_project_file_dicts
+
+
+def make_job_executions_df(list_project_executions):
+    """
+    Get all executions for the project in DNAnexus,
+    storing each file and its size, name and archival state.
+
+    Any jobs started but not finished
+    are logged in logfile.log for querying next time.
+    Used with ThreadExecutorPool
+
+    Parameters
+    ----------
+    list_project_executions : list of dictionaries
+        of executions from DNAnexus API call.
+
+    Returns
+    -------
+     project_files_dict : collections.defaultdict
+        dictionary with all the files per project
+
+    """
+
+    # Find executions in each project, only returning specified fields in item
+    project_executions_dict = defaultdict(lambda: {"executions": []})
+
+    for execution in list_project_executions:
+        # Explain the logic here!
+        keys = [key for key in execution.keys()]
+        data = execution[keys[0]]
+        project_id = keys[0]
+        subjobs_list = []
+        for entry in data['executions']:
+            if entry["id"][0] == "a":
+                subjobs_info = dx.bindings.search.find_executions(
+                    parent_analysis=str(entry['id']),
+                    describe=True,
+                    first_page_size=200,
+                    include_subjobs=True)
+                for subjob in subjobs_info:
+                    if subjob['describe']["totalPrice"] == 0:
+                        print("no cost - skipped")
+                    elif 'stoppedRunning' not in subjob['describe']:
+                        print("error job doesn't contain describe")
+                    else:
+                        subjob['describe']["runtime"] = (subjob['describe']['stoppedRunning'] - subjob['describe']['startedRunning'])
+                        subjobs_list.append(subjob)
+
+                project_executions_dict[project_id]["executions"].append({
+                    "id": entry["id"],
+                    "name": entry['name'],
+                    "cost": entry['cost'],
+                    "class": entry['class'],
+                    "executable": entry['executable'],
+                    "state": entry['state'],
+                    "created": entry['created'],
+                    "modified": entry['modified'],
+                    "launchedBy": entry['launchedBy'],
+                    "Executions": subjobs_list})
+            elif entry["id"][0] == "j":
+                subjobs_info = dx.bindings.search.find_executions(
+                    origin_job=str(entry['id']),
+                    describe=True,
+                    first_page_size=200,
+                    include_subjobs=True)
+                for subjob in subjobs_info:
+                    duration = subjob['describe']['stoppedRunning'] - subjob['describe']['startedRunning']
+                    subjob['describe']["runtime"] = duration
+                    subjobs_list.append(subjob)
+
+                project_executions_dict[project_id]["executions"].append({
+                    "id": entry["id"],
+                    "name": entry['name'],
+                    "cost": entry['cost'],
+                    "class": entry['class'],
+                    "executable": entry['executable'],
+                    "state": entry['state'],
+                    "created": entry['created'],
+                    "modified": entry['modified'],
+                    "launchedBy": entry['launchedBy'],
+                    "Executions": subjobs_list})
+
+    df = make_executions_subjobs_df(project_executions_dict)
+    result = []
+    for index, row in df.iterrows():
+        sum = 0
+        for value in row['Executions']:
+            sum += int(value['describe']['runtime'])
+        result.append(dt.timedelta(milliseconds=sum))
+    df["Result"] = result
+    return df
+
+
 def get_executions_from_list():
     """
-    Get all executions which weren't finished and in the "done" state.
+    Get all executions which weren't finished and in the "done" state from
+    the last time the query was run.
     Each top-level job is stored with it's attributes,
     mainly cost and who launched it.
 
@@ -1071,6 +971,86 @@ def get_executions_from_list():
         return list_of_previous_executions
 
 
+def make_executions_df(list_project_executions):
+    """
+    Get all executions for the project in DNAnexus,
+    storing each file and its size, name and archival state.
+    Used with ThreadExecutorPool
+
+    Parameters
+    ----------
+    list_project_executions : list of dictionaries
+        of executions from DNAnexus API call.
+
+    Returns
+    -------
+     project_files_dict : collections.defaultdict
+        dictionary with all the files per project
+
+    """
+
+    # Find executions in each project, only returning specified fields in item
+    project_executions_dict = defaultdict(lambda: {"executions": []})
+
+    for project in list_project_executions:
+        for execution in project:
+            project = execution
+            subjobs = []
+
+            subjobs_info = dx.bindings.search.find_executions(
+                    parent_analysis=str(execution['executions']),
+                    describe={'fields': {
+                        'id': True,
+                        'startedRunning': True,
+                        'stoppedRunning': True}},
+                    first_page_size=200,
+                    include_subjobs=True)
+            for subjob in subjobs_info:
+                subjob['describe']["runtime"] = ((((subjob['describe']['stoppedRunning'] - subjob['describe']['startedRunning'])/1000))/60)
+                subjobs.append(subjob)
+
+            project_executions_dict[project]["executions"].append({
+                "id": execution["id"],
+                "name": execution['describe']['name'],
+                "cost": execution['describe']['totalPrice'],
+                "class": execution['describe']['class'],
+                "executable": execution['describe']['executable'],
+                "state": execution['describe']['state'],
+                "created": execution['describe']['created'],
+                "modified": execution['describe']['modified'],
+                "launchedBy": execution['describe']['launchedBy'],
+                "createdBy": execution['describe']['workflow']['createdBy'],
+                "Executions": subjobs})
+
+    df = make_executions_subjobs_df(project_executions_dict)
+
+    result = []
+    for index, row in df.iterrows():
+        sum = 0
+        for value in row['Executions']:
+            sum += float(value['describe']['runtime'])
+        result.append(sum)
+        df["Result"] = result
+
+    return project_executions_dict
+
+
+def peek(iterable):
+    """peek
+    This function is used to check if a generator contains any data.
+
+    Args:
+        iterable (_type_): generator object returned by DNAnexus API call.
+
+    Returns:
+        _type_: _description_
+    """
+    try:
+        first = next(iterable)
+    except StopIteration:
+        return None
+    return first, itertools.chain([first], iterable)
+
 
 def orchestrate_get_executions(proj_list):
     """
@@ -1088,13 +1068,11 @@ def orchestrate_get_executions(proj_list):
     project_executions_dicts_list = threadify_executions(proj_list)
     # project_executions_dicts_list.append(previous_executions)
     print("checking all executions format")
-    print(project_executions_dicts_list)
-    print("-------------------------------------------------------")
+    print("---")
     all_executions = previous_executions + project_executions_dicts_list
-    print("----------------------------")
     print(all_executions)
     executions_df = make_job_executions_df(all_executions)
-    print("-------------------------------------------------------")
+    print("---")
 
     return executions_df
 
@@ -1115,7 +1093,6 @@ def make_executions_subjobs_df(list_project_executions_dictionary):
     """
 
     rows = []
-    #print(list_project_executions_dictionary)
 
     # For each project dictionary with its associated executions
     for project, data in list_project_executions_dictionary.items():
