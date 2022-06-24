@@ -52,25 +52,19 @@ class StorageCosts(models.Model):
 #    def __str__(self):
 #        return self.name
 
-class Executables(models.Model):
-    executable_id = models.AutoField(primary_key=True)
-    dx_id = models.CharField(max_length=200)
-    excutable_name = models.CharField(max_length=200)
-    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
-    #version = models.CharField(max_length=30)
-
-#    def __str__(self):
-#        return self.name
 
 
 class ComputeCosts(models.Model):
-    executable_id = models.ForeignKey(Executables, on_delete=models.CASCADE)
-    # intstance_id = models.IntegerField(blank = True, null = True)
-    # runtime = models.IntegerField()
+    # executable_id = models.AutoField(primary_key=True)
+    dx_id = models.CharField(max_length=200)
+    excutable_name = models.CharField(max_length=200)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
+    # version = models.CharField(max_length=30)
+    runtime = models.DurationField()
     total_cost = models.FloatField()
+    state = models.CharField(max_length=50)
     launched_by = models.ForeignKey(Users, on_delete=models.CASCADE)
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
-    # project = models.ForeignKey(Projects, on_delete=models.CASCADE)
 
 #    def __str__(self):
 #        return self.name
