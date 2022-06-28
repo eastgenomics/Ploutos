@@ -17,6 +17,7 @@ Parent: Jobs and analyses can spawn other instances of analyses and jobs.
 Development:
 - Add version number to compute jobs.
 - Update to work on discrete epoch times rather than -2d with DNAnexus query.
+- Update runtime to calculate correct runtime based on state_transitions.
 - Add logging for errors, using two logfiles (logfile.log and log_executions.log)
 
 """
