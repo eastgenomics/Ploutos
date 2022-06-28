@@ -721,8 +721,9 @@ def get_executions(proj):
                     proj = job['describe']['project']
 
                     project_executions_dict[proj]["executions"].append({
-                        "id": job["id"],
-                        "name": job['describe']['name'],
+                        "id": job['id'],
+                        "job_name": job['describe']['name'],
+                        "executable_name": job['describe']['executableName'],
                         "cost": job['describe']['totalPrice'],
                         "class": job['describe']['class'],
                         "executable": job['describe']['executable'],
@@ -735,8 +736,9 @@ def get_executions(proj):
                     proj = job['describe']['project']
 
                     project_executions_dict[proj]["executions"].append({
-                        "id": job["id"],
-                        "name": job['describe']['name'],
+                        "id": job['id'],
+                        "job_name": job['describe']['name'],
+                        "executable_name": job['describe']['executableName'],
                         "cost": job['describe']['totalPrice'],
                         "class": job['describe']['class'],
                         "executable": job['describe']['executable'],
@@ -914,30 +916,32 @@ def make_job_executions_df(list_project_executions):
             data = execution[project_id]
             subjobs_list = []
         except IndexError as e:
-            print(f"No key present, see error {e} skipped")
+            print(f"No key present, see error: {e}. Skipped")
             # this skips the empty dictionaries which have no relevant jobs.
             continue
         for entry in data['executions']:
-            if entry["id"][0] == "a":
+            if entry["class"] == "analysis":
                 subjobs_info = dx.bindings.search.find_executions(
                     parent_analysis=str(entry['id']),
                     describe=True,
                     first_page_size=200,
                     include_subjobs=True)
+                # Loop over subjobs to calculate runtime.
                 for subjob in subjobs_info:
                     if subjob['describe']["totalPrice"] == 0:
                         print("no cost - skipped")
                     elif 'stoppedRunning' not in subjob['describe']:
-                        print("error job doesn't contain describe")
+                        print("error job doesn't contain stoppedRunning in describe")
                     else:
                         runtime_epoch = subjob['describe']['stoppedRunning'] -\
                             subjob['describe']['startedRunning']
                         subjob['describe']["runtime"] = runtime_epoch
                         subjobs_list.append(subjob)
-
+                # Append data (dict) to list of executions.
                 project_executions_dict[project_id]["executions"].append({
-                    "id": entry["id"],
-                    "name": entry['name'],
+                    "id": entry['id'],
+                    "job_name": entry['job_name'],
+                    "executable_name": entry['executable_name'],
                     "cost": entry['cost'],
                     "class": entry['class'],
                     "executable": entry['executable'],
@@ -946,12 +950,13 @@ def make_job_executions_df(list_project_executions):
                     "modified": entry['modified'],
                     "launchedBy": entry['launchedBy'],
                     "Executions": subjobs_list})
-            elif entry["id"][0] == "j":
+            elif entry["class"] == "job":
                 subjobs_info = dx.bindings.search.find_executions(
                     origin_job=str(entry['id']),
                     describe=True,
                     first_page_size=200,
                     include_subjobs=True)
+                # Loop over subjobs to calculate runtime.
                 for subjob in subjobs_info:
                     print(subjob)
                     if subjob['describe']["totalPrice"] == 0:
@@ -963,10 +968,11 @@ def make_job_executions_df(list_project_executions):
                             subjob['describe']['startedRunning']
                         subjob['describe']["runtime"] = runtime_epoch
                         subjobs_list.append(subjob)
-
+                # Append data (dict) to list of executions.
                 project_executions_dict[project_id]["executions"].append({
-                    "id": entry["id"],
-                    "name": entry['name'],
+                    "id": entry['id'],
+                    "job_name": entry['job_name'],
+                    "executable_name": entry['executable_name'],
                     "cost": entry['cost'],
                     "class": entry['class'],
                     "executable": entry['executable'],
