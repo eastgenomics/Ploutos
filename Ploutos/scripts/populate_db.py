@@ -26,7 +26,8 @@ def populate_projects(all_projects) -> None:
     """
     # In case project names have been changed in DX
     # Get all project objects in db to filter on later
-    # projects_data = Projects.objects.all()
+    # Update_or_create wasn't working so this does for now
+    projects_data = Projects.objects.all()
 
     # Iterate over list of project dicts
     for entry in all_projects:
@@ -35,17 +36,37 @@ def populate_projects(all_projects) -> None:
             user_name=entry['created_by'],
         )
 
-        # Add project created dates to Dates table to create IDs
-        a_new_date, created = Dates.objects.get_or_create(
+        # Add project created dates to Dates table to create or get IDs
+        new_date, created = Dates.objects.get_or_create(
             date=entry['created'],
         )
+
+        # Get names of projects from our dict
+        new_name = entry['name']
+
+        # Dict to filter on dx_id
+        filter_dict = {
+            "dx_id": entry['dx_id'],
+        }
+
+        # Filter the projects to see if dx_id already exists
+        found_entry = projects_data.filter(**filter_dict)
+
+        # If already in db, get the name
+        if found_entry:
+            existing_project = found_entry.values_list(
+                "name", flat=True
+            ).get()
+
+            if existing_project != new_name:
+                found_entry.update(name=new_name)
 
         # Get or create objs in Projects with attributes from other tables
         project, created = Projects.objects.update_or_create(
             dx_id=entry['dx_id'],
             name=entry['name'],
             created_by=user,
-            created=a_new_date,
+            created=new_date,
         )
 
 
@@ -83,10 +104,10 @@ def populate_running_totals() -> None:
     # Add running totals to totals table with date foreign key
     total, created = DailyOrgRunningTotal.objects.get_or_create(
         date=new_date,
-        storage_charges=org_totals['storage_charges'],
-        compute_charges=org_totals['compute_charges'],
-        egress_charges=org_totals['egress_charges'],
-        estimated_balance=org_totals['estimated_balance'],
+        storage_charges=org_totals['storageCharges'],
+        compute_charges=org_totals['computeCharges'],
+        egress_charges=org_totals['dataEgressCharges'],
+        estimated_balance=org_totals['estSpendingLimitLeft'],
     )
 
 
@@ -134,10 +155,12 @@ def populate_executions(all_executions_df) -> None:
 
     Parameters
     ----------
-
+    all_executions_df:
+        dataframe with all parent executions run in timeperiod specified.
     Returns
     -------
     None
+
     """
 
     for index, row in all_executions_df.iterrows():
@@ -158,7 +181,6 @@ def populate_executions(all_executions_df) -> None:
         new_analysis_costs, created = ComputeCosts.objects.get_or_create(
             # Get the project ID from the projects table by project dx id
             dx_id=row['id'],
-            # executable=row['executable'],
             excutable_name=row['name'],
             project=Projects.objects.get(dx_id=row['project']),
             runtime=row['Result'],
@@ -180,8 +202,8 @@ def run():
     all_projects, proj_list, proj_df = queries.get_projects()
     populate_projects(all_projects)
     populate_running_totals()
-    # final_dict = queries.orchestrate_get_files(proj_list, proj_df)
-    # populate_database_files(final_dict)
+    final_dict = queries.orchestrate_get_files(proj_list, proj_df)
+    populate_database_files(final_dict)
     executions_df = queries.orchestrate_get_executions(proj_list)
     print(executions_df)
     populate_executions(executions_df)
