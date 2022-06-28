@@ -2,6 +2,7 @@
     Script to add API data to MariaDB Database.
 """
 import datetime as dt
+from http.server import executable
 import pandas as pd
 
 import dxpy as dx
@@ -12,7 +13,7 @@ from time import time, localtime, strftime
 
 from django.apps import apps
 from django.conf import settings
-from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Users, Dates, Projects, StorageCosts
+from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Executables, Users, Dates, Projects, StorageCosts
 from scripts import DNAnexus_queries as queries
 
 
@@ -177,11 +178,18 @@ def populate_executions(all_executions_df) -> None:
         user, created = Users.objects.get_or_create(
             user_name=row['launchedBy'],)
 
+        # Add executable name to table
+        new_executable, created = Executables.objects.get_or_create(
+            # Get the project ID from the projects table by project dx id
+            executable_name=row['executable_name']
+        )
+
         # Add data to DB - ComputeCosts Table
         new_analysis_costs, created = ComputeCosts.objects.get_or_create(
             # Get the project ID from the projects table by project dx id
             dx_id=row['id'],
-            excutable_name=row['name'],
+            #job_name=row['job_name'],
+            executable_name=new_executable,
             project=Projects.objects.get(dx_id=row['project']),
             runtime=row['Result'],
             total_cost=row['cost'],
@@ -201,9 +209,9 @@ def run():
     queries.login()
     all_projects, proj_list, proj_df = queries.get_projects()
     populate_projects(all_projects)
-    populate_running_totals()
-    final_dict = queries.orchestrate_get_files(proj_list, proj_df)
-    populate_database_files(final_dict)
+    # populate_running_totals()
+    # final_dict = queries.orchestrate_get_files(proj_list, proj_df)
+    # populate_database_files(final_dict)
     executions_df = queries.orchestrate_get_executions(proj_list)
     print(executions_df)
     populate_executions(executions_df)
