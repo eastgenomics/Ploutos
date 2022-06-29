@@ -1,4 +1,3 @@
-from http.server import executable
 from django.db import models
 
 # Create your models here.
