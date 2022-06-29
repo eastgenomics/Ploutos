@@ -750,7 +750,7 @@ def get_executions(proj):
                         "createdBy": job['describe']['workflow']['createdBy'],
                         "Stages": job['describe']['stages']})
                 else:
-                    logger.error(f"New executable type found {type}")
+                    print(f"New executable type found {type}")
         return project_executions_dict
 
 
@@ -983,7 +983,9 @@ def make_job_executions_df(list_project_executions):
                     "launchedBy": entry['launchedBy'],
                     "Executions": subjobs_list})
 
+    # Convert dictionaries into dataframe (df)
     df = make_executions_subjobs_df(project_executions_dict)
+    # Find runtime for each execution.
     result = []
     for index, row in df.iterrows():
         sum = 0
@@ -1023,6 +1025,7 @@ def get_executions_from_list():
 
     # Find executions in each project, only returning specified fields in item
     results = []
+    pending_executions = []
     with open("log_executions.log", "r") as ids:
         list_of_ids = ids.readlines()
         for dxid in list_of_ids:
@@ -1030,11 +1033,16 @@ def get_executions_from_list():
             if dx_id_new[0] == "j":
                 result = dx.api.job_describe(object_id=str(dx_id_new))
                 results.append(result)
+
             elif dx_id_new[0] == "a":
                 result = dx.api.analysis_describe(object_id=str(dx_id_new))
                 results.append(result)
             else:
-                logger.error(f" New executable type found {dx_id_new}")
+                print(f" New executable type found {dx_id_new}")
+
+    # Rewrite file to remove old executions.
+    open("log_executions.log", "w").close()
+
     if results == []:
         print("No data found, exited process")
         return []
@@ -1043,9 +1051,13 @@ def get_executions_from_list():
         list_of_previous_executions = []
         for job in results:
             project_executions_dict = defaultdict(lambda: {"executions": []})
-            if job['state'] == "in_progress"\
-                    or job['state'] == "terminating":
+            if (job['state'] == "in_progress" or
+                job['state'] == "terminating" or
+                job['state'] == "debug_hold" or
+                job['state'] == "partially_failed"):
+                # Append to the log for checking again next time.
                 logger.log(f"{job['id']}")
+
             elif job['class'] == 'analysis':
                 proj = job['project']
 
@@ -1076,7 +1088,7 @@ def get_executions_from_list():
                     "launchedBy": job['launchedBy']})
                 list_of_previous_executions.append(project_executions_dict)
             else:
-                logger.error(f"Error found see job: {job}")
+                print(f"Error found see job: {job}")
 
         return list_of_previous_executions
 
@@ -1096,30 +1108,6 @@ def peek(iterable):
     except StopIteration:
         return None
     return first, itertools.chain([first], iterable)
-
-
-def orchestrate_get_executions(proj_list):
-    """
-    Orchestates all the functions for getting
-    API data for executions and returning this in a pandas dataframe.
-
-    paramaters
-    ----------
-    proj_list: list
-        all the project IDs in a list
-    proj_df: dataframe
-        dataframe with a row for each project
-    """
-    previous_executions = get_executions_from_list()
-    project_executions_dicts_list = threadify_executions(proj_list)
-    # project_executions_dicts_list.append(previous_executions)
-    print("checking all executions format")
-    print("---")
-    all_executions = previous_executions + project_executions_dicts_list
-    executions_df = make_job_executions_df(all_executions)
-    print("---")
-
-    return executions_df
 
 
 def make_executions_subjobs_df(list_project_executions_dictionary):
@@ -1152,6 +1140,31 @@ def make_executions_subjobs_df(list_project_executions_dictionary):
             rows.append(row)
 
     return pd.DataFrame(rows)
+
+
+def orchestrate_get_executions(proj_list):
+    """
+    Orchestates all the functions for getting
+    API data for executions and returning this in a pandas dataframe.
+
+    paramaters
+    ----------
+    proj_list: list
+        all the project IDs in a list
+
+    executions_df: dataframe
+        dataframe with a row for each project
+    """
+    previous_executions = get_executions_from_list()
+    project_executions_dicts_list = threadify_executions(proj_list)
+    # project_executions_dicts_list.append(previous_executions)
+    print("checking all executions format")
+    print("---")
+    all_executions = previous_executions + project_executions_dicts_list
+    executions_df = make_job_executions_df(all_executions)
+    print("---")
+
+    return executions_df
 
 
 def orchestrate_get_files(proj_list, proj_df):
