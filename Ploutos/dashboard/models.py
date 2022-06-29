@@ -1,4 +1,3 @@
-from http.server import executable
 from django.db import models
 
 # Create your models here.
@@ -15,7 +14,7 @@ class Dates(models.Model):
     date = models.DateField(unique=True)
 
     def __str__(self):
-        return self.date
+        return str(self.date)
 
 class Projects(models.Model):
     """Model representing a project."""
@@ -26,6 +25,7 @@ class Projects(models.Model):
 
     def __str__(self):
         return self.dx_id
+
 
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
@@ -49,16 +49,15 @@ class StorageCosts(models.Model):
     total_cost_archived = models.FloatField()
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
-#    def __str__(self):
-#        return self.name
-
 
 class Executables(models.Model):
     executable_name = models.CharField(max_length=200)
     # version = models.CharField(max_length=10)
+
     def __str__(self):
         return self.excutable_name
 
+      
 class ComputeCosts(models.Model):
     dx_id = models.CharField(max_length=200)
     #job_name = models.CharField(max_length=200)
@@ -72,7 +71,6 @@ class ComputeCosts(models.Model):
 
     def __str__(self):
         return self.dx_id
-
 
 # Models in progress
 
