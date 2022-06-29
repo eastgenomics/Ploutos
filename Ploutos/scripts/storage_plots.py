@@ -60,7 +60,9 @@ class RunningTotPlotFunctions():
         """
         # Have the default graph be the last 3 months
         monthly_charges = DailyOrgRunningTotal.objects.filter(
-            date__date__range=[self.start_of_three_months_ago, self.start_of_next_month]
+            date__date__range=[
+                self.start_of_three_months_ago, self.start_of_next_month
+            ]
         ).values_list(
                 'date__date__month',
                 'date__date__year',
@@ -77,16 +79,24 @@ class RunningTotPlotFunctions():
         compute_charges = []
         egress_charges = []
 
+        # Make each a defaultdict e.g. {'May-2022': [500.20, 100.40]}
         for item in monthly_charges:
             storage_dic[f"{item[0]}-{item[1]}"].append(item[2])
             compute_dic[f"{item[0]}-{item[1]}"].append(item[3])
             egress_dic[f"{item[0]}-{item[1]}"].append(item[4])
 
+        # Get the keys and sort by month-year
         key_list = sorted(
             storage_dic.keys(),
             key = lambda x: datetime.strptime(x, '%m-%Y')
         )
 
+        # Loop through index and key
+        # Make sure only doing this for keys with index 1 and above
+        # And stopping on last key
+        # Take first element of month (1st) and move to end of prev month
+        # Then delete it from its old month
+        # If this leaves no entries for the old month, delete the key too
         for i, key in enumerate(key_list):
             if i-1 >= 0 and i+1 <= len(key_list):
                 storage_dic[key_list[i-1]].append(
@@ -110,6 +120,8 @@ class RunningTotPlotFunctions():
                 if len(egress_dic[key]) < 1:
                     del egress_dic[key]
 
+        # Work out last charge minus first charge for the month
+        # For a month total
         for month, charge_list in storage_dic.items():
             months.append(month)
             storage_charges.append(charge_list[-1] - charge_list[0])
@@ -118,7 +130,7 @@ class RunningTotPlotFunctions():
         for month, charge_list in egress_dic.items():
             egress_charges.append(charge_list[-1] - charge_list[0])
 
-        # Convert months to strings for plotting
+        # Convert months to strings e.g. "May 2022" for plotting
         converted_months = [
             (datetime.strptime(month, "%m-%Y").strftime('%b %Y'))
             for month in months
@@ -226,20 +238,24 @@ class RunningTotPlotFunctions():
         months = []
         storage_charges, compute_charges, egress_charges = [], [], []
 
-        # Convert to defaultdicts with month-year: [list of running tot values]
+        #  Make each a defaultdict e.g. {'May-2022': [500.20, 100.40]}
         for item in monthly_charges:
             storage_dic[f"{item[0]}-{item[1]}"].append(item[2])
             compute_dic[f"{item[0]}-{item[1]}"].append(item[3])
             egress_dic[f"{item[0]}-{item[1]}"].append(item[4])
 
         # Sort the months in the db
-        key_list = sorted(storage_dic.keys(), key = lambda x: datetime.strptime(x, '%m-%Y'))
+        key_list = sorted(
+            storage_dic.keys(),
+            key = lambda x: datetime.strptime(x, '%m-%Y')
+        )
 
-        # As daily charges are calculated by using next day
-        # Take value for first of month and append to prev month
-        # Then remove from the current month
-        # If this leaves no entries for that month delete whole month
-
+        # Loop through index and key
+        # Make sure only doing this for keys with index 1 and above
+        # And stopping on last key
+        # Take first element of month (1st) and move to end of prev month
+        # Then delete it from its old month
+        # If this leaves no entries for the old month, delete the key too
         for i, key in enumerate(key_list):
             if i-1 >= 0 and i+1 <= len(key_list):
                 storage_dic[key_list[i-1]].append(
@@ -264,8 +280,8 @@ class RunningTotPlotFunctions():
                     del egress_dic[key]
 
 
-        # Calculate total spend that month by doing the last value
-        # Minus the first for each month
+        # Work out last charge minus first charge for the month
+        # For a month total
         for month, charge_list in storage_dic.items():
             months.append(month)
             storage_charges.append(charge_list[-1] - charge_list[0])
@@ -687,7 +703,7 @@ class StoragePlotFunctions():
 
     def str_to_list(self, string):
         """
-        Strips
+        Converts the entered to string to a list of proj or assay types
 
         Parameters
         ----------
@@ -706,7 +722,34 @@ class StoragePlotFunctions():
         return string.strip(',').replace(' ', '').split(',')
     
     def get_month_years_as_str(self, cost_list):
-        """Docstring"""
+        """
+        Converts a list of month years to stringified month-years
+
+        Parameters
+        ----------
+        cost_list : Django query set as a list of dicts
+        e.g. test =
+        [{
+            'date__date__month': 5,
+            'date__date__year': 2022,
+            'Live': 25.459,
+            'Archived': 0.2379
+        },
+        {
+            'date__date__month': 6,
+            'date__date__year': 2022,
+            'Live': 2.619,
+            'Archived': 0.02458
+        }]
+
+        Returns
+        -------
+        string_months : list
+            list of months in more readable form for plots
+        e.g.
+        get_month_years_as_str(test)
+            >> ['May 2022', 'June 2022']
+        """
         months = [(str(
             entry.get('date__date__month')), str(entry.get('date__date__year')
         )) for entry in cost_list
@@ -730,9 +773,9 @@ class StoragePlotFunctions():
 
         Parameters
         ----------
-        project type :  str
+        project_type :  str
             string that the project name begins with
-        assay type : str
+        assay_type : str
             string that the project name ends with
         month_start : str
             first date of month to filter as start of range
