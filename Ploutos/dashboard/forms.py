@@ -1,3 +1,4 @@
+import calendar
 import datetime as dt
 import django_filters as filters
 
@@ -90,10 +91,31 @@ class MonthlyForm(forms.Form):
         string=f"{year}-0{month}"
         months_and_years.append(string)
 
+    converted_entries = [
+        calendar.month_name[
+            int(entry.split("-")[1])
+        ]+" "+(entry.split("-")[0])
+        for entry in months_and_years
+    ]
+
     # Add option of blank
+    converted_entries = ['---'] + converted_entries
     months_and_years = ['---'] + months_and_years
-    MONTH_YEAR_CHOICES = ((entry, entry) for entry in months_and_years)
-    MONTH_YEAR_CHOICES_2 = ((entry, entry) for entry in months_and_years)
+
+    MONTH_YEAR_CHOICES = (
+        (entry, converted_entry)
+        for entry, converted_entry in zip(
+            months_and_years, converted_entries
+            )
+        )
+
+    MONTH_YEAR_CHOICES_2 = (
+        (entry, converted_entry)
+        for entry, converted_entry in zip(
+            months_and_years, converted_entries
+            )
+        )
+
 
     start_month = forms.ChoiceField(
         choices=MONTH_YEAR_CHOICES,
@@ -161,11 +183,28 @@ class StorageForm(forms.Form):
         year_month_string = f"{year}-0{month}"
         months_and_years.append(year_month_string)
 
+    converted_entries = [
+        calendar.month_name[
+            int(entry.split("-")[1])
+        ]+" "+(entry.split("-")[0])
+        for entry in months_and_years
+    ]
     # Add in option of blank as choice
+    converted_entries = ['---'] + converted_entries
     months_and_years = ['---'] + months_and_years
     # Set as tuple choices
-    MONTH_YEAR_CHOICES = ((entry, entry) for entry in months_and_years)
-    MONTH_YEAR_CHOICES_2 = ((entry, entry) for entry in months_and_years)
+    MONTH_YEAR_CHOICES = (
+        (entry, converted_entry)
+        for entry, converted_entry in zip(
+            months_and_years, converted_entries
+        )
+    )
+    MONTH_YEAR_CHOICES_2 = (
+        (entry, converted_entry)
+        for entry, converted_entry in zip(
+            months_and_years, converted_entries
+        )
+    )
 
     project_type = forms.CharField(
         required=False,
