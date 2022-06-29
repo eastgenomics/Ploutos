@@ -10,8 +10,8 @@ Workflows: These are apps that are piped together to form a pipeline.
 Analyses: These are the instances of a workflow running.
 Apps: These are standalone tools which can be used to make a workflow.
 Jobs: These are instances of apps running.
-Parent: Jobs and analyses can spawn other instances of analyses and jobs.
-        Therefore, to gather all the top-level costings we only look at parents.
+Parent:Jobs and analyses can spawn other instances of analyses and jobs.
+       Therefore, to gather all the top-level costings we only look at parents.
 
 
 Development:
@@ -73,25 +73,20 @@ def login() -> None:
         sys.exit(1)
 
 
-def setup_logging():
+def setup_logger(name, log_file, level=logging.INFO):
     """
     Function to set up logging for other functions
     """
-    # Creating and Configuring Logger
+    formatter = logging.Formatter('%(levelname)s %(asctime)s - %(message)s')
 
-    Log_Format = "%(levelname)s %(asctime)s - %(message)s"
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(formatter)
 
-    logging.basicConfig(filename="log_executions.log",
-                        filemode="w",
-                        format=Log_Format,
-                        level=logging.ERROR)
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
 
-    logger = logging.getLogger()
-
-    # Testing our Logger
-
-    logger.error("Our First Log Message")
-
+    return logger
 
 
 def no_of_days_in_month():
@@ -684,13 +679,12 @@ def get_executions(proj):
 
     """
     # Set up logging - Creating and Configuring Logger
-    log_Format = "%(levelname)s %(asctime)s - %(message)s"
-    logging.basicConfig(filename="log_executions.log",
-                        filemode="w",
-                        format=log_Format,
-                        level=logging.ERROR)
+    # first file logger
+    logger = setup_logger('executions_logger', 'executions_log.log')
 
-    logger = logging.getLogger()
+    # second file logger
+    info_logger = setup_logger('info_logger', 'logfile.log')
+    # info_logger.error('Test: This is an error message.')
 
     # Find executions in each project with describe
     # Created before and after create a time window,
@@ -706,7 +700,7 @@ def get_executions(proj):
             describe=True)
 
     check = peek(executions)
-    if check is None:
+    if not check:
         print(f'No data in {proj}, exited process')
         # sys.exit(1)
     else:
@@ -717,8 +711,8 @@ def get_executions(proj):
                     or job['describe']['state'] == "terminating":
                 logger.log(f"{job['describe']['id']}")
             else:
-                type = str(job['id'])
-                if type[0] == "j":
+                if job['id'].startswith('job-'):
+                    # it's a single job
                     proj = job['describe']['project']
 
                     project_executions_dict[proj]["executions"].append({
@@ -733,7 +727,8 @@ def get_executions(proj):
                         "modified": job['describe']['modified'],
                         "launchedBy": job['describe']['launchedBy']})
 
-                elif type[0] == "a":
+                elif job['id'].startswith('analysis-'):
+                    # its a workflow
                     proj = job['describe']['project']
 
                     project_executions_dict[proj]["executions"].append({
@@ -750,7 +745,7 @@ def get_executions(proj):
                         "createdBy": job['describe']['workflow']['createdBy'],
                         "Stages": job['describe']['stages']})
                 else:
-                    print(f"New executable type found {type}")
+                    print(f"Error: New executable type found {type}")
         return project_executions_dict
 
 
@@ -829,7 +824,7 @@ def threadify_executions(project_list):
             futures.append(executor.submit(get_executions, proj=project))
         # Once all project executions are retrieved, append the final dict
         for future in concurrent.futures.as_completed(futures):
-            if future.result() is None:
+            if not future.result():
                 pass
             else:
                 list_of_project_executions_dicts.append(future.result())
@@ -908,92 +903,113 @@ def make_job_executions_df(list_project_executions):
     project_executions_dict = defaultdict(lambda: {"executions": []})
 
     for execution in list_project_executions:
-        try:
-            keys = [key for key in execution.keys()]
-            print("---")
-            print(keys)
-            print("---")
+        keys = [key for key in execution.keys()]
+        if not keys:
+            # empty list => no keys
+            print(f"No key present, skipped.")
+            continue
+        else:
+            # found some keys
             project_id = keys[0]
             data = execution[project_id]
-            subjobs_list = []
-        except IndexError as e:
-            print(f"No key present, see error: {e}. Skipped")
-            # this skips the empty dictionaries which have no relevant jobs.
-            continue
-        for entry in data['executions']:
-            if entry["class"] == "analysis":
-                subjobs_info = dx.bindings.search.find_executions(
-                    parent_analysis=str(entry['id']),
-                    describe=True,
-                    first_page_size=200,
-                    include_subjobs=True)
-                # Loop over subjobs to calculate runtime.
-                for subjob in subjobs_info:
-                    if subjob['describe']["totalPrice"] == 0:
-                        print("no cost - skipped")
-                    elif 'stoppedRunning' not in subjob['describe']:
-                        print("error job doesn't contain stoppedRunning in describe")
-                    else:
-                        runtime_epoch = subjob['describe']['stoppedRunning'] -\
-                            subjob['describe']['startedRunning']
-                        subjob['describe']["runtime"] = runtime_epoch
-                        subjobs_list.append(subjob)
-                # Append data (dict) to list of executions.
-                project_executions_dict[project_id]["executions"].append({
-                    "id": entry['id'],
-                    "job_name": entry['job_name'],
-                    "executable_name": entry['executable_name'],
-                    "cost": entry['cost'],
-                    "class": entry['class'],
-                    "executable": entry['executable'],
-                    "state": entry['state'],
-                    "created": entry['created'],
-                    "modified": entry['modified'],
-                    "launchedBy": entry['launchedBy'],
-                    "Executions": subjobs_list})
-            elif entry["class"] == "job":
-                subjobs_info = dx.bindings.search.find_executions(
-                    origin_job=str(entry['id']),
-                    describe=True,
-                    first_page_size=200,
-                    include_subjobs=True)
-                # Loop over subjobs to calculate runtime.
-                for subjob in subjobs_info:
-                    print(subjob)
-                    if subjob['describe']["totalPrice"] == 0:
-                        print("no cost - skipped")
-                    elif 'stoppedRunning' not in subjob['describe']:
-                        print("error job doesn't contain describe")
-                    else:
-                        runtime_epoch = subjob['describe']['stoppedRunning'] -\
-                            subjob['describe']['startedRunning']
-                        subjob['describe']["runtime"] = runtime_epoch
-                        subjobs_list.append(subjob)
-                # Append data (dict) to list of executions.
-                project_executions_dict[project_id]["executions"].append({
-                    "id": entry['id'],
-                    "job_name": entry['job_name'],
-                    "executable_name": entry['executable_name'],
-                    "cost": entry['cost'],
-                    "class": entry['class'],
-                    "executable": entry['executable'],
-                    "state": entry['state'],
-                    "created": entry['created'],
-                    "modified": entry['modified'],
-                    "launchedBy": entry['launchedBy'],
-                    "Executions": subjobs_list})
+            print(f"\n ---- {data} \n")
+            for entry in data['executions']:
+                subjobs_list = []
+                if entry["class"] == "analysis":
+                    subjobs_info = dx.bindings.search.find_executions(
+                        parent_analysis=str(entry['id']),
+                        describe=True,
+                        first_page_size=200,
+                        include_subjobs=True)
+                    # Loop over subjobs to calculate runtime.
+                    for subjob in subjobs_info:
+                        print(f"\n {subjob} \n")
+                        if subjob['describe']["totalPrice"] == 0:
+                            print("no cost - skipped")
+                        elif 'stoppedRunning' not in subjob['describe']:
+                            print("error job doesn't contain stoppedRunning in describe")
+                        else:
+                            # states = subjob['describe']['stateTransitions']
+                            # for item in states:
+                            #     if item.get('newState') == 'running':
+                            #         start_time = item.get('setAt')
+                            #     elif (item.get('newState') == 'failed' or
+                            #           item.get('newState') == 'done' or
+                            #           item.get('newState') == 'terminated'):
+                            #         finish_time = item.get('setAt')
+                            # runtime_epoch = finish_time - start_time
+                            runtime_epoch = subjob['describe']['stoppedRunning'] -\
+                                subjob['describe']['startedRunning']
+                            subjob['describe']["runtime"] = runtime_epoch
+                            subjobs_list.append(subjob)
+                    # Append data (dict) to list of executions.
+                    project_executions_dict[project_id]["executions"].append({
+                        "id": entry['id'],
+                        "job_name": entry['job_name'],
+                        "executable_name": entry['executable_name'],
+                        "cost": entry['cost'],
+                        "class": entry['class'],
+                        "executable": entry['executable'],
+                        "state": entry['state'],
+                        "created": entry['created'],
+                        "modified": entry['modified'],
+                        "launchedBy": entry['launchedBy'],
+                        "Executions": subjobs_list})
+                elif entry["class"] == "job":
+                    subjobs_info = dx.bindings.search.find_executions(
+                        origin_job=str(entry['id']),
+                        describe=True,
+                        first_page_size=200,
+                        include_subjobs=True)
+                    # Loop over subjobs to calculate runtime.
+                    for subjob in subjobs_info:
+                        print(f"\n {subjob} \n")
+                        if subjob['describe']["totalPrice"] == 0:
+                            print("no cost - skipped")
+                        elif 'stoppedRunning' not in subjob['describe']:
+                            print("error job doesn't contain describe")
+                        else:
+                            # states = subjob['describe']['stateTransitions']
+                            # for item in states:
+                            #     if item.get('newState') == 'running':
+                            #         start_time = item.get('setAt')
+                            #     elif (item.get('newState') == 'failed' or
+                            #           item.get('newState') == 'done' or
+                            #           item.get('newState') == 'terminated'):
+                            #         finish_time = item.get('setAt')
+                            # runtime_epoch = finish_time - start_time
+                            runtime_epoch = subjob['describe']['stoppedRunning'] -\
+                                subjob['describe']['startedRunning']
+                            subjob['describe']["runtime"] = runtime_epoch
+                            subjobs_list.append(subjob)
+                    # Append data (dict) to list of executions.
+                    project_executions_dict[project_id]["executions"].append({
+                        "id": entry['id'],
+                        "job_name": entry['job_name'],
+                        "executable_name": entry['executable_name'],
+                        "cost": entry['cost'],
+                        "class": entry['class'],
+                        "executable": entry['executable'],
+                        "state": entry['state'],
+                        "created": entry['created'],
+                        "modified": entry['modified'],
+                        "launchedBy": entry['launchedBy'],
+                        "Executions": subjobs_list})
+                    print(subjobs_list)
+                else:
+                    print("Error")
 
-    # Convert dictionaries into dataframe (df)
-    df = make_executions_subjobs_df(project_executions_dict)
-    # Find runtime for each execution.
-    result = []
-    for index, row in df.iterrows():
-        sum = 0
-        for value in row['Executions']:
-            sum += int(value['describe']['runtime'])
-        result.append(dt.timedelta(milliseconds=sum))
-    df["Result"] = result
-    return df
+        # Convert dictionaries into dataframe (df)
+        df = make_executions_subjobs_df(project_executions_dict)
+        # Find runtime for each execution.
+        result = []
+        for index, row in df.iterrows():
+            sum = 0
+            for value in row['Executions']:
+                sum += int(value['describe']['runtime'])
+            result.append(dt.timedelta(milliseconds=sum))
+        df["Result"] = result
+        return df
 
 
 def get_executions_from_list():
