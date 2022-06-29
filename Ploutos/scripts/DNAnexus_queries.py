@@ -88,8 +88,8 @@ def get_projects():
         dataframe with a row for each project
     """
     project_response = list(dx.find_projects(
-        billed_to=settings.ORG, 
-        level='VIEW', 
+        billed_to=settings.ORG,
+        level='VIEW',
         describe={'fields': {
             'id': True, 'name': True, 'createdBy': True, 'created': True
             }

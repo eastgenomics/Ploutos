@@ -1,13 +1,14 @@
-import datetime
-import json
-import plotly.express as px
-import plotly.graph_objects as pgo
+"""Views containing logic for chart plotting"""
+import calendar
 
-from dashboard.forms import DateForm, StorageForm
-from dashboard.models import Dates, DailyOrgRunningTotal
+from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
+
+from dashboard.forms import DateForm, MonthlyForm, StorageForm
+from dashboard.models import DailyOrgRunningTotal
 from django.shortcuts import render
+from scripts import DNAnexus_queries as dx_queries
 from scripts import storage_plots as sp
-from scripts import date_conversion as dc
 
 
 def index(request):
@@ -17,7 +18,12 @@ def index(request):
 
     # If the form is submitted
     if 'submit' in request.GET:
+        # Get the form, set monthly form and monthly plot to default
         form = DateForm(request.GET)
+        form2 = MonthlyForm()
+        fig2 = sp.RunningTotPlotFunctions().monthly_no_dates()
+        chart2 = fig2.to_html()
+
         # If the dates entered are validated ok
         if form.is_valid():
             # Get the data entered
@@ -25,9 +31,17 @@ def index(request):
             end = form.cleaned_data.get("end")
             charge_type = form.cleaned_data.get("charge_type")
 
+            # Add one day to the end as total for a day
+            # Is relative to the next day minus that day
+            end_obj = datetime.strptime(str(end), "%Y-%m-%d")
+            end_plus_one = end_obj + timedelta(days=1)
+            end_plus_one_str = datetime.strftime(
+                end_plus_one, "%Y-%m-%d"
+            )
+
             # Filter totals to get desired date range
             totals = DailyOrgRunningTotal.objects.filter(
-                date__date__range=[start, end]
+                date__date__range=[start, end_plus_one_str]
             )
 
             # If user wants to see all charge types, render whole graph
@@ -41,33 +55,99 @@ def index(request):
                     charge_type
                 )
 
-            # Update layout
-            fig.update_layout(
-                title={
-                    'font_size': 24,
-                    'xanchor': 'center',
-                    'x': 0.5
-                }
-            )
-
-            # Send to context
             chart = fig.to_html()
-            context = {'chart': chart, 'form': form}
+
+            # Send filtered chart1 and unfiltered chart 2 to context
+            # Send validated form and empty form2 to context
+            context = {
+                'chart': chart,
+                'chart2': chart2,
+                'form': form,
+                'form2': form2
+            }
 
         else:
-            # If form not valid
+            # If form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
-            context = sp.RunningTotPlotFunctions().totals_form_not_valid(
-                form
-            )
+            chart = sp.RunningTotPlotFunctions(
+            ).form_not_submitted_or_invalid()
+
+            context = {
+                'chart': chart,
+                'chart2': chart2,
+                'form': form,
+                'form2': form2
+            }
 
     else:
-        # If form not submitted display all charges for all dates in db
-        form = DateForm()
+        # If form for monthly chart is submitted
+        if 'monthly' in request.GET:
+            form = DateForm()
+            form2 = MonthlyForm(request.GET)
+            if form2.is_valid():
+                start_month = form2.cleaned_data.get("start_month")
+                end_month = form2.cleaned_data.get("end_month")
 
-        context = sp.RunningTotPlotFunctions().form_not_submitted(
-            form
-        )
+                # If no months entered
+                if start_month == "---" and end_month == "---":
+                    # Display last three months
+                    fig2 = sp.RunningTotPlotFunctions().monthly_no_dates()
+                    chart2 = fig2.to_html()
+                    chart = sp.RunningTotPlotFunctions(
+                    ).form_not_submitted_or_invalid()
+
+                    context = {
+                        'chart': chart,
+                        'chart2': chart2,
+                        'form': form,
+                        'form2': form2
+                    }
+
+                else:
+                    chart2 = sp.RunningTotPlotFunctions().monthly_with_dates(
+                        start_month, end_month
+                    )
+
+                    # Reset other chart
+                    chart = sp.RunningTotPlotFunctions(
+                    ).form_not_submitted_or_invalid()
+
+                    context = {
+                        'chart': chart,
+                        'chart2': chart2,
+                        'form': form,
+                        'form2': form2
+                    }
+
+            else:
+                # If monthly form not valid or unsubmitted
+                # Display unfiltered graph for all dates and show errors
+                fig2 = sp.RunningTotPlotFunctions().monthly_no_dates()
+                chart2 = fig2.to_html()
+                chart = sp.RunningTotPlotFunctions(
+                ).form_not_submitted_or_invalid()
+
+                context = {
+                    'chart': chart,
+                    'chart2': chart2,
+                    'form': form,
+                    'form2': form2
+                }
+
+        # If no forms submitted display all charges for all dates in db
+        else:
+            form = DateForm()
+            form2 = MonthlyForm()
+            fig2 = sp.RunningTotPlotFunctions().monthly_no_dates()
+            chart2 = fig2.to_html()
+            chart = sp.RunningTotPlotFunctions(
+            ).form_not_submitted_or_invalid()
+            context = {
+                'chart': chart,
+                'chart2': chart2,
+                'form': form,
+                'form2': form2
+            }
 
     return render(request, 'index.html', context)
 
@@ -86,11 +166,109 @@ def storage_chart(request):
         # If form is valid
         # i.e. not >1 entry in project_types and assay_types at same time
         if form.is_valid():
-            year = form.cleaned_data.get('year')
-            month = form.cleaned_data.get('month')
+            # Get the start + end year-months from form to filter range
+            start = form.cleaned_data.get("start")
+            end = form.cleaned_data.get("end")
 
-            # If user wants to see all the months in the db
-            if month == 'All':
+            # If no months are entered
+            if start == "---" and end == "---":
+                # Get date of the first day of the month six months ago
+                # Get date of the last day of the current month
+                # These are used to filter for last 6 months by default
+                today_date = dx_queries.no_of_days_in_month()[0]
+                this_year, this_month, _ = today_date.split("-")
+                six_months_ago = date.today() + relativedelta(months=-6)
+                six_months_start = six_months_ago.replace(day=1)
+                last_day_of_this_month = str(
+                    calendar.monthrange(
+                        int(today_date.split("-")[0]),
+                        int(today_date.split("-")[1])
+                    )[1]
+                )
+                this_months_end = (
+                    f"{this_year}-{this_month}"
+                    f"-{last_day_of_this_month}"
+                )
+
+                # If no months entered but proj type and assay type searched
+                if (form.cleaned_data.get('project_type') and
+                    form.cleaned_data.get('assay_type')):
+                    project_type = form.cleaned_data.get('project_type')
+                    assay_type = form.cleaned_data.get('assay_type')
+
+                    # Month ranges are last six months
+                    context = sp.StoragePlotFunctions(
+                    ).month_range_assay_type_and_proj_type(
+                        project_type,
+                        assay_type,
+                        six_months_start,
+                        this_months_end,
+                        form
+                    )
+
+                # No months entered
+                # There are either project types or assay types searched
+                else:
+                    # If there are only projects searched for
+                    if form.cleaned_data.get('project_type'):
+                        # Remove all whitespace + start + end commas
+                        # Split by commas and add each to new list
+                        proj_string = form.cleaned_data.get('project_type')
+                        proj_types = sp.StoragePlotFunctions(
+                        ).str_to_list(proj_string)
+
+                        # Month ranges are last six months
+                        context = sp.StoragePlotFunctions(
+                        ).month_range_only_project_types(
+                            proj_types,
+                            six_months_start,
+                            this_months_end,
+                            form
+                        )
+
+                    # If only assay(s) searched for
+                    # Strip start and end commas, remove whitespace
+                    # Split on commas and add to list
+                    elif form.cleaned_data.get('assay_type'):
+                        assay_string = form.cleaned_data.get('assay_type')
+                        assay_types = sp.StoragePlotFunctions(
+                        ).str_to_list(assay_string)
+
+                        # Month ranges are last six months
+                        context = sp.StoragePlotFunctions(
+                        ).month_range_only_assay_types(
+                            assay_types,
+                            six_months_start,
+                            this_months_end,
+                            form
+                        )
+
+                    else:
+                        # If form is submitted
+                        # But no assay type or project type is searched for
+                        # And no months searched for
+                        # Display all projs last 6 months grouped by month
+
+                        context = sp.StoragePlotFunctions(
+                        ).month_range_form_submitted_no_proj_or_assay(
+                            six_months_start,
+                            this_months_end,
+                            form
+                        )
+
+            else:
+                # Start and end months are entered
+                # Convert start month-year to 1st date of start month
+                # e.g. "2022-05" to "2022-05-01"
+                # Find last day of the end month
+                # Convert end month-year to last day of that month 
+                # e.g. "2022-05-14" to "2022-05-31"
+                month_start = f"{start}-01"
+                last_day_of_end_month = calendar.monthrange(
+                    int(end.split("-")[0]),int(end.split("-")[1])
+                )[1]
+                month_end = f"{end}-{last_day_of_end_month}"
+
                 # If there are both a project type and assay type entered
                 # Get the single string from each
                 if (form.cleaned_data.get('project_type') and
@@ -98,16 +276,18 @@ def storage_chart(request):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 
+                    # Filter by start date of start month-year
+                    # And end date of end month-year
                     context = sp.StoragePlotFunctions(
-                    ).all_months_assay_type_and_proj_type(
+                    ).month_range_assay_type_and_proj_type(
                         project_type,
                         assay_type,
-                        year,
+                        month_start,
+                        month_end,
                         form
                     )
 
                 else:
-                    # If 'All' months selected and
                     # There are only projects searched for
                     if form.cleaned_data.get('project_type'):
                         # Remove all whitespace + start + end commas
@@ -116,14 +296,17 @@ def storage_chart(request):
                         proj_types = sp.StoragePlotFunctions(
                         ).str_to_list(proj_string)
 
+                        # Filter by start date of start month-year
+                        # And end date of end month-year
                         context = sp.StoragePlotFunctions(
-                        ).all_months_only_project_types(
+                        ).month_range_only_project_types(
                             proj_types,
-                            year,
+                            month_start,
+                            month_end,
                             form
                         )
 
-                    # If all months only assay(s) searched for
+                    # If only assay(s) searched for
                     # Strip start and end commas, remove whitespace
                     # Split on commas and add to list
                     elif form.cleaned_data.get('assay_type'):
@@ -131,104 +314,42 @@ def storage_chart(request):
                         assay_types = sp.StoragePlotFunctions(
                         ).str_to_list(assay_string)
 
+                        # Filter by start date of start month-year
+                        # And end date of end month-year
                         context = sp.StoragePlotFunctions(
-                        ).all_months_only_assay_types(
+                        ).month_range_only_assay_types(
                             assay_types,
-                            year,
+                            month_start,
+                            month_end,
                             form
                         )
 
                     else:
                         # If form is submitted
                         # But no assay type or project type is searched for
-                        # And want to see all months
-                        # Display all the projects grouped by available months
+                        # And want to see between month range
+                        # Display all the projects grouped by months
 
                         context = sp.StoragePlotFunctions(
-                        ).all_months_form_submitted_no_proj_or_assay(
-                            year,
+                        ).month_range_form_submitted_no_proj_or_assay(
+                            month_start,
+                            month_end,
                             form
                         )
 
-            # A specific month has been selected
-            else:
-                # Convert the integer month to a string
-                converted_month = dc.date_conversion_dict[int(month)]
-
-                # If a project type and an assay type entered
-                if (form.cleaned_data.get('project_type') and
-                    form.cleaned_data.get('assay_type')):
-                    project_type = form.cleaned_data.get('project_type')
-                    assay_type = form.cleaned_data.get('assay_type')
-
-                    context = sp.StoragePlotFunctions(
-                    ).specific_month_proj_and_assay(
-                        project_type,
-                        assay_type,
-                        year,
-                        month,
-                        converted_month,
-                        form
-                    )
-
-                # A specific month with only project type(s)
-                elif form.cleaned_data.get('project_type'):
-                    proj_string = form.cleaned_data.get('project_type')
-                    # Strip commas from start and end
-                    # Remove whitespace, split into list on commas
-                    proj_types = sp.StoragePlotFunctions(
-                        ).str_to_list(proj_string)
-
-                    context = sp.StoragePlotFunctions(
-                    ).specific_month_only_proj_types(
-                        proj_types,
-                        year,
-                        month,
-                        converted_month,
-                        form
-                    )
-
-                # A specific month with assay type(s)
-                elif form.cleaned_data.get('assay_type'):
-                    assay_string = form.cleaned_data.get('assay_type')
-                    assay_types = sp.StoragePlotFunctions(
-                        ).str_to_list(assay_string)
-
-                    context = sp.StoragePlotFunctions(
-                    ).specific_month_only_assay_types(
-                        assay_types,
-                        year,
-                        month,
-                        converted_month,
-                        form
-                    )
-
-                else:
-                    # If form submitted + no proj or assay type
-                    # But specific year/month selected (required fields)
-                    context = sp.StoragePlotFunctions(
-                    ).specific_month_no_proj_or_assay(
-                        year,
-                        month,
-                        converted_month,
-                        form
-                    )
-
         else:
             # If the form is not valid, display just the standard graph
-            # Of this year, grouped by available months
+            # Grouped by last six months
             # For all projects
-            context = sp.StoragePlotFunctions().form_is_not_valid(
-                form
-            )
+            context = sp.StoragePlotFunctions(
+                ).form_is_not_submitted_or_invalid(form)
 
     else:
         # If nothing is submitted on the form (normal landing page)
-        # Display the all projects graph grouped by available months
+        # Display the all projects graph grouped by last six months
         form = StorageForm()
-        context = sp.StoragePlotFunctions().form_is_not_submitted(
-            form
-        )
+        context = sp.StoragePlotFunctions(
+            ).form_is_not_submitted_or_invalid(form)
 
     return render(request, 'bar_chart.html', context)
 

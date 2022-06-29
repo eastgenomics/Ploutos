@@ -1,7 +1,7 @@
 {% extends 'dashboard/base.html' %}
 
 {% block content %}
-
+<div class="all" style='margin: 0 auto;'>
 <form method="GET" action="{% url 'index' %}">
     <div class="container">
         <div class="row">
@@ -31,12 +31,48 @@
         </div>
 
     <!-- Submit button, 'submit' used to check if form is submitted -->
-    <input type="submit" name="submit" value="Submit"/>
+    <input type="submit" name="submit" value="Filter"/>
+    <input type="reset" name="reset" value="Reset"/>
     </div>
 
 </form>
-<div id='chart_div' align='center' style='margin: 0 auto;'>
+<div id='chart_div' align='center' style='margin: 0 auto; padding-bottom: 60px;'>
     {{ chart|safe }}
+</div>
+
+<form method="GET" action="{% url 'index' %}">
+<div class="container">
+  <div class="row">
+  <!-- If form errors, display each field's error with red banner -->
+  {% if form2.errors %}
+  <ul class="user-msg error">
+      {% for field in form2 %}
+          {% for error in field.errors %}
+          <div class="alert alert-danger">
+              <li>
+                {% if field != '__all__' %}
+                  <strong>{{ field.label }}:</strong>
+                {% endif %}
+                {{ error }}
+              </li>
+          </div>
+          {% endfor %}
+      {% endfor %}
+      </ul>
+  {% endif %}
+  <!-- Display each field's label and the field itself -->
+  {% for field in form2  %}
+    <div class="col-sm-6">
+      <b>{{ field.label_tag }}</b> {{ field }} 
+    </div>
+  {% endfor %}
+  </div>
+  <input type="submit" name="monthly" value="Filter"/>
+  <input type="reset" name="reset2" value="Reset"/>
+</form>
+<div id="chart-two" align='center' style='margin: 0 auto;'>
+  {{chart2|safe}}
+</div>
 </div>
 {% endblock content %}
 

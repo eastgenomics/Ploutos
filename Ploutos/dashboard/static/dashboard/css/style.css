@@ -8,6 +8,7 @@ form {
 }
 
 .row {
+    text-align: left !important;
     padding-bottom: 10px;
 }
   
@@ -19,4 +20,8 @@ form {
 .alert {
     padding-top: 5px;
     padding-bottom: 5px;
+}
+
+.chart-two {
+    padding-top: 30px;
 }
