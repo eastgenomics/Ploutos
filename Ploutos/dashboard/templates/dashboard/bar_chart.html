@@ -44,7 +44,7 @@ document.querySelector('button[type="reset"]').addEventListener('click', functio
     </div>
 </form>
 
-<div id="container_data" align="center"></div>
+<div id="container_data" align="center" style="padding-top: 50px;"></div>
 <script>
        Highcharts.chart('container_data', {{ storage_data|safe }});
 </script>

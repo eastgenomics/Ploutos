@@ -15,14 +15,19 @@ def index(request):
     """View to display running total charges via Plotly"""
     # Get all running total objects from db
     totals = DailyOrgRunningTotal.objects.all()
-
+    four_months_ago = date.today() + relativedelta(months=-4)
+    start_of_four_months_ago = four_months_ago.replace(day=1)
+    start_of_next_month = (
+        date.today() + relativedelta(months=+1)
+    ).replace(day=1)
     # If the form is submitted
     if 'submit' in request.GET:
         # Get the form, set monthly form and monthly plot to default
         form = DateForm(request.GET)
         form2 = MonthlyForm()
-        fig2 = sp.RunningTotPlotFunctions().monthly_no_dates()
-        chart2 = fig2.to_html()
+        chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+            start_of_four_months_ago, start_of_next_month
+        )
 
         # If the dates entered are validated ok
         if form.is_valid():
@@ -90,9 +95,12 @@ def index(request):
 
                 # If no months entered
                 if start_month == "---" and end_month == "---":
-                    # Display last three months
-                    fig2 = sp.RunningTotPlotFunctions().monthly_no_dates()
-                    chart2 = fig2.to_html()
+
+                    # Display last four months
+                    chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+                        start_of_four_months_ago, start_of_next_month
+                    )
+
                     chart = sp.RunningTotPlotFunctions(
                     ).form_not_submitted_or_invalid()
 
@@ -104,8 +112,18 @@ def index(request):
                     }
 
                 else:
-                    chart2 = sp.RunningTotPlotFunctions().monthly_with_dates(
-                        start_month, end_month
+                    # If months are entered
+                    month_start = f"{start_month}-01"
+                    month_end = f"{end_month}-01"
+                    # Convert to date obj
+                    date_month_end = datetime.strptime(
+                        month_end, "%Y-%m-%d"
+                    ).date()
+                    #Add one month to the end month
+                    #So it is first of next month
+                    month_end = date_month_end + relativedelta(months=+1)
+                    chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+                        month_start, month_end
                     )
 
                     # Reset other chart
@@ -122,8 +140,10 @@ def index(request):
             else:
                 # If monthly form not valid or unsubmitted
                 # Display unfiltered graph for all dates and show errors
-                fig2 = sp.RunningTotPlotFunctions().monthly_no_dates()
-                chart2 = fig2.to_html()
+                chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+                    start_of_four_months_ago, start_of_next_month
+                )
+
                 chart = sp.RunningTotPlotFunctions(
                 ).form_not_submitted_or_invalid()
 
@@ -138,8 +158,9 @@ def index(request):
         else:
             form = DateForm()
             form2 = MonthlyForm()
-            fig2 = sp.RunningTotPlotFunctions().monthly_no_dates()
-            chart2 = fig2.to_html()
+            chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+                start_of_four_months_ago, start_of_next_month
+            )
             chart = sp.RunningTotPlotFunctions(
             ).form_not_submitted_or_invalid()
             context = {
@@ -172,9 +193,9 @@ def storage_chart(request):
 
             # If no months are entered
             if start == "---" and end == "---":
-                # Get date of the first day of the month six months ago
+                # Get date of the first day of the month four months ago
                 # Get date of the last day of the current month
-                # These are used to filter for last 6 months by default
+                # These are used to filter for last 4 months by default
                 today_date = dx_queries.no_of_days_in_month()[0]
                 this_year, this_month, _ = today_date.split("-")
                 four_months_ago = date.today() + relativedelta(months=-4)
@@ -196,7 +217,7 @@ def storage_chart(request):
                     project_type = form.cleaned_data.get('project_type')
                     assay_type = form.cleaned_data.get('assay_type')
 
-                    # Month ranges are last six months
+                    # Month ranges are last four months
                     context = sp.StoragePlotFunctions(
                     ).month_range_assay_type_and_proj_type(
                         project_type,
@@ -217,7 +238,7 @@ def storage_chart(request):
                         proj_types = sp.StoragePlotFunctions(
                         ).str_to_list(proj_string)
 
-                        # Month ranges are last six months
+                        # Month ranges are last four months
                         context = sp.StoragePlotFunctions(
                         ).month_range_only_project_types(
                             proj_types,
@@ -234,7 +255,7 @@ def storage_chart(request):
                         assay_types = sp.StoragePlotFunctions(
                         ).str_to_list(assay_string)
 
-                        # Month ranges are last six months
+                        # Month ranges are last four months
                         context = sp.StoragePlotFunctions(
                         ).month_range_only_assay_types(
                             assay_types,
@@ -247,7 +268,7 @@ def storage_chart(request):
                         # If form is submitted
                         # But no assay type or project type is searched for
                         # And no months searched for
-                        # Display all projs last 6 months grouped by month
+                        # Display all projs last 4 months grouped by month
 
                         context = sp.StoragePlotFunctions(
                         ).month_range_form_submitted_no_proj_or_assay(
@@ -339,7 +360,7 @@ def storage_chart(request):
 
         else:
             # If the form is not valid, display just the standard graph
-            # Grouped by last six months
+            # Grouped by last four months
             # For all projects
             context = sp.StoragePlotFunctions(
                 ).form_is_not_submitted_or_invalid(form)
@@ -350,7 +371,7 @@ def storage_chart(request):
             ).form_is_not_submitted_or_invalid(form)
     else:
         # If nothing is submitted on the form (normal landing page)
-        # Display the all projects graph grouped by last six months
+        # Display the all projects graph grouped by last four months
         form = StorageForm()
         context = sp.StoragePlotFunctions(
             ).form_is_not_submitted_or_invalid(form)

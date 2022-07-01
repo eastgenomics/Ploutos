@@ -20,8 +20,8 @@ class RunningTotPlotFunctions():
 
     def __init__(self) -> None:
         self.today_date = dx_queries.no_of_days_in_month()[0]
-        self.three_months_ago = date.today() + relativedelta(months=-3)
-        self.start_of_three_months_ago = self.three_months_ago.replace(day=1)
+        self.four_months_ago = date.today() + relativedelta(months=-4)
+        self.start_of_four_months_ago = self.four_months_ago.replace(day=1)
         self.start_of_next_month = (
             date.today() + relativedelta(months=+1)
         ).replace(day=1)
@@ -46,23 +46,28 @@ class RunningTotPlotFunctions():
 
         return charge_diff
 
-    def monthly_no_dates(self):
+    def monthly_between_dates(self, start_month, end_month):
         """
         Set context for the monthly graph when no dates entered
         Defaults to previous three months
         Parameters
         ----------
-        None
+        start_month :  str or datetime.date object
+            date in YYY-MM-DD format e.g. "2022-05-01" as first date in range
+        end_month : str or datetime.date object
+            date in YYY-MM-DD format e.g. "2022-06-01" as first date in range
 
         Returns
         -------
-        fig : Plotly figure object
+        chart : Plotly figure object converted to HTML
         """
-        # Have the default graph be the last 3 months
+        # Filter between start of start_month and the 1st of the month
+        # After end_month
         monthly_charges = DailyOrgRunningTotal.objects.filter(
             date__date__range=[
-                self.start_of_three_months_ago, self.start_of_next_month
+                start_month, end_month
             ]
+
         ).values_list(
                 'date__date__month',
                 'date__date__year',
@@ -79,56 +84,35 @@ class RunningTotPlotFunctions():
         compute_charges = []
         egress_charges = []
 
-        # Make each a defaultdict e.g. {'May-2022': [500.20, 100.40]}
+        # Make each a defaultdict e.g. {'5-2022': [500.20, 100.40]}
         for item in monthly_charges:
             storage_dic[f"{item[0]}-{item[1]}"].append(item[2])
             compute_dic[f"{item[0]}-{item[1]}"].append(item[3])
             egress_dic[f"{item[0]}-{item[1]}"].append(item[4])
 
         # Get the keys and sort by month-year
+        # Only need to do this for storage_dic as all have same keys
         key_list = sorted(
             storage_dic.keys(),
             key = lambda x: datetime.strptime(x, '%m-%Y')
         )
 
-        # Loop through index and key
-        # Make sure only doing this for keys with index 1 and above
-        # And stopping on last key
-        # Take first element of month (1st) and move to end of prev month
-        # Then delete it from its old month
-        # If this leaves no entries for the old month, delete the key too
-        for i, key in enumerate(key_list):
-            if i-1 >= 0 and i+1 <= len(key_list):
-                storage_dic[key_list[i-1]].append(
-                    storage_dic[key][0]
-                )
-                del storage_dic[key][0]
-                if len(storage_dic[key]) < 1:
-                    del storage_dic[key]
+        # Append the first charge of each month to lists
+        for idx, month in enumerate(key_list):
+            if idx+1 <= len(key_list):
+                months.append(month)
+                storage_charges.append(storage_dic[month][0])
+                compute_charges.append(compute_dic[month][0])
+                egress_charges.append(egress_dic[month][0])
 
-                compute_dic[key_list[i-1]].append(
-                    compute_dic[key][0]
-                )
-                del compute_dic[key][0]
-                if len(compute_dic[key]) < 1:
-                    del compute_dic[key]
+        # Calculate the charge differences between months
+        storage_charges = self.calculate_diffs(storage_charges)
+        compute_charges = self.calculate_diffs(compute_charges)
+        egress_charges = self.calculate_diffs(egress_charges)
 
-                egress_dic[key_list[i-1]].append(
-                    egress_dic[key][0]
-                )
-                del egress_dic[key][0]
-                if len(egress_dic[key]) < 1:
-                    del egress_dic[key]
-
-        # Work out last charge minus first charge for the month
-        # For a month total
-        for month, charge_list in storage_dic.items():
-            months.append(month)
-            storage_charges.append(charge_list[-1] - charge_list[0])
-        for month, charge_list in compute_dic.items():
-            compute_charges.append(charge_list[-1] - charge_list[0])
-        for month, charge_list in egress_dic.items():
-            egress_charges.append(charge_list[-1] - charge_list[0])
+        # Remove the last month from the month categories
+        # That we are taking the 1st date from but not using
+        months = months[:-1]
 
         # Convert months to strings e.g. "May 2022" for plotting
         converted_months = [
@@ -189,177 +173,10 @@ class RunningTotPlotFunctions():
             marker_line_width = 1,
         )
 
-        return fig
+        chart = fig.to_html()
 
-    def monthly_with_dates(
-        self, start_month, end_month
-    ):
-        """
-        Set context for the monthly graph when dates are entered
-        Defaults to previous three months
-        Parameters
-        ----------
-        start_month : str
-            the month that you want to filter on as start of range
-            e.g. "2022-05"
-        end_month : str
-            the month you want to filter on as end of range
-            e.g. "2022-06"
-        Returns
-        -------
-            chart2 : Plotly figure object as HTML
-        """
-        # Convert the months to be the first of that month
-        month_start = f"{start_month}-01"
-        month_end = f"{end_month}-01"
-        # Convert to date obj
-        date_month_end = datetime.strptime(
-            month_end, "%Y-%m-%d"
-        ).date()
-        # Add one month to the end month
-        # So it is first of next month
-        month_end = date_month_end + relativedelta(months=+1)
+        return chart
 
-        # Filter between the first of start month
-        # And first of month after end month
-        monthly_charges = DailyOrgRunningTotal.objects.filter(
-            date__date__range=[month_start, month_end]
-        ).values_list(
-            'date__date__month',
-            'date__date__year',
-            'storage_charges',
-            'compute_charges',
-            'egress_charges'
-        )
-
-        storage_dic = defaultdict(list)
-        compute_dic = defaultdict(list)
-        egress_dic = defaultdict(list)
-        months = []
-        storage_charges, compute_charges, egress_charges = [], [], []
-
-        #  Make each a defaultdict e.g. {'May-2022': [500.20, 100.40]}
-        for item in monthly_charges:
-            storage_dic[f"{item[0]}-{item[1]}"].append(item[2])
-            compute_dic[f"{item[0]}-{item[1]}"].append(item[3])
-            egress_dic[f"{item[0]}-{item[1]}"].append(item[4])
-
-        # Sort the months in the db
-        key_list = sorted(
-            storage_dic.keys(),
-            key = lambda x: datetime.strptime(x, '%m-%Y')
-        )
-
-        # Loop through index and key
-        # Make sure only doing this for keys with index 1 and above
-        # And stopping on last key
-        # Take first element of month (1st) and move to end of prev month
-        # Then delete it from its old month
-        # If this leaves no entries for the old month, delete the key too
-        for i, key in enumerate(key_list):
-            if i-1 >= 0 and i+1 <= len(key_list):
-                storage_dic[key_list[i-1]].append(
-                    storage_dic[key][0]
-                )
-                del storage_dic[key][0]
-                if len(storage_dic[key]) < 1:
-                    del storage_dic[key]
-
-                compute_dic[key_list[i-1]].append(
-                    compute_dic[key][0]
-                )
-                del compute_dic[key][0]
-                if len(compute_dic[key]) < 1:
-                    del compute_dic[key]
-
-                egress_dic[key_list[i-1]].append(
-                    egress_dic[key][0]
-                )
-                del egress_dic[key][0]
-                if len(egress_dic[key]) < 1:
-                    del egress_dic[key]
-
-        # if len(storage_dic.keys()) == 1:
-        #     for key in storage_dic.keys():
-        #         del storage_dic[key][0]
-
-        # if len(compute_dic.keys()) == 1:
-        #     for key in compute_dic.keys():
-        #         del compute_dic[key][0]
-
-        # if len(egress_dic.keys()) == 1:
-        #     for key in egress_dic.keys():
-        #         del egress_dic[key][0]
-
-        # Work out last charge minus first charge for the month
-        # For a month total
-        for month, charge_list in storage_dic.items():
-            months.append(month)
-            storage_charges.append(charge_list[-1] - charge_list[0])
-        for month, charge_list in compute_dic.items():
-            compute_charges.append(charge_list[-1] - charge_list[0])
-        for month, charge_list in egress_dic.items():
-            egress_charges.append(charge_list[-1] - charge_list[0])
-
-        # Convert months to strings for plotting
-        converted_months = [(datetime.strptime(month, "%m-%Y").strftime('%b %Y')) for month in months]
-
-        fig2 = go.Figure()
-
-        fig2.add_trace(go.Bar(
-            x=converted_months,
-            y=storage_charges,
-            name='Storage',
-            hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                '<extra></extra>',
-            marker=dict(color='#EF553B')
-            )
-        )
-
-        fig2.add_trace(go.Bar(
-            x=converted_months,
-            y=compute_charges,
-            name='Compute',
-            hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                '<extra></extra>',
-            marker=dict(color='#636EFA')
-            )
-        )
-
-        fig2.add_trace(go.Bar(
-            x=converted_months,
-            y=egress_charges,
-            name='Egress',
-            hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                '<extra></extra>',
-            marker=dict(color="#00CC96")
-            )
-        )
-
-        fig2.update_layout(
-            title={
-                'text': "Monthly Running Charges",
-                'xanchor': 'center',
-                'x': 0.5,
-                'font_size': 24
-            },
-            xaxis_title="Month",
-            yaxis_title="Monthly estimated charge ($)",
-            yaxis_tickformat=",d",
-            width=1200,
-            height=600,
-            font_family='Helvetica',
-        )
-
-        # Add black border to bars
-        fig2.update_traces(
-            marker_line_color = 'rgb(0,0,0)',
-            marker_line_width = 1,
-        )
-
-        chart2 = fig2.to_html()
-
-        return chart2
 
     def all_charge_types(self, totals):
         """
@@ -555,7 +372,7 @@ class RunningTotPlotFunctions():
 
         """
         totals = DailyOrgRunningTotal.objects.filter(
-            date__date__range=[str(self.three_months_ago), self.today_date]
+            date__date__range=[str(self.four_months_ago), self.today_date]
         )
 
         # Plot the date and storage charges as line graph
