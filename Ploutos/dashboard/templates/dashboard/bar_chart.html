@@ -26,7 +26,7 @@ document.querySelector('button[type="reset"]').addEventListener('click', functio
         <div class="row">
         <!-- If general form errors, display them with red banner -->
         {% if form.non_field_errors %}
-            <div class="alert alert-danger">
+            <div class="non-field-alert alert-danger">
                 {{ form.non_field_errors }}
             </div>
         {% endif %}

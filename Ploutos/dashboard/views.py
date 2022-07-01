@@ -22,14 +22,14 @@ def index(request):
     ).replace(day=1)
     # If the form is submitted
     if 'submit' in request.GET:
-        # Get the form, set monthly form and monthly plot to default
+        # Get the form with info, set monthly form and monthly plot to default
         form = DateForm(request.GET)
         form2 = MonthlyForm()
         chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
-        # If the dates entered are validated ok
+        # If the dates entered are validated
         if form.is_valid():
             # Get the charge type (always entered)
             charge_type = form.cleaned_data.get("charge_type")
@@ -76,7 +76,9 @@ def index(request):
             else:
                 # No dates are entered so show default last 4 months
                 totals = DailyOrgRunningTotal.objects.filter(
-                    date__date__range=[start_of_four_months_ago, date.today()]
+                    date__date__range=[
+                        start_of_four_months_ago, date.today()
+                    ]
                 )
 
                 # If user wants to see all charge types, render whole graph

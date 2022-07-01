@@ -46,6 +46,282 @@ class RunningTotPlotFunctions():
 
         return charge_diff
 
+    def all_charge_types(self, totals):
+        """
+        Set context when all charge types are searched for
+        Parameters
+        ----------
+        totals :  queryset
+            queryset already filtered by the specified daterange
+
+        Returns
+        -------
+        fig : Plotly figure object
+        """
+
+        # Plot the date and storage charges as line graph
+        charges = totals.order_by(
+            'date__date'
+        ).values_list(
+            'storage_charges', 'compute_charges', 'egress_charges'
+        )
+
+        # Get dates in order from db
+        dates = totals.order_by('date__date').values_list(
+            'date__date', flat=True
+        )
+
+        # Turn date objects into strings
+        stringified_dates = [str(date) for date in dates][:-1]
+
+        # Get the relevant info as a list
+        storage_charges, compute_charges, egress_charges = zip(*charges)
+
+        # Calculate one date charges minus previous date
+        storage_charge_diff = self.calculate_diffs(storage_charges)
+        compute_charge_diff = self.calculate_diffs(compute_charges)
+        egress_charge_diff = self.calculate_diffs(egress_charges)
+
+        fig = go.Figure(layout={'hovermode': 'x unified'})
+
+        fig.add_trace(go.Bar(
+            x=stringified_dates,
+            y=compute_charge_diff,
+            name='Compute',
+            hovertemplate='%{y:.2f}'
+            )
+        )
+
+        fig.add_trace(go.Bar(
+            x=stringified_dates,
+            y=storage_charge_diff,
+            name='Storage',
+            hovertemplate='%{y:.2f}'
+            )
+        )
+
+        fig.add_trace(go.Bar(
+            x=stringified_dates,
+            y=egress_charge_diff,
+            name='Egress',
+            hovertemplate='%{y:.2f}'
+            )
+        )
+
+        fig.update_layout(
+            title={
+                'text': "Daily Running Charges",
+                'xanchor': 'center',
+                'x': 0.5,
+                'font_size': 24
+            },
+            xaxis_title="Date",
+            xaxis_tickformat='%d %b %y',
+            yaxis_title="Daily estimated charge ($)",
+            yaxis_tickformat=",d",
+            barmode='stack',
+            width=1200,
+            height=600,
+            font_family='Helvetica',
+        )
+
+        # Add black border to bars
+        fig.update_traces(
+            marker_line_color = 'rgb(0,0,0)',
+            marker_line_width = 1
+        )
+
+        return fig
+
+    def specific_charge_type(self, totals, charge_type):
+        """
+        Set context when a specific charge types is searched for
+        Parameters
+        ----------
+        totals :  queryset
+            queryset already filtered by the specified daterange
+        charge_type : str
+            the charge type the user wants to see e.g. 'Egress'
+
+        Returns
+        -------
+        fig : Plotly figure object
+        """
+        # Plot the date and storage charges as line graph
+        charges = totals.order_by(
+            'date__date'
+        ).values_list(
+            'storage_charges', 'compute_charges', 'egress_charges'
+        )
+
+        # Get dates in order from db
+        dates = totals.order_by('date__date').values_list(
+            'date__date', flat=True
+        )
+
+        # Turn date objects into strings
+        stringified_dates = [str(date) for date in dates][:-1]
+
+        # Get relevant charge from tuples
+        storage_charges, compute_charges, egress_charges = zip(*charges)
+
+        # Calculate charge relative to previous day
+        storage_charge_diff = self.calculate_diffs(storage_charges)
+        compute_charge_diff = self.calculate_diffs(compute_charges)
+        egress_charge_diff = self.calculate_diffs(egress_charges)
+
+        charge_dict = {
+            "Egress": {
+                "colour": "#00CC96",
+                "data": egress_charge_diff,
+                "title": "Egress Daily Running Charges"
+            },
+            "Compute": {
+                "colour": '#636EFA',
+                "data": compute_charge_diff,
+                "title": "Compute Daily Running Charges"
+            },
+            "Storage": {
+                "colour": '#EF553B',
+                "data": storage_charge_diff,
+                "title": "Storage Daily Running Charges"
+            }
+        }
+
+        fig = go.Figure(layout={'hovermode': 'x unified'})
+
+        fig.add_trace(go.Bar(
+            x=stringified_dates,
+            y=charge_dict[charge_type]["data"],
+            name='Compute',
+            marker=dict(color=charge_dict[charge_type]["colour"]),
+            hovertemplate='%{y:.2f}'
+            )
+        )
+
+        fig.update_layout(
+            title={
+                'text': charge_dict[charge_type]["title"],
+                'xanchor': 'center',
+                'x': 0.5,
+                'font_size': 24
+            },
+            xaxis_title="Date",
+            xaxis_tickformat='%d %b %y',
+            yaxis_title="Daily estimated charge ($)",
+            yaxis_tickformat=",d",
+            barmode='stack',
+            width=1200,
+            height=600,
+            font_family='Helvetica',
+        )
+
+        fig.data[0].name = f"{charge_type}"
+        fig.update_traces(
+            marker_line_color = 'rgb(0,0,0)',
+            marker_line_width = 1,
+            showlegend=True
+        )
+
+        return fig
+
+
+    def form_not_submitted_or_invalid(self):
+        """
+        Set context when the form is not submitted
+        Or when the form is not valid (wrong dates)
+        Includes all dates present in db and all charge types
+        Parameters
+        ----------
+        form : Django form object
+            form either as Form(request.GET) or Form()
+        Returns
+        -------
+        context : dict
+            context to pass to HTML
+
+        """
+        totals = DailyOrgRunningTotal.objects.filter(
+            date__date__range=[str(self.four_months_ago), self.today_date]
+        )
+
+        # Plot the date and storage charges as line graph
+        charges = totals.order_by(
+            'date__date'
+        ).values_list(
+            'storage_charges', 'compute_charges', 'egress_charges'
+        )
+
+        # Get dates in order from the db
+        dates = totals.order_by(
+            'date__date'
+        ).values_list(
+            'date__date', flat=True
+        )
+
+        # Convert dates to strs, remove last date
+        stringified_dates = [str(date) for date in dates][:-1]
+
+        # Get relevant charge from tuples
+        storage_charges, compute_charges, egress_charges = zip(*charges)
+
+        # Calculate charge for the day relative to previous day
+        storage_charge_diff = self.calculate_diffs(storage_charges)
+        compute_charge_diff = self.calculate_diffs(compute_charges)
+        egress_charge_diff = self.calculate_diffs(egress_charges)
+
+        fig = go.Figure(layout={'hovermode': 'x unified'})
+
+        fig.add_trace(go.Bar(
+            x=stringified_dates,
+            y=compute_charge_diff,
+            name='Compute',
+            hovertemplate='%{y:.2f}'
+            )
+        )
+
+        fig.add_trace(go.Bar(
+            x=stringified_dates,
+            y=storage_charge_diff,
+            name='Storage',
+            hovertemplate='%{y:.2f}'
+            )
+        )
+
+        fig.add_trace(go.Bar(
+            x=stringified_dates,
+            y=egress_charge_diff,
+            name='Egress',
+            hovertemplate='%{y:.2f}'
+            )
+        )
+
+        fig.update_layout(
+            title={
+                'text': "Daily Running Charges",
+                'xanchor': 'center',
+                'x': 0.5,
+                'font_size': 24
+            },
+            xaxis_title="Date",
+            xaxis_tickformat='%d %b %y',
+            yaxis_title="Daily estimated charge ($)",
+            yaxis_tickformat=",d",
+            barmode='stack',
+            width=1200,
+            height=600,
+            font_family='Helvetica',
+        )
+
+        fig.update_traces(
+            marker_line_color = 'rgb(0,0,0)',
+            marker_line_width = 1
+        )
+
+        chart = fig.to_html()
+
+        return chart
+
     def monthly_between_dates(self, start_month, end_month):
         """
         Set context for the monthly graph when no dates entered
@@ -160,6 +436,7 @@ class RunningTotPlotFunctions():
                 'font_size': 24
             },
             xaxis_title="Month",
+            xaxis_tickformat='%d %b %y',
             yaxis_title="Monthly estimated charge ($)",
             yaxis_tickformat=",d",
             width=1200,
@@ -171,280 +448,6 @@ class RunningTotPlotFunctions():
         fig.update_traces(
             marker_line_color = 'rgb(0,0,0)',
             marker_line_width = 1,
-        )
-
-        chart = fig.to_html()
-
-        return chart
-
-
-    def all_charge_types(self, totals):
-        """
-        Set context when all charge types are searched for
-        Parameters
-        ----------
-        totals :  queryset
-            queryset already filtered by the specified daterange
-
-        Returns
-        -------
-        fig : Plotly figure object
-        """
-
-        # Plot the date and storage charges as line graph
-        charges = totals.order_by(
-            'date__date'
-        ).values_list(
-            'storage_charges', 'compute_charges', 'egress_charges'
-        )
-
-        # Get dates in order from db
-        dates = totals.order_by('date__date').values_list(
-            'date__date', flat=True
-        )
-
-        # Turn date objects into strings
-        stringified_dates = [str(date) for date in dates][:-1]
-
-        # Get the relevant info as a list
-        storage_charges, compute_charges, egress_charges = zip(*charges)
-
-        # Calculate one date charges minus previous date
-        storage_charge_diff = self.calculate_diffs(storage_charges)
-        compute_charge_diff = self.calculate_diffs(compute_charges)
-        egress_charge_diff = self.calculate_diffs(egress_charges)
-
-        fig = go.Figure(layout={'hovermode': 'x unified'})
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=compute_charge_diff,
-            name='Compute',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=storage_charge_diff,
-            name='Storage',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=egress_charge_diff,
-            name='Egress',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.update_layout(
-            title={
-                'text': "Daily Running Charges",
-                'xanchor': 'center',
-                'x': 0.5,
-                'font_size': 24
-            },
-            xaxis_title="Date",
-            yaxis_title="Daily estimated charge ($)",
-            yaxis_tickformat=",d",
-            barmode='stack',
-            width=1200,
-            height=600,
-            font_family='Helvetica',
-        )
-
-        # Add black border to bars
-        fig.update_traces(
-            marker_line_color = 'rgb(0,0,0)',
-            marker_line_width = 1
-        )
-
-        return fig
-
-    def specific_charge_type(self, totals, charge_type):
-        """
-        Set context when a specific charge types is searched for
-        Parameters
-        ----------
-        totals :  queryset
-            queryset already filtered by the specified daterange
-        charge_type : str
-            the charge type the user wants to see e.g. 'Egress'
-
-        Returns
-        -------
-        fig : Plotly figure object
-        """
-        # Plot the date and storage charges as line graph
-        charges = totals.order_by(
-            'date__date'
-        ).values_list(
-            'storage_charges', 'compute_charges', 'egress_charges'
-        )
-
-        # Get dates in order from db
-        dates = totals.order_by('date__date').values_list(
-            'date__date', flat=True
-        )
-
-        # Turn date objects into strings
-        stringified_dates = [str(date) for date in dates][:-1]
-
-        # Get relevant charge from tuples
-        storage_charges, compute_charges, egress_charges = zip(*charges)
-
-        # Calculate charge relative to previous day
-        storage_charge_diff = self.calculate_diffs(storage_charges)
-        compute_charge_diff = self.calculate_diffs(compute_charges)
-        egress_charge_diff = self.calculate_diffs(egress_charges)
-
-        charge_dict = {
-            "Egress": {
-                "colour": "#00CC96",
-                "data": egress_charge_diff,
-                "title": "Egress Daily Running Charges"
-            },
-            "Compute": {
-                "colour": '#636EFA',
-                "data": compute_charge_diff,
-                "title": "Compute Daily Running Charges"
-            },
-            "Storage": {
-                "colour": '#EF553B',
-                "data": storage_charge_diff,
-                "title": "Storage Daily Running Charges"
-            }
-        }
-
-        fig = go.Figure(layout={'hovermode': 'x unified'})
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=charge_dict[charge_type]["data"],
-            name='Compute',
-            marker=dict(color=charge_dict[charge_type]["colour"]),
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.update_layout(
-            title={
-                'text': charge_dict[charge_type]["title"],
-                'xanchor': 'center',
-                'x': 0.5,
-                'font_size': 24
-            },
-            xaxis_title="Date",
-            yaxis_title="Daily estimated charge ($)",
-            yaxis_tickformat=",d",
-            barmode='stack',
-            width=1200,
-            height=600,
-            font_family='Helvetica',
-        )
-
-        fig.data[0].name = f"{charge_type}"
-        fig.update_traces(
-            marker_line_color = 'rgb(0,0,0)',
-            marker_line_width = 1,
-            showlegend=True
-        )
-
-        return fig
-
-
-    def form_not_submitted_or_invalid(self):
-        """
-        Set context when the form is not submitted
-        Or when the form is not valid (wrong dates)
-        Includes all dates present in db and all charge types
-        Parameters
-        ----------
-        form : Django form object
-            form either as Form(request.GET) or Form()
-        Returns
-        -------
-        context : dict
-            context to pass to HTML
-
-        """
-        totals = DailyOrgRunningTotal.objects.filter(
-            date__date__range=[str(self.four_months_ago), self.today_date]
-        )
-
-        # Plot the date and storage charges as line graph
-        charges = totals.order_by(
-            'date__date'
-        ).values_list(
-            'storage_charges', 'compute_charges', 'egress_charges'
-        )
-
-        # Get dates in order from the db
-        dates = totals.order_by(
-            'date__date'
-        ).values_list(
-            'date__date', flat=True
-        )
-
-        # Convert dates to strs, remove last date
-        stringified_dates = [str(date) for date in dates][:-1]
-
-        # Get relevant charge from tuples
-        storage_charges, compute_charges, egress_charges = zip(*charges)
-
-        # Calculate charge for the day relative to previous day
-        storage_charge_diff = self.calculate_diffs(storage_charges)
-        compute_charge_diff = self.calculate_diffs(compute_charges)
-        egress_charge_diff = self.calculate_diffs(egress_charges)
-
-        fig = go.Figure(layout={'hovermode': 'x unified'})
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=compute_charge_diff,
-            name='Compute',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=storage_charge_diff,
-            name='Storage',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=egress_charge_diff,
-            name='Egress',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.update_layout(
-            title={
-                'text': "Daily Running Charges",
-                'xanchor': 'center',
-                'x': 0.5,
-                'font_size': 24
-            },
-            xaxis_title="Date",
-            yaxis_title="Daily estimated charge ($)",
-            yaxis_tickformat=",d",
-            barmode='stack',
-            width=1200,
-            height=600,
-            font_family='Helvetica',
-        )
-
-        fig.update_traces(
-            marker_line_color = 'rgb(0,0,0)',
-            marker_line_width = 1
         )
 
         chart = fig.to_html()

@@ -25,3 +25,8 @@ form {
 .chart-two {
     padding-top: 30px;
 }
+
+.non-field-alert {
+    padding-top: 10px;
+    padding-bottom: 0px;
+}

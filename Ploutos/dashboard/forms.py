@@ -67,6 +67,21 @@ class DateForm(forms.Form):
         end = self.cleaned_data['end']
         charge_type = self.cleaned_data['charge_type']
 
+        # Check both dates are entered
+        if start:
+            if not end:
+                self.add_error(
+                    "end",
+                    "If entering a start date please include an end date"
+                )
+
+        if end:
+            if not start:
+                self.add_error(
+                    "start",
+                    "If entering an end date please include a start date"
+                )
+
         # Check end date isn't earlier than start date
         # Checking start against earliest db entry and end against today
         # No longer needed as min and max set on date picker itself
@@ -133,22 +148,26 @@ class MonthlyForm(forms.Form):
         end_month = self.cleaned_data["end_month"]
 
         # Check both start and end entered
-        if start_month == "--" and end_month != "--":
-            raise ValidationError(
-                "If entering a start month please include an end"
+        if start_month == "---" and end_month != "---":
+            self.add_error(
+                "start_month",
+                "If entering an end month please include a start month"
             )
 
         if end_month == "---" and start_month != "---":
-            raise ValidationError(
-                "If entering an end month please include a start"
+            self.add_error(
+                "end_month",
+                "If entering a start month please include an end month"
         )
+
+        # Check end month not before start
         if end_month < start_month:
             self.add_error("end_month", "End month is before start month")
 
         return self.cleaned_data
 
 class StorageForm(forms.Form):
-    """Project type, assay type and monthyear options for the storage costs"""
+    """Proj type, assay type and monthyear to-from for the storage costs"""
 
     TYPE_CHOICES = (
         ('001', '001'),
@@ -184,15 +203,18 @@ class StorageForm(forms.Form):
         year_month_string = f"{year}-0{month}"
         months_and_years.append(year_month_string)
 
+    # Convert to format month year e.g "2022-05" -> "May 2022"
     converted_entries = [
         calendar.month_name[
             int(entry.split("-")[1])
         ]+" "+(entry.split("-")[0])
         for entry in months_and_years
     ]
+
     # Add in option of blank as choice
     converted_entries = ['---'] + converted_entries
     months_and_years = ['---'] + months_and_years
+
     # Set as tuple choices
     MONTH_YEAR_CHOICES = (
         (entry, converted_entry)
@@ -214,7 +236,7 @@ class StorageForm(forms.Form):
         widget=forms.TextInput(
             attrs={
                 'placeholder': 'Enter project types, separated by commas',
-                'style': 'width:340px',
+                'style': 'width: 340px',
                 'class': 'form-control'
             }
         )
@@ -226,7 +248,7 @@ class StorageForm(forms.Form):
         widget=forms.TextInput(
             attrs={
                 'placeholder': 'Enter assay types, separated by commas',
-                'style': 'width:340px',
+                'style': 'width: 340px',
                 'class': 'form-control'
             }
         )
@@ -261,12 +283,12 @@ class StorageForm(forms.Form):
         # Check both start and end included
         if start == "---" and end != "---":
             raise ValidationError(
-                "If entering an end please include a start"
+                "Please include a start month if entering an end month"
             )
 
         if end == "---" and start != "---":
             raise ValidationError(
-                "If entering a start please include an end"
+                "Please include an end month if entering a start month"
         )
 
         # Check end month not before start
