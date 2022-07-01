@@ -1,33 +1,11 @@
 {% extends 'dashboard/base.html' %}
-
+{% load crispy_forms_tags %}
 {% block content %}
 <div class="all" style='margin: 0 auto;'>
 <form method="GET" action="{% url 'index' %}">
     <div class="container">
         <div class="row">
-        <!-- If form errors, display each field's error with red banner -->
-        {% if form.errors %}
-        <ul class="user-msg error">
-            {% for field in form %}
-                {% for error in field.errors %}
-                <div class="alert alert-danger">
-                    <li>
-                      {% if field != '__all__' %}
-                        <strong>{{ field.label }}:</strong>
-                      {% endif %}
-                      {{ error }}
-                    </li>
-                </div>
-                {% endfor %}
-            {% endfor %}
-            </ul>
-        {% endif %}
-        <!-- Display each field's label and the field itself -->
-        {% for field in form  %}
-          <div class="col-sm-6">
-            <b>{{ field.label_tag }}</b> {{ field }} 
-          </div>
-        {% endfor %}
+          {% crispy form %}
         </div>
 
     <!-- Submit button, 'submit' used to check if form is submitted -->
@@ -43,29 +21,7 @@
 <form method="GET" action="{% url 'index' %}">
 <div class="container">
   <div class="row">
-  <!-- If form errors, display each field's error with red banner -->
-  {% if form2.errors %}
-  <ul class="user-msg error">
-      {% for field in form2 %}
-          {% for error in field.errors %}
-          <div class="alert alert-danger">
-              <li>
-                {% if field != '__all__' %}
-                  <strong>{{ field.label }}:</strong>
-                {% endif %}
-                {{ error }}
-              </li>
-          </div>
-          {% endfor %}
-      {% endfor %}
-      </ul>
-  {% endif %}
-  <!-- Display each field's label and the field itself -->
-  {% for field in form2  %}
-    <div class="col-sm-6">
-      <b>{{ field.label_tag }}</b> {{ field }} 
-    </div>
-  {% endfor %}
+    {% crispy form2 %}
   </div>
   <input type="submit" name="monthly" value="Filter"/>
   <input type="reset" name="reset2" value="Reset"/>

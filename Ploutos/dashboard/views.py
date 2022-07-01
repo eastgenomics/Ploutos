@@ -14,12 +14,15 @@ from scripts import storage_plots as sp
 def index(request):
     """View to display running total charges via Plotly"""
     # Get all running total objects from db
+    # Get first date of month four months ago + first date of next month
+    # To be used for all default filtering
     totals = DailyOrgRunningTotal.objects.all()
     four_months_ago = date.today() + relativedelta(months=-4)
     start_of_four_months_ago = four_months_ago.replace(day=1)
     start_of_next_month = (
         date.today() + relativedelta(months=+1)
     ).replace(day=1)
+
     # If the form is submitted
     if 'submit' in request.GET:
         # Get the form with info, set monthly form and monthly plot to default
@@ -114,62 +117,18 @@ def index(request):
                 'form2': form2
             }
 
-    else:
-        # If form for monthly chart is submitted
-        if 'monthly' in request.GET:
-            form = DateForm()
-            form2 = MonthlyForm(request.GET)
-            if form2.is_valid():
-                start_month = form2.cleaned_data.get("start_month")
-                end_month = form2.cleaned_data.get("end_month")
+    # If instead form for monthly chart is submitted
+    elif 'monthly' in request.GET:
+        form = DateForm()
+        form2 = MonthlyForm(request.GET)
+        if form2.is_valid():
+            start_month = form2.cleaned_data.get("start_month")
+            end_month = form2.cleaned_data.get("end_month")
 
-                # If no months entered
-                if start_month == "---" and end_month == "---":
+            # If no months entered
+            if start_month == "---" and end_month == "---":
 
-                    # Display last four months
-                    chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
-                        start_of_four_months_ago, start_of_next_month
-                    )
-
-                    chart = sp.RunningTotPlotFunctions(
-                    ).form_not_submitted_or_invalid()
-
-                    context = {
-                        'chart': chart,
-                        'chart2': chart2,
-                        'form': form,
-                        'form2': form2
-                    }
-
-                else:
-                    # If months are entered
-                    month_start = f"{start_month}-01"
-                    month_end = f"{end_month}-01"
-                    # Convert to date obj
-                    date_month_end = datetime.strptime(
-                        month_end, "%Y-%m-%d"
-                    ).date()
-                    #Add one month to the end month
-                    #So it is first of next month
-                    month_end = date_month_end + relativedelta(months=+1)
-                    chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
-                        month_start, month_end
-                    )
-
-                    # Reset other chart
-                    chart = sp.RunningTotPlotFunctions(
-                    ).form_not_submitted_or_invalid()
-
-                    context = {
-                        'chart': chart,
-                        'chart2': chart2,
-                        'form': form,
-                        'form2': form2
-                    }
-
-            else:
-                # If monthly form not valid or unsubmitted
-                # Display unfiltered graph for all dates and show errors
+                # Display last four months
                 chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
                     start_of_four_months_ago, start_of_next_month
                 )
@@ -184,21 +143,64 @@ def index(request):
                     'form2': form2
                 }
 
-        # If no forms submitted display all charges for all dates in db
+            else:
+                # If months are entered
+                month_start = f"{start_month}-01"
+                month_end = f"{end_month}-01"
+                # Convert to date obj
+                date_month_end = datetime.strptime(
+                    month_end, "%Y-%m-%d"
+                ).date()
+                #Add one month to the end month
+                #So it is first of next month
+                month_end = date_month_end + relativedelta(months=+1)
+                chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+                    month_start, month_end
+                )
+
+                # Reset other chart
+                chart = sp.RunningTotPlotFunctions(
+                ).form_not_submitted_or_invalid()
+
+                context = {
+                    'chart': chart,
+                    'chart2': chart2,
+                    'form': form,
+                    'form2': form2
+                }
+
         else:
-            form = DateForm()
-            form2 = MonthlyForm()
+            # If monthly form not valid or unsubmitted
+            # Display unfiltered graph for all dates and show errors
             chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
                 start_of_four_months_ago, start_of_next_month
             )
+
             chart = sp.RunningTotPlotFunctions(
             ).form_not_submitted_or_invalid()
+
             context = {
                 'chart': chart,
                 'chart2': chart2,
                 'form': form,
                 'form2': form2
             }
+
+    # If no forms submitted display all charges for all dates in db
+    else:
+        form = DateForm()
+        form2 = MonthlyForm()
+        chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+            start_of_four_months_ago, start_of_next_month
+        )
+        chart = sp.RunningTotPlotFunctions(
+        ).form_not_submitted_or_invalid()
+        context = {
+            'chart': chart,
+            'chart2': chart2,
+            'form': form,
+            'form2': form2
+        }
 
     return render(request, 'index.html', context)
 

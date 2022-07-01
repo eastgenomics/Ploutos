@@ -7,12 +7,8 @@ form {
     padding-bottom: 30px;
 }
 
+
 .row {
-    text-align: left !important;
-    padding-bottom: 10px;
-}
-  
-.col-sm-6 {
     padding-top: 5px;
     padding-bottom: 5px;
 }

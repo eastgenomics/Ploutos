@@ -55,11 +55,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'debug_toolbar',
     'django_extensions',
-    "bootstrap4",
-    'bootstrap_datepicker_plus',
-    'django_static_jquery3',
-    'django_yearmonth_widget',
+    'bootstrap4',
+    'crispy_forms',
 ]
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

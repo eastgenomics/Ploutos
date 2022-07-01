@@ -1,6 +1,8 @@
 import calendar
 import datetime as dt
 
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Layout, Submit, Row, Column
 from django import forms
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.core.exceptions import ValidationError
@@ -90,6 +92,21 @@ class DateForm(forms.Form):
 
         return self.cleaned_data
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            self.fields['start'].widget.attrs.update(style='max-width: 10em'),
+            self.fields['end'].widget.attrs.update(style='max-width: 10em'),
+            Row(
+                Column('start', css_class='form-group col-md-6 mb-0'),
+                Column('end', css_class='form-group col-md-6 mb-0'),
+                css_class='row'
+            ),
+            'charge_type',
+        )
+
+
 class MonthlyForm(forms.Form):
     """Year and month choices for the running totals"""
 
@@ -165,6 +182,17 @@ class MonthlyForm(forms.Form):
             self.add_error("end_month", "End month is before start month")
 
         return self.cleaned_data
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Row(
+                Column('start_month', css_class='form-group col-md-6 mb-0'),
+                Column('end_month', css_class='form-group col-md-6 mb-0'),
+                css_class='row'
+            ),
+        )
 
 class StorageForm(forms.Form):
     """Proj type, assay type and monthyear to-from for the storage costs"""
@@ -298,3 +326,26 @@ class StorageForm(forms.Form):
             )
 
         return self.cleaned_data
+
+    # Set layout for Django crispy forms
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields[
+            'project_type'
+        ].help_text = "Filters each type over project names using 'startswith'"
+        self.fields[
+            'assay_type'
+        ].help_text = "Filters each type over project names using 'endswith'"
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Row(
+                Column('project_type', css_class='form-group col-md-6 mb-0'),
+                Column('assay_type', css_class='form-group col-md-6 mb-0'),
+                css_class='row'
+            ),
+            Row(
+                Column('start', css_class='form-group col-md-6 mb-0'),
+                Column('end', css_class='form-group col-md-6 mb-0'),
+                css_class='row'
+            ),
+        )
