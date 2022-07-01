@@ -2,7 +2,6 @@
     Script to add API data to MariaDB Database.
 """
 import datetime as dt
-from http.server import executable
 import pandas as pd
 
 import dxpy as dx
@@ -125,7 +124,7 @@ def populate_database_files(all_projects_dict) -> None:
     none
     """
 
-    today_date = queries.no_of_days_in_month()[0]
+    today_date, _ = queries.no_of_days_in_month()
 
     for key, value in all_projects_dict.items():
         new_storage, created = StorageCosts.objects.get_or_create(
@@ -164,10 +163,9 @@ def populate_executions(all_executions_df) -> None:
 
     """
 
-    for index, row in all_executions_df.iterrows():
-        print(row)
-        print("---\n")
-
+    for _, row in all_executions_df.iterrows():
+        # _ represents the index
+        print(f"{row}\n")
         # Add date for analysis started.
         date = dt.datetime.fromtimestamp(row['created'] / 1000)
         date_formatted = date.strftime("%Y-%m-%d")
@@ -191,7 +189,7 @@ def populate_executions(all_executions_df) -> None:
             #job_name=row['job_name'],
             executable_name=new_executable,
             project=Projects.objects.get(dx_id=row['project']),
-            runtime=row['Result'],
+            runtime=row['Result_td'],
             total_cost=row['cost'],
             state=row['state'],
             launched_by=user,
