@@ -177,8 +177,8 @@ def storage_chart(request):
                 # These are used to filter for last 6 months by default
                 today_date = dx_queries.no_of_days_in_month()[0]
                 this_year, this_month, _ = today_date.split("-")
-                six_months_ago = date.today() + relativedelta(months=-6)
-                six_months_start = six_months_ago.replace(day=1)
+                four_months_ago = date.today() + relativedelta(months=-4)
+                four_months_start = four_months_ago.replace(day=1)
                 last_day_of_this_month = str(
                     calendar.monthrange(
                         int(today_date.split("-")[0]),
@@ -201,7 +201,7 @@ def storage_chart(request):
                     ).month_range_assay_type_and_proj_type(
                         project_type,
                         assay_type,
-                        six_months_start,
+                        four_months_start,
                         this_months_end,
                         form
                     )
@@ -221,7 +221,7 @@ def storage_chart(request):
                         context = sp.StoragePlotFunctions(
                         ).month_range_only_project_types(
                             proj_types,
-                            six_months_start,
+                            four_months_start,
                             this_months_end,
                             form
                         )
@@ -238,7 +238,7 @@ def storage_chart(request):
                         context = sp.StoragePlotFunctions(
                         ).month_range_only_assay_types(
                             assay_types,
-                            six_months_start,
+                            four_months_start,
                             this_months_end,
                             form
                         )
@@ -251,7 +251,7 @@ def storage_chart(request):
 
                         context = sp.StoragePlotFunctions(
                         ).month_range_form_submitted_no_proj_or_assay(
-                            six_months_start,
+                            four_months_start,
                             this_months_end,
                             form
                         )
@@ -261,7 +261,7 @@ def storage_chart(request):
                 # Convert start month-year to 1st date of start month
                 # e.g. "2022-05" to "2022-05-01"
                 # Find last day of the end month
-                # Convert end month-year to last day of that month 
+                # Convert end month-year to last day of that month
                 # e.g. "2022-05-14" to "2022-05-31"
                 month_start = f"{start}-01"
                 last_day_of_end_month = calendar.monthrange(
@@ -344,6 +344,10 @@ def storage_chart(request):
             context = sp.StoragePlotFunctions(
                 ).form_is_not_submitted_or_invalid(form)
 
+    elif 'clear' in request.GET:
+        form = StorageForm()
+        context = sp.StoragePlotFunctions(
+            ).form_is_not_submitted_or_invalid(form)
     else:
         # If nothing is submitted on the form (normal landing page)
         # Display the all projects graph grouped by last six months
@@ -351,6 +355,10 @@ def storage_chart(request):
         context = sp.StoragePlotFunctions(
             ).form_is_not_submitted_or_invalid(form)
 
+    # if 'reset' in request.GET:
+    #     form = StorageForm(request.GET)
+    #     context = sp.StoragePlotFunctions(
+    #         ).form_is_not_submitted_or_invalid(form)
     return render(request, 'bar_chart.html', context)
 
 

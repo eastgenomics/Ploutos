@@ -1,6 +1,5 @@
 import calendar
 import datetime as dt
-import django_filters as filters
 
 from django import forms
 from django.db.models.functions import ExtractMonth, ExtractYear
@@ -43,7 +42,8 @@ class DateForm(forms.Form):
                 'type': 'date',
                 'min': f'{first_date}', 'max': dt.date.today()
             }
-        )
+        ),
+        # required=False
     )
 
     end = forms.DateField(
@@ -53,7 +53,8 @@ class DateForm(forms.Form):
                 'type': 'date',
                 'min': f'{first_date}', 'max': dt.date.today()
             }
-        )
+        ),
+        # required=False
     )
 
     charge_type = forms.ChoiceField(
@@ -199,6 +200,7 @@ class StorageForm(forms.Form):
             months_and_years, converted_entries
         )
     )
+
     MONTH_YEAR_CHOICES_2 = (
         (entry, converted_entry)
         for entry, converted_entry in zip(

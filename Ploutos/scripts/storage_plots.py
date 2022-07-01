@@ -279,6 +279,17 @@ class RunningTotPlotFunctions():
                 if len(egress_dic[key]) < 1:
                     del egress_dic[key]
 
+        # if len(storage_dic.keys()) == 1:
+        #     for key in storage_dic.keys():
+        #         del storage_dic[key][0]
+
+        # if len(compute_dic.keys()) == 1:
+        #     for key in compute_dic.keys():
+        #         del compute_dic[key][0]
+
+        # if len(egress_dic.keys()) == 1:
+        #     for key in egress_dic.keys():
+        #         del egress_dic[key][0]
 
         # Work out last charge minus first charge for the month
         # For a month total

@@ -11,6 +11,14 @@
     home.classList.remove('active');
     home.setAttribute("aria-current","none");
 </script>
+<script>
+document.querySelector('button[type="reset"]').addEventListener('click', function (e) {
+    e.preventDefault();
+  
+    this.parentElement.reset();
+    this.parentElement.submit();
+  })
+</script>
 
 <form method="GET" action="{% url 'storage' %}">
    
@@ -32,7 +40,7 @@
         </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Filter"/>
-    <input type="reset" name="reset" value="Reset"/>
+    <input type="submit" name="clear" value="Reset"/>
     </div>
 </form>
 
