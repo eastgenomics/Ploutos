@@ -43,7 +43,7 @@ class DateForm(forms.Form):
                 'min': f'{first_date}', 'max': dt.date.today()
             }
         ),
-        # required=False
+        required=False
     )
 
     end = forms.DateField(
@@ -54,7 +54,7 @@ class DateForm(forms.Form):
                 'min': f'{first_date}', 'max': dt.date.today()
             }
         ),
-        # required=False
+        required=False
     )
 
     charge_type = forms.ChoiceField(

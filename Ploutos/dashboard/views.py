@@ -31,45 +31,73 @@ def index(request):
 
         # If the dates entered are validated ok
         if form.is_valid():
-            # Get the data entered
-            start = form.cleaned_data.get("start")
-            end = form.cleaned_data.get("end")
+            # Get the charge type (always entered)
             charge_type = form.cleaned_data.get("charge_type")
 
-            # Add one day to the end as total for a day
-            # Is relative to the next day minus that day
-            end_obj = datetime.strptime(str(end), "%Y-%m-%d")
-            end_plus_one = end_obj + timedelta(days=1)
-            end_plus_one_str = datetime.strftime(
-                end_plus_one, "%Y-%m-%d"
-            )
-
-            # Filter totals to get desired date range
-            totals = DailyOrgRunningTotal.objects.filter(
-                date__date__range=[start, end_plus_one_str]
-            )
-
-            # If user wants to see all charge types, render whole graph
-            if charge_type == 'All':
-                fig = sp.RunningTotPlotFunctions().all_charge_types(totals)
-
-            # If a specific charge type chosen, set y_data accordingly
-            else:
-                fig = sp.RunningTotPlotFunctions().specific_charge_type(
-                    totals,
-                    charge_type
+            # If there's a date entered get dates
+            if form.cleaned_data.get("start"):
+                start = form.cleaned_data.get("start")
+                end = form.cleaned_data.get("end")
+                # Add one day to the end as total for a day
+                # Is relative to the next day minus that day
+                end_obj = datetime.strptime(str(end), "%Y-%m-%d")
+                end_plus_one = end_obj + timedelta(days=1)
+                end_plus_one_str = datetime.strftime(
+                    end_plus_one, "%Y-%m-%d"
                 )
 
-            chart = fig.to_html()
+                # Filter totals to get desired date range
+                totals = DailyOrgRunningTotal.objects.filter(
+                    date__date__range=[start, end_plus_one_str]
+                )
 
-            # Send filtered chart1 and unfiltered chart 2 to context
-            # Send validated form and empty form2 to context
-            context = {
-                'chart': chart,
-                'chart2': chart2,
-                'form': form,
-                'form2': form2
-            }
+                # If user wants to see all charge types, render whole graph
+                if charge_type == 'All':
+                    fig = sp.RunningTotPlotFunctions().all_charge_types(totals)
+
+                # If a specific charge type chosen, set y_data accordingly
+                else:
+                    fig = sp.RunningTotPlotFunctions().specific_charge_type(
+                        totals,
+                        charge_type
+                    )
+
+                chart = fig.to_html()
+
+                # Send filtered chart1 and unfiltered chart 2 to context
+                # Send validated form and empty form2 to context
+                context = {
+                    'chart': chart,
+                    'chart2': chart2,
+                    'form': form,
+                    'form2': form2
+                }
+
+            else:
+                # No dates are entered so show default last 4 months
+                totals = DailyOrgRunningTotal.objects.filter(
+                    date__date__range=[start_of_four_months_ago, date.today()]
+                )
+
+                # If user wants to see all charge types, render whole graph
+                if charge_type == 'All':
+                    fig = sp.RunningTotPlotFunctions().all_charge_types(totals)
+
+                # If a specific charge type chosen, set y_data accordingly
+                else:
+                    fig = sp.RunningTotPlotFunctions().specific_charge_type(
+                        totals,
+                        charge_type
+                    )
+
+                chart = fig.to_html()
+
+                context = {
+                    'chart': chart,
+                    'chart2': chart2,
+                    'form': form,
+                    'form2': form2
+                }
 
         else:
             # If form not valid or unsubmitted
