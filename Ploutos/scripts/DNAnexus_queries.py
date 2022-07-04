@@ -670,9 +670,6 @@ def get_executions(proj):
         dictionary with all the executions per project
 
     """
-    # Set up execution tracker log
-    with open('executions_log.log', 'a'):
-        pass
 
     # Find executions in each project with describe
     # Created before and after create a time window,
@@ -692,7 +689,6 @@ def get_executions(proj):
     # Convert to epoch_milliseconds
     midnight_1day_ago_epoch = int(midnight_1day_ago.timestamp())*1000
     midnight_2day_ago_epoch = int(midnight_2_days_ago.timestamp())*1000
-    print(f"{mid_sec} and {mid_sec_2d}")
 
     # Query API for executions in timeperiod
 
@@ -722,70 +718,12 @@ def get_executions(proj):
                     proj = job['describe']['project']
                     if job['describe']['executable'].startswith('applet-'):
                         executable_Name = job['describe']['executableName']
-                        if executable_Name.startswith('eggd_MultiQC'):
-                            try:
-                                applet = dx.api.applet_describe(
-                                    job['describe']['executable']
-                                )
-                                print(f"-----{version}-------")
-                                print(version.get("githubRelease"))
-                                version = applet
-                            except:
-                                logger.error("""Error in describing applet,
-                                             likely has been deleted.""")
-                                version=""
-                        else:
-                            try:
-                                version = re.search('[0-9]\.[0-9]\.[0-9]',
-                                                executable_Name).group(0)
-                            except:
-                                print(f"no app found {job['describe']['executable']}")
-                                version=""
-                        project_executions_dict[proj]["executions"].append({
-                            "id": job['id'],
-                            "job_name": job['describe']['name'],
-                            "executable_name": job['describe']['executableName'],
-                            "version": version,
-                            "cost": job['describe']['totalPrice'],
-                            "class": job['describe']['class'],
-                            "executable": job['describe']['executable'],
-                            "state": job['describe']['state'],
-                            "created": job['describe']['created'],
-                            "modified": job['describe']['modified'],
-                            "launchedBy": job['describe']['launchedBy']})
-                    elif job['describe']['executable'].startswith('app-'):
-                        # slow way of doing this by adding another request.
                         try:
-                            app_described = dx.api.app_describe(
-                                app_name_or_id=job['describe']['executable']
-                            )
-                            version = app_described['version']
+                            version = re.search('[0-9]\.[0-9]\.[0-9]',
+                                                executable_Name).group(0)
                         except:
                             print(f"no app found {job['describe']['executable']}")
-                            version = ""
-                        project_executions_dict[proj]["executions"].append({
-                            "id": job['id'],
-                            "job_name": job['describe']['name'],
-                            "executable_name": job['describe']['executableName'],
-                            "version": version,
-                            "cost": job['describe']['totalPrice'],
-                            "class": job['describe']['class'],
-                            "executable": job['describe']['executable'],
-                            "state": job['describe']['state'],
-                            "created": job['describe']['created'],
-                            "modified": job['describe']['modified'],
-                            "launchedBy": job['describe']['launchedBy']})
-
-                elif job['id'].startswith('analysis-'):
-                    # its a workflow
-                    proj = job['describe']['project']
-                    try:
-                        executable_Name = job['describe']['executableName']
-                        version = re.search('[0-9]\.[0-9]\.[0-9]',
-                                            executable_Name).group(0)
-                    except:
-                        print(f"no app found {job['describe']['executable']}")
-                        version=""
+                            version=""
                     project_executions_dict[proj]["executions"].append({
                         "id": job['id'],
                         "job_name": job['describe']['name'],
@@ -797,11 +735,56 @@ def get_executions(proj):
                         "state": job['describe']['state'],
                         "created": job['describe']['created'],
                         "modified": job['describe']['modified'],
-                        "launchedBy": job['describe']['launchedBy'],
-                        "createdBy": job['describe']['workflow']['createdBy'],
-                        "Stages": job['describe']['stages']})
-                else:
-                    print(f"Error: New executable type found {type}")
+                        "launchedBy": job['describe']['launchedBy']})
+                elif job['describe']['executable'].startswith('app-'):
+                    # slow way of doing this by adding another request.
+                    try:
+                        app_described = dx.api.app_describe(
+                            app_name_or_id=job['describe']['executable']
+                        )
+                        version = app_described['version']
+                    except:
+                        print(f"no app found {job['describe']['executable']}")
+                        version = ""
+                    project_executions_dict[proj]["executions"].append({
+                        "id": job['id'],
+                        "job_name": job['describe']['name'],
+                        "executable_name": job['describe']['executableName'],
+                        "version": version,
+                        "cost": job['describe']['totalPrice'],
+                        "class": job['describe']['class'],
+                        "executable": job['describe']['executable'],
+                        "state": job['describe']['state'],
+                        "created": job['describe']['created'],
+                        "modified": job['describe']['modified'],
+                        "launchedBy": job['describe']['launchedBy']})
+
+            elif job['id'].startswith('analysis-'):
+                # its a workflow
+                proj = job['describe']['project']
+                try:
+                    executable_Name = job['describe']['executableName']
+                    version = re.search('[0-9]\.[0-9]\.[0-9]',
+                                        executable_Name).group(0)
+                except:
+                    print(f"no app found {job['describe']['executable']}")
+                    version=""
+                project_executions_dict[proj]["executions"].append({
+                    "id": job['id'],
+                    "job_name": job['describe']['name'],
+                    "executable_name": job['describe']['executableName'],
+                    "version": version,
+                    "cost": job['describe']['totalPrice'],
+                    "class": job['describe']['class'],
+                    "executable": job['describe']['executable'],
+                    "state": job['describe']['state'],
+                    "created": job['describe']['created'],
+                    "modified": job['describe']['modified'],
+                    "launchedBy": job['describe']['launchedBy'],
+                    "createdBy": job['describe']['workflow']['createdBy'],
+                    "Stages": job['describe']['stages']})
+            else:
+                print(f"Error: New executable type found {type}")
         return project_executions_dict
 
 
@@ -1091,7 +1074,6 @@ def get_executions_from_list():
 
     # Find executions in each project, only returning specified fields in item
     results = []
-    # pending_executions = []
     with open("log_executions.log", "r") as ids:
         list_of_ids = ids.readlines()
         for dxid in list_of_ids:
