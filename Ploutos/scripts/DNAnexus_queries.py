@@ -721,9 +721,9 @@ def get_executions(proj):
                         try:
                             version = re.search('[0-9]\.[0-9]\.[0-9]',
                                                 executable_Name).group(0)
-                        except:
+                        except Exception:
                             print(f"no app found {job['describe']['executable']}")
-                            version=""
+                            version = ""
                     project_executions_dict[proj]["executions"].append({
                         "id": job['id'],
                         "job_name": job['describe']['name'],
@@ -743,7 +743,7 @@ def get_executions(proj):
                             app_name_or_id=job['describe']['executable']
                         )
                         version = app_described['version']
-                    except:
+                    except Exception:
                         print(f"no app found {job['describe']['executable']}")
                         version = ""
                     project_executions_dict[proj]["executions"].append({
@@ -766,9 +766,9 @@ def get_executions(proj):
                     executable_Name = job['describe']['executableName']
                     version = re.search('[0-9]\.[0-9]\.[0-9]',
                                         executable_Name).group(0)
-                except:
+                except Exception:
                     print(f"no app found {job['describe']['executable']}")
-                    version=""
+                    version = ""
                 project_executions_dict[proj]["executions"].append({
                     "id": job['id'],
                     "job_name": job['describe']['name'],
@@ -954,7 +954,7 @@ def get_subjobs_make_job_executions_df(list_project_executions):
             # found some keys
             project_id = keys[0]
             data = project[project_id]
-            print(f"\n ---- {data} \n")
+
             for entry in data['executions']:
                 subjobs_list = []
                 if entry["class"] == "analysis":
@@ -964,7 +964,6 @@ def get_subjobs_make_job_executions_df(list_project_executions):
                         include_subjobs=True)
                     # Loop over subjobs to calculate runtime.
                     for subjob in subjobs_info:
-                        print(f"\n {subjob} \n")
                         if subjob['describe']["totalPrice"] == 0:
                             print("no cost - skipped")
                         elif 'stoppedRunning' not in subjob['describe']:
@@ -1004,7 +1003,6 @@ def get_subjobs_make_job_executions_df(list_project_executions):
                         include_subjobs=True)
                     # Loop over subjobs to calculate runtime.
                     for subjob in subjobs_info:
-                        print(f"\n {subjob} \n")
                         if subjob['describe']["totalPrice"] == 0:
                             print("no cost - skipped")
                         elif 'stoppedRunning' not in subjob['describe']:
@@ -1037,9 +1035,9 @@ def get_subjobs_make_job_executions_df(list_project_executions):
                         "modified": entry['modified'],
                         "launchedBy": entry['launchedBy'],
                         "Executions": subjobs_list})
-                    print(subjobs_list)
                 else:
-                    print("Error")
+                    print(f"""Error - other execution class found.
+                          See: {entry["class"]}""")
 
         # Convert dictionaries into dataframe (df)
         df = make_executions_subjobs_df(project_executions_dict)
@@ -1144,7 +1142,7 @@ def get_executions_from_list():
                             app_name_or_id=job['describe']['executable']
                         )
                         version = app_described['version']
-                    except:
+                    except Exception:
                         print(f"no app found {job['describe']['executable']}")
                         version = ""
                 project_executions_dict[proj]['executions'].append({
