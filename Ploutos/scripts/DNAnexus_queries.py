@@ -651,7 +651,6 @@ def put_into_dict_write_to_file(final_all_projs_df):
     return all_proj_dict
 
 
-
 def get_executions(proj):
     """
     Get all executions for the project in DNAnexus,
@@ -736,7 +735,7 @@ def get_executions(proj):
                         "created": job['describe']['created'],
                         "modified": job['describe']['modified'],
                         "launchedBy": job['describe']['launchedBy']})
-                elif job['describe']['executable'].startswith('app-'):
+                elif job['describe']['executable'].startswith(r'app-'):
                     # slow way of doing this by adding another request.
                     try:
                         app_described = dx.api.app_describe(
@@ -1128,13 +1127,11 @@ def get_executions_from_list():
                 proj = job['project']
                 if job['describe']['executable'].startswith('applet-'):
                     executable_Name = job['describe']['executableName']
-                    if executable_Name.startswith('eggd_MultiQC'):
-                        version = job['describe']['properties']
-                        print(version)
-                        print(version.get("githubRelease"))
-                    else:
+                    try:
                         version = re.search('[0-9]\.[0-9]\.[0-9]',
                                             executable_Name).group(0)
+                    except Exception:
+                        version = ""
                 elif job['describe']['executable'].startswith('app-'):
                     try:
                         # slow way of doing this by adding another request.
@@ -1204,6 +1201,7 @@ def make_executions_subjobs_df(list_project_executions_dictionary):
         data_row = data['executions']
 
         # Add the project name to the row 'project'
+
         for row in data_row:
             row['project'] = project
             # Append each executions info as info to the other columns
