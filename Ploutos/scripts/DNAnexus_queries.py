@@ -41,6 +41,9 @@ from django.conf import settings
 from time import time, localtime, strftime
 
 
+logger = logging.getLogger("general")
+
+
 def login() -> None:
     """
         Logs into DNAnexus
@@ -70,24 +73,8 @@ def login() -> None:
         dx.api.system_whoami()
         print("DNAnexus login successful")
     except Exception as e:
-        print(f'Error logging into DNAnexus: {e}')
+        logger.error(f'Error with using credentials to log into DNAnexus: {e}')
         sys.exit(1)
-
-
-def setup_logger(name, log_file, level=logging.INFO):
-    """
-    Function to set up logging for other functions
-    """
-    formatter = logging.Formatter('%(levelname)s %(asctime)s - %(message)s')
-
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-
-    return logger
 
 
 def no_of_days_in_month():
@@ -679,13 +666,9 @@ def get_executions(proj):
         dictionary with all the executions per project
 
     """
-    # Set up logging - Creating and Configuring Logger
-    # first file logger
-    logger = setup_logger('executions_logger', 'executions_log.log')
-
-    # second file logger
-    info_logger = setup_logger('info_logger', 'logfile.log')
-    # info_logger.error('Test: This is an error message.')
+    # Set up execution tracker log
+    with open('executions_log.log', 'a'):
+        pass
 
     # Find executions in each project with describe
     # Created before and after create a time window,
@@ -717,12 +700,20 @@ def get_executions(proj):
                     proj = job['describe']['project']
                     if job['describe']['executable'].startswith('applet-'):
                         executable_Name = job['describe']['executableName']
-                        try:
-                            version = re.search('[0-9]\.[0-9]\.[0-9]',
-                                            executable_Name).group(0)
-                        except:
-                            print(f"no app found {job['describe']['executable']}")
-                            version=""
+                        if executable_Name.startswith('eggd_MultiQC'):
+                            applet = dx.api.applet_describe(
+                                job['describe']['executable']
+                            )
+                            version = applet
+                            print(f"-----{version}-------")
+                            print(version.get("githubRelease"))
+                        else:
+                            try:
+                                version = re.search('[0-9]\.[0-9]\.[0-9]',
+                                                executable_Name).group(0)
+                            except:
+                                print(f"no app found {job['describe']['executable']}")
+                                version=""
                         project_executions_dict[proj]["executions"].append({
                             "id": job['id'],
                             "job_name": job['describe']['name'],
@@ -1075,14 +1066,6 @@ def get_executions_from_list():
         which are now in the "done" state.
 
     """
-    # Set up logging - Creating and Configuring Logger
-    log_Format = "%(levelname)s %(asctime)s - %(message)s"
-    logging.basicConfig(filename="log_executions.log",
-                        filemode="w",
-                        format=log_Format,
-                        level=logging.ERROR)
-
-    logger = logging.getLogger()
 
     # Find executions in each project, only returning specified fields in item
     results = []
@@ -1143,8 +1126,13 @@ def get_executions_from_list():
                 proj = job['project']
                 if job['describe']['executable'].startswith('applet-'):
                     executable_Name = job['describe']['executableName']
-                    version = re.search('[0-9]\.[0-9]\.[0-9]',
-                                        executable_Name).group(0)
+                    if executable_Name.startswith('eggd_MultiQC'):
+                        version = job['describe']['properties']
+                        print(version)
+                        print(version.get("githubRelease"))
+                    else:
+                        version = re.search('[0-9]\.[0-9]\.[0-9]',
+                                            executable_Name).group(0)
                 elif job['describe']['executable'].startswith('app-'):
                     try:
                         # slow way of doing this by adding another request.
@@ -1174,21 +1162,24 @@ def get_executions_from_list():
 
 
 def peek(iterable):
-    """peek
+    """
     This function is used to check if a generator contains any data.
+    It returns a boolean.
 
     Args:
         iterable (_type_): generator object returned by DNAnexus API call.
 
     Returns:
-        _type_: _description_
+        boolean: True if generator works and false if error.
     """
     try:
         first = next(iterable)
+        if first:
+            return True
+        else:
+            return False
     except StopIteration:
-        return None
-    return first, itertools.chain([first], iterable)
-
+        return False
 
 def make_executions_subjobs_df(list_project_executions_dictionary):
     """
