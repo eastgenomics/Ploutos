@@ -675,18 +675,36 @@ def get_executions(proj):
     # of 24 hours which ended 24 hours from time of running.
     # Further development could use epoch times to ensure constant window
 
+    # Set-up the time-period to check using epoch times
+    # Find last midnight from time of running
+
+    last_midnight = dt.datetime.combine(dt.datetime.today(), dt.time.min)
+
+    # Find the epoch time for 1 days ago.
+    midnight_1day_ago = last_midnight - dt.timedelta(days=1)
+    # Find the epoch time for 2 days ago.
+    midnight_2_days_ago = last_midnight - dt.timedelta(days=2)
+
+    # Convert to epoch_milliseconds
+    midnight_1day_ago_epoch = int(midnight_1day_ago.timestamp())*1000
+    midnight_2day_ago_epoch = int(midnight_2_days_ago.timestamp())*1000
+    print(f"{mid_sec} and {mid_sec_2d}")
+
+    # Query API for executions in timeperiod
+
     executions = dx.bindings.search.find_executions(
             project=proj,
             no_parent_analysis=True,
             no_parent_job=True,
-            created_after="-2d",
-            created_before="-1d",
+            created_after=midnight_2day_ago_epoch,
+            created_before=midnight_1day_ago_epoch,
             describe=True)
 
     check = peek(executions)
+
     if not check:
         print(f'No data in {proj}, exited process')
-        # sys.exit(1)
+
     else:
         print("data found")
         project_executions_dict = defaultdict(lambda: {"executions": []})
@@ -701,12 +719,17 @@ def get_executions(proj):
                     if job['describe']['executable'].startswith('applet-'):
                         executable_Name = job['describe']['executableName']
                         if executable_Name.startswith('eggd_MultiQC'):
-                            applet = dx.api.applet_describe(
-                                job['describe']['executable']
-                            )
-                            version = applet
-                            print(f"-----{version}-------")
-                            print(version.get("githubRelease"))
+                            try:
+                                applet = dx.api.applet_describe(
+                                    job['describe']['executable']
+                                )
+                                print(f"-----{version}-------")
+                                print(version.get("githubRelease"))
+                                version = applet
+                            except:
+                                logger.error("""Error in describing applet,
+                                             likely has been deleted.""")
+                                version=""
                         else:
                             try:
                                 version = re.search('[0-9]\.[0-9]\.[0-9]',
@@ -931,6 +954,9 @@ def get_subjobs_make_job_executions_df(list_project_executions):
     # Find executions in each project, only returning specified fields in item
     project_executions_dict = defaultdict(lambda: {"executions": []})
 
+    # Create empty dataframe for collecting all executions from all projects.
+    df = pd.DataFrame()
+
     for project in list_project_executions:
         keys = [key for key in project.keys()]
         if not keys:
@@ -1036,14 +1062,6 @@ def get_subjobs_make_job_executions_df(list_project_executions):
         )
         # convert to timedelta for storing as DurationField
         df["Result_td"] = pd.to_timedelta(df["Result"], 'ms')
-
-        # result = []
-        # for index, row in df.iterrows():
-        #     sum = 0
-        #     for value in row['Executions']:
-        #         sum += int(value['describe']['runtime'])
-        #     result.append(dt.timedelta(milliseconds=sum))
-        # df["Result"] = result
 
     return df
 
@@ -1167,18 +1185,16 @@ def peek(iterable):
     It returns a boolean.
 
     Args:
-        iterable (_type_): generator object returned by DNAnexus API call.
+        iterable (generator): generator object returned by DNAnexus API call.
 
     Returns:
         boolean: True if generator works and false if error.
     """
-    try:
-        first = next(iterable)
-        if first:
-            return True
-        else:
-            return False
-    except StopIteration:
+    response = list(iterable)
+    if response:
+        print(response)
+        return True
+    else:
         return False
 
 def make_executions_subjobs_df(list_project_executions_dictionary):
