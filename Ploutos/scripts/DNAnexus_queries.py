@@ -1196,7 +1196,6 @@ def peek(iterable):
     """
     response = list(iterable)
     if response:
-        print(response)
         return True
     else:
         return False
