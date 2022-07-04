@@ -718,7 +718,7 @@ def get_executions(proj):
                     if job['describe']['executable'].startswith('applet-'):
                         executable_Name = job['describe']['executableName']
                         try:
-                            version = re.search('[0-9]\.[0-9]\.[0-9]',
+                            version = re.search(r'[0-9]\.[0-9]\.[0-9]',
                                                 executable_Name).group(0)
                         except Exception:
                             print(f"no app found {job['describe']['executable']}")
@@ -763,7 +763,7 @@ def get_executions(proj):
                 proj = job['describe']['project']
                 try:
                     executable_Name = job['describe']['executableName']
-                    version = re.search('[0-9]\.[0-9]\.[0-9]',
+                    version = re.search(r'[0-9]\.[0-9]\.[0-9]',
                                         executable_Name).group(0)
                 except Exception:
                     print(f"no app found {job['describe']['executable']}")
@@ -1075,6 +1075,7 @@ def get_executions_from_list():
         list_of_ids = ids.readlines()
         for dxid in list_of_ids:
             dx_id_new = dxid.replace("\n", "")
+
             if dx_id_new.startswith('job-'):
                 result = dx.api.job_describe(object_id=str(dx_id_new))
                 results.append(result)
@@ -1082,6 +1083,7 @@ def get_executions_from_list():
             elif dx_id_new.startswith('analysis-'):
                 result = dx.api.analysis_describe(object_id=str(dx_id_new))
                 results.append(result)
+
             else:
                 print(f" New executable type found {dx_id_new}")
 
@@ -1107,7 +1109,7 @@ def get_executions_from_list():
             elif (job['class'] == 'analysis'):
                 proj = job['project']
                 executable_Name = job['describe']['executableName']
-                version = re.search('[0-9]\.[0-9]\.[0-9]',
+                version = re.search(r'[0-9]\.[0-9]\.[0-9]',
                                     executable_Name).group(0)
 
                 project_executions_dict[proj]['executions'].append({
@@ -1128,7 +1130,7 @@ def get_executions_from_list():
                 if job['describe']['executable'].startswith('applet-'):
                     executable_Name = job['describe']['executableName']
                     try:
-                        version = re.search('[0-9]\.[0-9]\.[0-9]',
+                        version = re.search(r'[0-9]\.[0-9]\.[0-9]',
                                             executable_Name).group(0)
                     except Exception:
                         version = ""
