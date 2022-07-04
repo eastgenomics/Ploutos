@@ -179,7 +179,8 @@ def populate_executions(all_executions_df) -> None:
         # Add executable name to table
         new_executable, created = Executables.objects.get_or_create(
             # Get the project ID from the projects table by project dx id
-            executable_name=row['executable_name']
+            executable_name=row['executable_name'],
+            version=row['version']
         )
 
         # Add data to DB - ComputeCosts Table
