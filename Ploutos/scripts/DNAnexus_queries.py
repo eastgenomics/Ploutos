@@ -473,7 +473,7 @@ def calculate_totals(my_grouped_df, type):
     +-----------+-----------------+---------------+----------+
     """
     days_in_month = no_of_days_in_month()[1]
-    # If the state of the file is live, convert total size to GB and times by storage cost per month
+    # If the state of the file is live, convert total size to GiB and times by storage cost per month
     # Then divide by the number of days in current month
     # Else if state not live (archived) then times by archived storage cost price
 

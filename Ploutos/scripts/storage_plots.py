@@ -48,7 +48,7 @@ class RunningTotPlotFunctions():
 
     def all_charge_types(self, totals):
         """
-        Set context when all charge types are searched for
+        Set bar chart context when all charge types are searched for
         Parameters
         ----------
         totals :  queryset
@@ -59,7 +59,7 @@ class RunningTotPlotFunctions():
         fig : Plotly figure object
         """
 
-        # Plot the date and storage charges as line graph
+        # Order the DailyOrgRunningTotal objects by date and get charges
         charges = totals.order_by(
             'date__date'
         ).values_list(
@@ -74,15 +74,20 @@ class RunningTotPlotFunctions():
         # Turn date objects into strings
         stringified_dates = [str(date) for date in dates][:-1]
 
-        # Get the relevant info as a list
+        # Get the relevant info for each charge type as a list
         storage_charges, compute_charges, egress_charges = zip(*charges)
 
-        # Calculate one date charges minus previous date
+        # Calculate a date's charges minus previous date
         storage_charge_diff = self.calculate_diffs(storage_charges)
         compute_charge_diff = self.calculate_diffs(compute_charges)
         egress_charge_diff = self.calculate_diffs(egress_charges)
 
-        fig = go.Figure(layout={'hovermode': 'x unified'})
+        # Add unified hover label so all charges shown
+        fig = go.Figure(
+            layout={
+                'hovermode': 'x unified'
+            }
+        )
 
         fig.add_trace(go.Bar(
             x=stringified_dates,
@@ -155,7 +160,9 @@ class RunningTotPlotFunctions():
         )
 
         # Get dates in order from db
-        dates = totals.order_by('date__date').values_list(
+        dates = totals.order_by(
+            'date__date'
+        ).values_list(
             'date__date', flat=True
         )
 
@@ -188,12 +195,15 @@ class RunningTotPlotFunctions():
             }
         }
 
-        fig = go.Figure(layout={'hovermode': 'x unified'})
+        fig = go.Figure(
+            layout={
+                'hovermode': 'x unified'
+            }
+        )
 
         fig.add_trace(go.Bar(
             x=stringified_dates,
             y=charge_dict[charge_type]["data"],
-            name='Compute',
             marker=dict(color=charge_dict[charge_type]["colour"]),
             hovertemplate='%{y:.2f}'
             )
@@ -226,7 +236,7 @@ class RunningTotPlotFunctions():
         return fig
 
 
-    def form_not_submitted_or_invalid(self):
+    def form_not_submitted_or_invalid(self, totals):
         """
         Set context when the form is not submitted
         Or when the form is not valid (wrong dates)
@@ -235,14 +245,18 @@ class RunningTotPlotFunctions():
         ----------
         form : Django form object
             form either as Form(request.GET) or Form()
+        totals : queryset
+            all the DailyOrgRunningTotal objects
         Returns
         -------
         context : dict
             context to pass to HTML
 
         """
-        totals = DailyOrgRunningTotal.objects.filter(
-            date__date__range=[str(self.four_months_ago), self.today_date]
+        totals = totals.filter(
+            date__date__range=[
+                str(self.four_months_ago), self.today_date
+            ]
         )
 
         # Plot the date and storage charges as line graph
@@ -322,7 +336,7 @@ class RunningTotPlotFunctions():
 
         return chart
 
-    def monthly_between_dates(self, start_month, end_month):
+    def monthly_between_dates(self, start_month, end_month, totals):
         """
         Set context for the monthly graph when no dates entered
         Defaults to previous three months
@@ -332,6 +346,8 @@ class RunningTotPlotFunctions():
             date in YYY-MM-DD format e.g. "2022-05-01" as first date in range
         end_month : str or datetime.date object
             date in YYY-MM-DD format e.g. "2022-06-01" as first date in range
+        totals : queryset
+            queryset of all the DailyOrgRunningTotal objects
 
         Returns
         -------
@@ -339,17 +355,16 @@ class RunningTotPlotFunctions():
         """
         # Filter between start of start_month and the 1st of the month
         # After end_month
-        monthly_charges = DailyOrgRunningTotal.objects.filter(
+        monthly_charges = totals.filter(
             date__date__range=[
                 start_month, end_month
             ]
-
         ).values_list(
-                'date__date__month',
-                'date__date__year',
-                'storage_charges',
-                'compute_charges',
-                'egress_charges'
+            'date__date__month',
+            'date__date__year',
+            'storage_charges',
+            'compute_charges',
+            'egress_charges'
         )
 
         storage_dic = defaultdict(list)
@@ -594,6 +609,34 @@ class StoragePlotFunctions():
         string_months = list(map(" ".join, converted_months))
 
         return string_months
+
+    def get_todays_total_unique_size(self):
+        """
+        Gets today's unique total (live/archived) for all files in all projects
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        live_total : integer
+            total size in GiB of all the live files in DNAnexus
+        archived_total : integer
+            total size in GiB of all the archived files in DNAnexus
+        """
+        todays_total = StorageCosts.objects.filter(
+            date__date=self.today_date
+        ).aggregate(
+            Live=Sum('unique_cost_live'),
+            Archived=Sum('unique_cost_archived')
+        )
+
+        # Convert bytes to GiB
+        live_total = todays_total.get('Live', None) / (2**30)
+        archived_total = todays_total.get('Archived', None) / (2**30)
+
+        return live_total, archived_total
 
 
     def month_range_assay_type_and_proj_type(

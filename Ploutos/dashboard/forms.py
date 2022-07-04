@@ -202,7 +202,7 @@ class StorageForm(forms.Form):
         ('002', '002'),
         ('003', '003'),
         ('004', '004'),
-        )
+    )
 
     ASSAY_CHOICES = (
         ('CEN', 'CEN'),
@@ -213,7 +213,7 @@ class StorageForm(forms.Form):
         ('CP', 'CP'),
         ('WES', 'WES'),
         ('FH', 'FH'),
-        )
+    )
 
     # Find all the month and years present in db
     months_and_years = []
@@ -330,12 +330,14 @@ class StorageForm(forms.Form):
     # Set layout for Django crispy forms
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.fields[
             'project_type'
-        ].help_text = "Filters each type over project names using 'startswith'"
+        ].help_text = "Filters project names using 'startswith'"
         self.fields[
             'assay_type'
-        ].help_text = "Filters each type over project names using 'endswith'"
+        ].help_text = "Filters project names using 'endswith'"
+
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Row(
@@ -349,3 +351,4 @@ class StorageForm(forms.Form):
                 css_class='row'
             ),
         )
+

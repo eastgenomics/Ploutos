@@ -29,7 +29,7 @@ def index(request):
         form = DateForm(request.GET)
         form2 = MonthlyForm()
         chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
-            start_of_four_months_ago, start_of_next_month
+            start_of_four_months_ago, start_of_next_month, totals
         )
 
         # If the dates entered are validated
@@ -50,7 +50,7 @@ def index(request):
                 )
 
                 # Filter totals to get desired date range
-                totals = DailyOrgRunningTotal.objects.filter(
+                totals = totals.filter(
                     date__date__range=[start, end_plus_one_str]
                 )
 
@@ -78,7 +78,7 @@ def index(request):
 
             else:
                 # No dates are entered so show default last 4 months
-                totals = DailyOrgRunningTotal.objects.filter(
+                totals = totals.filter(
                     date__date__range=[
                         start_of_four_months_ago, date.today()
                     ]
@@ -108,7 +108,9 @@ def index(request):
             # If form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
             chart = sp.RunningTotPlotFunctions(
-            ).form_not_submitted_or_invalid()
+            ).form_not_submitted_or_invalid(
+                totals
+            )
 
             context = {
                 'chart': chart,
@@ -130,11 +132,11 @@ def index(request):
 
                 # Display last four months
                 chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
-                    start_of_four_months_ago, start_of_next_month
+                    start_of_four_months_ago, start_of_next_month, totals
                 )
 
                 chart = sp.RunningTotPlotFunctions(
-                ).form_not_submitted_or_invalid()
+                ).form_not_submitted_or_invalid(totals)
 
                 context = {
                     'chart': chart,
@@ -155,12 +157,12 @@ def index(request):
                 #So it is first of next month
                 month_end = date_month_end + relativedelta(months=+1)
                 chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
-                    month_start, month_end
+                    month_start, month_end, totals
                 )
 
                 # Reset other chart
                 chart = sp.RunningTotPlotFunctions(
-                ).form_not_submitted_or_invalid()
+                ).form_not_submitted_or_invalid(totals)
 
                 context = {
                     'chart': chart,
@@ -173,11 +175,11 @@ def index(request):
             # If monthly form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
             chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
-                start_of_four_months_ago, start_of_next_month
+                start_of_four_months_ago, start_of_next_month, totals
             )
 
             chart = sp.RunningTotPlotFunctions(
-            ).form_not_submitted_or_invalid()
+            ).form_not_submitted_or_invalid(totals)
 
             context = {
                 'chart': chart,
@@ -191,10 +193,10 @@ def index(request):
         form = DateForm()
         form2 = MonthlyForm()
         chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
-            start_of_four_months_ago, start_of_next_month
+            start_of_four_months_ago, start_of_next_month, totals
         )
         chart = sp.RunningTotPlotFunctions(
-        ).form_not_submitted_or_invalid()
+        ).form_not_submitted_or_invalid(totals)
         context = {
             'chart': chart,
             'chart2': chart2,

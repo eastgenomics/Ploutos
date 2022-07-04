@@ -197,7 +197,7 @@ def run():
     q.login()
     all_projects, proj_list, proj_df = q.get_projects()
     populate_projects(all_projects)
-    # populate_running_totals()
+    populate_running_totals()
     final_dict = q.orchestrate_get_files(proj_list, proj_df)
     populate_database_files(final_dict)
     # populate_analyses(all_projects)
