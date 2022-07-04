@@ -30,6 +30,7 @@ class Projects(models.Model):
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
     date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True)
+    # Could use OneToOneField here?
     storage_charges = models.FloatField()
     compute_charges = models.FloatField()
     egress_charges = models.FloatField()
@@ -57,10 +58,9 @@ class Executables(models.Model):
     def __str__(self):
         return self.excutable_name
 
-      
 class ComputeCosts(models.Model):
     dx_id = models.CharField(max_length=200)
-    #job_name = models.CharField(max_length=200)
+    # job_name = models.CharField(max_length=200)
     executable_name = models.ForeignKey(Executables, on_delete=models.CASCADE)
     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
     runtime = models.DurationField()

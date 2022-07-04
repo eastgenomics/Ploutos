@@ -165,7 +165,7 @@ def populate_executions(all_executions_df) -> None:
     for _, row in all_executions_df.iterrows():
         # _ represents the index
         print(f"{row}\n")
-        # Add date for analysis started.
+        # Add date for analysis when created.
         date = dt.datetime.fromtimestamp(row['created'] / 1000)
         date_formatted = date.strftime("%Y-%m-%d")
         a_new_date, created = Dates.objects.get_or_create(
@@ -186,7 +186,7 @@ def populate_executions(all_executions_df) -> None:
         new_analysis_costs, created = ComputeCosts.objects.get_or_create(
             # Get the project ID from the projects table by project dx id
             dx_id=row['id'],
-            #job_name=row['job_name'],
+            # job_name=row['job_name'],
             executable_name=new_executable,
             project=Projects.objects.get(dx_id=row['project']),
             runtime=row['Result_td'],
@@ -207,9 +207,9 @@ def run():
     queries.login()
     all_projects, proj_list, proj_df = queries.get_projects()
     populate_projects(all_projects)
-    populate_running_totals()
-    final_dict = queries.orchestrate_get_files(proj_list, proj_df)
-    populate_database_files(final_dict)
+    # populate_running_totals()
+    # final_dict = queries.orchestrate_get_files(proj_list, proj_df)
+    # populate_database_files(final_dict)
     executions_df = queries.orchestrate_get_executions(proj_list)
     print(executions_df)
     populate_executions(executions_df)

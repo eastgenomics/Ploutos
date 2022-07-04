@@ -1179,6 +1179,7 @@ def peek(iterable):
     else:
         return False
 
+
 def make_executions_subjobs_df(list_project_executions_dictionary):
     """
     Get all executions from the list of executions per proj dict
