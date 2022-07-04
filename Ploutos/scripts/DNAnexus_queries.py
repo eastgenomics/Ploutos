@@ -1083,9 +1083,12 @@ def get_executions_from_list():
     # Rewrite file to remove old executions.
     open("log_executions.log", "w").close()
 
-    if results == []:
+    # Check if empty. Return empty list
+    if not results:
         print("No data found, exited process")
         return []
+    # If data is present, for loop over and
+    # re-add to log if still non-terminal state.
     else:
         print("data found")
         list_of_previous_executions = []
@@ -1100,7 +1103,7 @@ def get_executions_from_list():
                 # Append to the log for checking again next time.
                 with open("log_executions.log") as file:
                     file.append(f"{job['id']}")
-            elif (job['class'] == 'analysis'):
+            elif job['class'] == 'analysis':
                 proj = job['project']
                 executable_Name = job['describe']['executableName']
                 version = re.search(r'[0-9]\.[0-9]\.[0-9]',
@@ -1165,7 +1168,7 @@ def peek(iterable):
         iterable (generator): generator object returned by DNAnexus API call.
 
     Returns:
-        boolean: True if generator works and false if error.
+        boolean: True if generator yields data and false if not.
     """
     response = list(iterable)
     if response:
