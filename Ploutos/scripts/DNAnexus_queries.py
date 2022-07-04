@@ -710,4 +710,3 @@ def orchestrate_get_files(proj_list, proj_df):
     final_dict = put_into_dict_write_to_file(final_all_projs_df)
 
     return final_dict
-

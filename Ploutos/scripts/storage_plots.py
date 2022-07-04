@@ -367,6 +367,8 @@ class RunningTotPlotFunctions():
             'egress_charges'
         )
 
+        check_end_month = datetime.strftime(end_month, "%m-%Y")
+
         storage_dic = defaultdict(list)
         compute_dic = defaultdict(list)
         egress_dic = defaultdict(list)
@@ -377,12 +379,33 @@ class RunningTotPlotFunctions():
 
         # Make each a defaultdict e.g. {'5-2022': [500.20, 100.40]}
         for item in monthly_charges:
-            storage_dic[f"{item[0]}-{item[1]}"].append(item[2])
-            compute_dic[f"{item[0]}-{item[1]}"].append(item[3])
-            egress_dic[f"{item[0]}-{item[1]}"].append(item[4])
+            storage_dic[f"0{item[0]}-{item[1]}"].append(item[2])
+            compute_dic[f"0{item[0]}-{item[1]}"].append(item[3])
+            egress_dic[f"0{item[0]}-{item[1]}"].append(item[4])
 
         # Get the keys and sort by month-year
         # Only need to do this for storage_dic as all have same keys
+        key_list = sorted(
+            storage_dic.keys(),
+            key = lambda x: datetime.strptime(x, '%m-%Y')
+        )
+
+        # If the end month filter is for the 1st of next month
+        # Take the last entry of the current month
+        # To act as the 1st of the next month instead
+        if check_end_month not in key_list:
+            storage_dic.update({
+                check_end_month: [storage_dic[key_list[-1]][-1]]
+            })
+            compute_dic.update({
+                check_end_month: [compute_dic[key_list[-1]][-1]]
+            })
+            egress_dic.update({
+                check_end_month: [egress_dic[key_list[-1]][-1]]
+            })
+
+        # Get the keys (months as e.g. '05-2022') again
+        # As may include next month now
         key_list = sorted(
             storage_dic.keys(),
             key = lambda x: datetime.strptime(x, '%m-%Y')
@@ -415,21 +438,21 @@ class RunningTotPlotFunctions():
 
         fig.add_trace(go.Bar(
             x=converted_months,
-            y=storage_charges,
-            name='Storage',
-            hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                '<extra></extra>',
-            marker=dict(color='#EF553B')
-            )
-        )
-
-        fig.add_trace(go.Bar(
-            x=converted_months,
             y=compute_charges,
             name='Compute',
             hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
                 '<extra></extra>',
             marker=dict(color='#636EFA')
+            )
+        )
+
+        fig.add_trace(go.Bar(
+            x=converted_months,
+            y=storage_charges,
+            name='Storage',
+            hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
+                '<extra></extra>',
+            marker=dict(color='#EF553B')
             )
         )
 

@@ -151,8 +151,8 @@ def index(request):
                 date_month_end = datetime.strptime(
                     month_end, "%Y-%m-%d"
                 ).date()
-                #Add one month to the end month
-                #So it is first of next month
+                # Add one month to the end month
+                # So it is first of next month
                 month_end = date_month_end + relativedelta(months=+1)
                 chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
                     month_start, month_end
