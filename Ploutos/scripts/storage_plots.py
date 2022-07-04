@@ -26,6 +26,10 @@ class RunningTotPlotFunctions():
             date.today() + relativedelta(months=+1)
         ).replace(day=1)
 
+        # Get all DailyOrgRunningTotal objects as a queryset
+        # So multiple db queries not needed
+        self.totals = DailyOrgRunningTotal.objects.all()
+
     def calculate_diffs(self, list_of_charges):
         """
         Creates list of charge differences
@@ -236,7 +240,7 @@ class RunningTotPlotFunctions():
         return fig
 
 
-    def form_not_submitted_or_invalid(self, totals):
+    def form_not_submitted_or_invalid(self):
         """
         Set context when the form is not submitted
         Or when the form is not valid (wrong dates)
@@ -245,15 +249,13 @@ class RunningTotPlotFunctions():
         ----------
         form : Django form object
             form either as Form(request.GET) or Form()
-        totals : queryset
-            all the DailyOrgRunningTotal objects
         Returns
         -------
         context : dict
             context to pass to HTML
 
         """
-        totals = totals.filter(
+        totals = self.totals.filter(
             date__date__range=[
                 str(self.four_months_ago), self.today_date
             ]
@@ -336,7 +338,7 @@ class RunningTotPlotFunctions():
 
         return chart
 
-    def monthly_between_dates(self, start_month, end_month, totals):
+    def monthly_between_dates(self, start_month, end_month):
         """
         Set context for the monthly graph when no dates entered
         Defaults to previous three months
@@ -346,8 +348,6 @@ class RunningTotPlotFunctions():
             date in YYY-MM-DD format e.g. "2022-05-01" as first date in range
         end_month : str or datetime.date object
             date in YYY-MM-DD format e.g. "2022-06-01" as first date in range
-        totals : queryset
-            queryset of all the DailyOrgRunningTotal objects
 
         Returns
         -------
@@ -355,7 +355,7 @@ class RunningTotPlotFunctions():
         """
         # Filter between start of start_month and the 1st of the month
         # After end_month
-        monthly_charges = totals.filter(
+        monthly_charges = self.totals.filter(
             date__date__range=[
                 start_month, end_month
             ]
@@ -475,8 +475,8 @@ class StoragePlotFunctions():
     def __init__(self) -> None:
         self.current_year = dx_queries.no_of_days_in_month()[0].split('-')[0]
         self.today_date = dx_queries.no_of_days_in_month()[0]
-        self.six_months_ago = date.today() + relativedelta(months=-6)
-        self.start_of_six_months_ago = self.six_months_ago.replace(day=1)
+        self.four_months_ago = date.today() + relativedelta(months=-4)
+        self.start_of_four_months_ago = self.four_months_ago.replace(day=1)
         self.start_of_next_month = (
             date.today() + relativedelta(months=+1)
         ).replace(day=1)
@@ -488,6 +488,9 @@ class StoragePlotFunctions():
         # So don't change on diff numbers of types/assays during filtering
         self.proj_colour_dict = settings.PROJ_COLOUR_DICT
         self.assay_colour_dict = settings.ASSAY_COLOUR_DICT
+
+        # Get all storage objects as queryset so multiple queries not needed
+        self.storage_objects = StorageCosts.objects.all()
 
         # Chart data which is shared by all plots
         self.chart_data = {
@@ -670,7 +673,7 @@ class StoragePlotFunctions():
         # Filter by startswith project type and ends with assay type
         # Group by all available months
         # Sum by live vs archived
-        cost_list = StorageCosts.objects.filter(
+        cost_list = self.storage_objects.filter(
             date__date__range=[month_start, month_end],
             project__name__startswith=project_type,
             project__name__endswith=assay_type
@@ -765,7 +768,7 @@ class StoragePlotFunctions():
         count = -1
         for proj_type in proj_types:
             count += 1
-            cost_list = StorageCosts.objects.filter(
+            cost_list = self.storage_objects.filter(
                 date__date__range=[month_start, month_end],
                 project__name__startswith=proj_type,
             ).order_by().values(
@@ -810,9 +813,9 @@ class StoragePlotFunctions():
             category_data_source.append(live_data)
             category_data_source.append(archived_data)
 
-            category_chart_data = self.chart_data.copy()
-            category_chart_data['xAxis']['categories'] = string_months
-            category_chart_data['series'] = category_data_source
+        category_chart_data = self.chart_data.copy()
+        category_chart_data['xAxis']['categories'] = string_months
+        category_chart_data['series'] = category_data_source
 
         context = {
             'storage_data': json.dumps(category_chart_data),
@@ -849,7 +852,7 @@ class StoragePlotFunctions():
         count = -1
         for assay_type in assay_types:
             count += 1
-            cost_list = StorageCosts.objects.filter(
+            cost_list = self.storage_objects.filter(
                 date__date__range=[month_start, month_end],
                 project__name__endswith=assay_type,
                 ).order_by().values(
@@ -926,7 +929,7 @@ class StoragePlotFunctions():
             'storage_data': data to pass to Highcharts,
             'form': the form to pass to HTML
         """
-        storage_totals = StorageCosts.objects.filter(
+        storage_totals = self.storage_objects.filter(
             date__date__range=[month_start, month_end],
         ).order_by().values(
             'date__date__month',
@@ -991,17 +994,17 @@ class StoragePlotFunctions():
             'storage_data': data to pass to Highcharts,
             'form': the form to pass to HTML
         """
-        storage_totals = StorageCosts.objects.filter(
+        storage_totals = self.storage_objects.filter(
             date__date__range=[
-                self.start_of_six_months_ago, self.start_of_next_month
+                self.start_of_four_months_ago, self.start_of_next_month
             ],
-            ).order_by().values(
-                'date__date__month',
-                'date__date__year'
-                ).annotate(
-                    Live=Sum('unique_cost_live'),
-                    Archived=Sum('unique_cost_archived')
-            )
+        ).order_by().values(
+            'date__date__month',
+            'date__date__year'
+        ).annotate(
+            Live=Sum('unique_cost_live'),
+            Archived=Sum('unique_cost_archived')
+        )
 
         string_months = self.get_month_years_as_str(storage_totals)
 
