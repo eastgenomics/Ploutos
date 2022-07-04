@@ -146,6 +146,9 @@ with open('ploutos-error.log', 'a'):
     pass
 with open('ploutos-debug.log', 'a'):
     pass
+# Set up execution tracker log
+with open('executions_log.log', 'a'):
+    pass
 
 LOGGING = {
     'version': 1,
