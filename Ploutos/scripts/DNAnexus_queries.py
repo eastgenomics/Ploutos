@@ -35,10 +35,11 @@ import dxpy as dx
 
 from calendar import monthrange
 from collections import defaultdict
+from time import time, localtime, strftime
+
 from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal, StorageCosts
 from django.apps import apps
 from django.conf import settings
-from time import time, localtime, strftime
 
 
 logger = logging.getLogger("general")
@@ -541,6 +542,8 @@ def merge_together_add_empty_rows(df1, df2):
         cost and size with zeros if did not exist
     e.g.
     +-----------+-----------------+---------------+----------+
+    |  project  |      state      |     size      |   cost   |
+    +-----------+-----------------+---------------+----------+
     | project-X | unique_live     | 1133796550572 | 0.875400 |
     | project-X | unique_archived |         51238 | 0.011010 |
     | project-X | total_live      | 1133796550572 | 0.875400 |
@@ -577,7 +580,8 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
     Returns
     -------
     final_all_projs_df : pd.DataFrame
-        final dataframe with project, file state, total size and cost for all projects
+        final df with proj, file state, total size+cost for all projects
+
     """
     # For the projects that were removed at the beginning because they are empty
     # Create a list of dictionaries with all the fields as zero

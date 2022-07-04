@@ -3,7 +3,6 @@
 """
 import datetime as dt
 import pandas as pd
-
 import dxpy as dx
 
 from calendar import monthrange
@@ -128,7 +127,7 @@ def populate_database_files(all_projects_dict) -> None:
 
     for key, value in all_projects_dict.items():
         new_storage, created = StorageCosts.objects.get_or_create(
-            # Get the project ID from the projects table by project dx id
+            # Get project ID from the projects table by project dx_id
             project=Projects.objects.get(dx_id=key),
             unique_size_live=value['unique_live']['size'],
             unique_cost_live=value['unique_live']['cost'],
@@ -140,7 +139,7 @@ def populate_database_files(all_projects_dict) -> None:
             total_size_archived=value['total_archived']['size'],
             total_cost_archived=value['total_archived']['cost'],
             # Get date object from the dates table
-            date=Dates.objects.get_or_create(date=today_date),
+            date=Dates.objects.get(date=today_date),
         )
 
 

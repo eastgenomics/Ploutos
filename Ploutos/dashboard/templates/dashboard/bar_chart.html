@@ -1,14 +1,12 @@
 {% extends 'dashboard/base.html' %}
 
 {% block content %}
-
 <style>
     form {
         padding-top: 30px;
         padding-bottom: 30px;
     }
 </style>
-
 <style>
     .col-sm-6 {
         padding-top: 5px;
@@ -16,13 +14,14 @@
     }
 </style>
 
-<form method="GET" action="{% url 'index' %}">
+<form method="GET" action="{% url 'storage' %}">
+   
     <div class="container">
         <div class="row">
-        <!-- If form errors, display each field's error with red banner -->
-        {% if form.errors %}
+        <!-- If general form errors, display them with red banner -->
+        {% if form.non_field_errors %}
             <div class="alert alert-danger">
-                {{ form.errors }}
+                {{ form.non_field_errors }}
             </div>
         {% endif %}
         <!-- Display each field's label and the field itself -->
@@ -31,16 +30,15 @@
             <b>{{ field.label_tag }}</b> {{ field }} 
           </div>
         {% endfor %}
-        </div>  
-
+        </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Submit"/>
     </div>
-
+&nbsp; 
 </form>
-<div id='chart_div' align='center' style='margin: 0 auto;'>
-    {{ chart|safe }}
-</div>
+
+<div id="container_data" align="center"></div>
+<script>
+       Highcharts.chart('container_data', {{ storage_data|safe }});
+</script>
 {% endblock content %}
-
-
