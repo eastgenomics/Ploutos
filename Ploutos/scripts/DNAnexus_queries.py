@@ -13,13 +13,6 @@ Jobs: These are instances of apps running.
 Parent:Jobs and analyses can spawn other instances of analyses and jobs.
        Therefore, to gather all the top-level costings we only look at parents.
 
-
-Development:
-- Add version number to compute jobs.
-- Update to work on discrete epoch times rather than -2d with DNAnexus query.
-- Update runtime to calculate correct runtime based on state_transitions.
-- Add logging for errors, using two logfiles (logfile.log and log_executions.log)
-
 """
 
 import concurrent.futures
@@ -1105,7 +1098,8 @@ def get_executions_from_list():
                 job['state'] == "partially_failed"
             ):
                 # Append to the log for checking again next time.
-                logger.log(f"{job['id']}")
+                with open("log_executions.log") as file:
+                    file.append(f"{job['id']}")
             elif (job['class'] == 'analysis'):
                 proj = job['project']
                 executable_Name = job['describe']['executableName']
