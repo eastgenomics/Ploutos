@@ -598,11 +598,6 @@ def put_into_dict_write_to_file(final_all_projs_df):
                      final_all_projs_df.set_index(
                          ['project', 'state']).groupby(level='project')}
 
-    final_project_storage_totals = json.dumps(all_proj_dict, indent=4)
-
-    with open("project_storage_totals.json", "w") as outfile:
-        outfile.write(final_project_storage_totals)
-
     return all_proj_dict
 
 def get_analyses(proj):

@@ -50,13 +50,13 @@ class RunningTotPlotFunctions():
 
         return charge_diff
 
-    def all_charge_types(self, totals):
+    def daily_plot(self, totals):
         """
         Set bar chart context when all charge types are searched for
         Parameters
         ----------
         totals :  queryset
-            queryset already filtered by the specified daterange
+            queryset already filtered by default or specified daterange
 
         Returns
         -------
@@ -142,202 +142,6 @@ class RunningTotPlotFunctions():
 
         return fig
 
-    def specific_charge_type(self, totals, charge_type):
-        """
-        Set context when a specific charge types is searched for
-        Parameters
-        ----------
-        totals :  queryset
-            queryset already filtered by the specified daterange
-        charge_type : str
-            the charge type the user wants to see e.g. 'Egress'
-
-        Returns
-        -------
-        fig : Plotly figure object
-        """
-        # Plot the date and storage charges as line graph
-        charges = totals.order_by(
-            'date__date'
-        ).values_list(
-            'storage_charges', 'compute_charges', 'egress_charges'
-        )
-
-        # Get dates in order from db
-        dates = totals.order_by(
-            'date__date'
-        ).values_list(
-            'date__date', flat=True
-        )
-
-        # Turn date objects into strings
-        stringified_dates = [str(date) for date in dates][:-1]
-
-        # Get relevant charge from tuples
-        storage_charges, compute_charges, egress_charges = zip(*charges)
-
-        # Calculate charge relative to previous day
-        storage_charge_diff = self.calculate_diffs(storage_charges)
-        compute_charge_diff = self.calculate_diffs(compute_charges)
-        egress_charge_diff = self.calculate_diffs(egress_charges)
-
-        charge_dict = {
-            "Egress": {
-                "colour": "#00CC96",
-                "data": egress_charge_diff,
-                "title": "Egress Daily Running Charges"
-            },
-            "Compute": {
-                "colour": '#636EFA',
-                "data": compute_charge_diff,
-                "title": "Compute Daily Running Charges"
-            },
-            "Storage": {
-                "colour": '#EF553B',
-                "data": storage_charge_diff,
-                "title": "Storage Daily Running Charges"
-            }
-        }
-
-        fig = go.Figure(
-            layout={
-                'hovermode': 'x unified'
-            }
-        )
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=charge_dict[charge_type]["data"],
-            marker=dict(color=charge_dict[charge_type]["colour"]),
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.update_layout(
-            title={
-                'text': charge_dict[charge_type]["title"],
-                'xanchor': 'center',
-                'x': 0.5,
-                'font_size': 24
-            },
-            xaxis_title="Date",
-            xaxis_tickformat='%d %b %y',
-            yaxis_title="Daily estimated charge ($)",
-            yaxis_tickformat=",d",
-            barmode='stack',
-            width=1200,
-            height=600,
-            font_family='Helvetica',
-        )
-
-        fig.data[0].name = f"{charge_type}"
-        fig.update_traces(
-            marker_line_color = 'rgb(0,0,0)',
-            marker_line_width = 1,
-            showlegend=True
-        )
-
-        return fig
-
-
-    def form_not_submitted_or_invalid(self):
-        """
-        Set context when the form is not submitted
-        Or when the form is not valid (wrong dates)
-        Includes all dates present in db and all charge types
-        Parameters
-        ----------
-        form : Django form object
-            form either as Form(request.GET) or Form()
-        Returns
-        -------
-        context : dict
-            context to pass to HTML
-
-        """
-        totals = self.totals.filter(
-            date__date__range=[
-                str(self.four_months_ago), self.today_date
-            ]
-        )
-
-        # Plot the date and storage charges as line graph
-        charges = totals.order_by(
-            'date__date'
-        ).values_list(
-            'storage_charges', 'compute_charges', 'egress_charges'
-        )
-
-        # Get dates in order from the db
-        dates = totals.order_by(
-            'date__date'
-        ).values_list(
-            'date__date', flat=True
-        )
-
-        # Convert dates to strs, remove last date
-        stringified_dates = [str(date) for date in dates][:-1]
-
-        # Get relevant charge from tuples
-        storage_charges, compute_charges, egress_charges = zip(*charges)
-
-        # Calculate charge for the day relative to previous day
-        storage_charge_diff = self.calculate_diffs(storage_charges)
-        compute_charge_diff = self.calculate_diffs(compute_charges)
-        egress_charge_diff = self.calculate_diffs(egress_charges)
-
-        fig = go.Figure(layout={'hovermode': 'x unified'})
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=compute_charge_diff,
-            name='Compute',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=storage_charge_diff,
-            name='Storage',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=egress_charge_diff,
-            name='Egress',
-            hovertemplate='%{y:.2f}'
-            )
-        )
-
-        fig.update_layout(
-            title={
-                'text': "Daily Running Charges",
-                'xanchor': 'center',
-                'x': 0.5,
-                'font_size': 24
-            },
-            xaxis_title="Date",
-            xaxis_tickformat='%d %b %y',
-            yaxis_title="Daily estimated charge ($)",
-            yaxis_tickformat=",d",
-            barmode='stack',
-            width=1200,
-            height=600,
-            font_family='Helvetica',
-        )
-
-        fig.update_traces(
-            marker_line_color = 'rgb(0,0,0)',
-            marker_line_width = 1
-        )
-
-        chart = fig.to_html()
-
-        return chart
-
     def monthly_between_dates(self, start_month, end_month):
         """
         Set context for the monthly graph when no dates entered
@@ -367,6 +171,8 @@ class RunningTotPlotFunctions():
             'egress_charges'
         )
 
+        # Convert the end month from e.g. '2022-07-01' to '07-2022'
+        # To check if it exists later
         check_end_month = datetime.strftime(end_month, "%m-%Y")
 
         storage_dic = defaultdict(list)
@@ -390,9 +196,10 @@ class RunningTotPlotFunctions():
             key = lambda x: datetime.strptime(x, '%m-%Y')
         )
 
-        # If the end month filter is for the 1st of next month
-        # Take the last entry of the current month
-        # To act as the 1st of the next month instead
+        # If the end month is for the 1st of next month
+        # The month won't exist as a key in the dict
+        # Instead take the last entry of the current month
+        # To act as the 1st of the next month in its place
         if check_end_month not in key_list:
             storage_dic.update({
                 check_end_month: [storage_dic[key_list[-1]][-1]]
@@ -471,7 +278,7 @@ class RunningTotPlotFunctions():
                 'text': "Monthly Running Charges",
                 'xanchor': 'center',
                 'x': 0.5,
-                'font_size': 24
+                'font_size': 18
             },
             xaxis_title="Month",
             xaxis_tickformat='%d %b %y',
@@ -514,6 +321,9 @@ class StoragePlotFunctions():
 
         # Get all storage objects as queryset so multiple queries not needed
         self.storage_objects = StorageCosts.objects.all()
+
+        self.total_live = self.get_todays_total_unique_size()[0]
+        self.total_archived = self.get_todays_total_unique_size()[1]
 
         # Chart data which is shared by all plots
         self.chart_data = {
@@ -654,15 +464,15 @@ class StoragePlotFunctions():
         todays_total = StorageCosts.objects.filter(
             date__date=self.today_date
         ).aggregate(
-            Live=Sum('unique_cost_live'),
-            Archived=Sum('unique_cost_archived')
+            Live=Sum('unique_size_live'),
+            Archived=Sum('unique_size_archived')
         )
 
         # Convert bytes to GiB
-        live_total = todays_total.get('Live', None) / (2**30)
-        archived_total = todays_total.get('Archived', None) / (2**30)
+        live_total = round(todays_total.get('Live', 0.0) / (2**30), 2)
+        archived_total = round(todays_total.get('Archived', 0.0) / (2**30), 2)
 
-        return live_total, archived_total
+        return f"{live_total:,}", f"{archived_total:,}"
 
 
     def month_range_assay_type_and_proj_type(
@@ -757,7 +567,9 @@ class StoragePlotFunctions():
 
         context = {
             'storage_data': json.dumps(category_chart_data),
-            'form': form
+            'form': form,
+            'live_total': self.total_live,
+            'archived_total': self.total_archived
         }
 
         return context
@@ -842,7 +654,9 @@ class StoragePlotFunctions():
 
         context = {
             'storage_data': json.dumps(category_chart_data),
-            'form': form
+            'form': form,
+            'live_total': self.total_live,
+            'archived_total': self.total_archived
         }
 
         return context
@@ -925,7 +739,9 @@ class StoragePlotFunctions():
 
         context = {
             'storage_data': json.dumps(category_chart_data),
-            'form': form
+            'form': form,
+            'live_total': self.total_live,
+            'archived_total': self.total_archived
         }
 
         return context
@@ -994,7 +810,9 @@ class StoragePlotFunctions():
 
         context = {
             'storage_data': json.dumps(category_chart_data),
-            'form': form
+            'form': form,
+            'live_total': self.total_live,
+            'archived_total': self.total_archived
         }
 
         return context
@@ -1061,7 +879,9 @@ class StoragePlotFunctions():
 
         context = {
                 'storage_data': json.dumps(category_chart_data),
-                'form': form
+                'form': form,
+                'live_total': self.total_live,
+                'archived_total': self.total_archived
         }
 
         return context

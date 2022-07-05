@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 from dashboard.forms import DateForm, MonthlyForm, StorageForm
-from dashboard.models import DailyOrgRunningTotal, StorageCosts
+from dashboard.models import DailyOrgRunningTotal
 from django.shortcuts import render
 from scripts import DNAnexus_queries as dx_queries
 from scripts import storage_plots as sp
@@ -35,7 +35,7 @@ def index(request):
         # If the dates entered are validated
         if form.is_valid():
             # Get the charge type (always entered)
-            charge_type = form.cleaned_data.get("charge_type")
+            #charge_type = form.cleaned_data.get("charge_type")
 
             # If there's a date entered get dates
             if form.cleaned_data.get("start"):
@@ -55,16 +55,8 @@ def index(request):
                 )
 
                 # If user wants to see all charge types, render whole graph
-                if charge_type == 'All':
-                    fig = sp.RunningTotPlotFunctions().all_charge_types(totals)
-
-                # If a specific charge type chosen, set y_data accordingly
-                else:
-                    fig = sp.RunningTotPlotFunctions().specific_charge_type(
-                        totals,
-                        charge_type
-                    )
-
+                # if charge_type == 'All':
+                fig = sp.RunningTotPlotFunctions().daily_plot(totals)
                 chart = fig.to_html()
 
                 # Send filtered chart1 and unfiltered chart 2 to context
@@ -84,17 +76,7 @@ def index(request):
                     ]
                 )
 
-                # If user wants to see all charge types, render whole graph
-                if charge_type == 'All':
-                    fig = sp.RunningTotPlotFunctions().all_charge_types(totals)
-
-                # If a specific charge type chosen, set y_data accordingly
-                else:
-                    fig = sp.RunningTotPlotFunctions().specific_charge_type(
-                        totals,
-                        charge_type
-                    )
-
+                fig = sp.RunningTotPlotFunctions().daily_plot(totals)
                 chart = fig.to_html()
 
                 context = {
@@ -107,8 +89,14 @@ def index(request):
         else:
             # If form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
-            chart = sp.RunningTotPlotFunctions(
-            ).form_not_submitted_or_invalid()
+            totals = totals.filter(
+                date__date__range=[
+                    start_of_four_months_ago, date.today()
+                ]
+            )
+
+            fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+            chart = fig.to_html()
 
             context = {
                 'chart': chart,
@@ -119,8 +107,14 @@ def index(request):
 
     # If instead form for monthly chart is submitted
     elif 'monthly' in request.GET:
+        totals = totals.filter(
+            date__date__range=[
+                start_of_four_months_ago, date.today()
+            ]
+        )
         form = DateForm()
         form2 = MonthlyForm(request.GET)
+
         if form2.is_valid():
             start_month = form2.cleaned_data.get("start_month")
             end_month = form2.cleaned_data.get("end_month")
@@ -128,13 +122,13 @@ def index(request):
             # If no months entered
             if start_month == "---" and end_month == "---":
 
-                # Display last four months
+                # Display last four months on monthly plot
                 chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
                     start_of_four_months_ago, start_of_next_month
                 )
-
-                chart = sp.RunningTotPlotFunctions(
-                ).form_not_submitted_or_invalid()
+                # And last four months on daily plot
+                fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+                chart = fig.to_html()
 
                 context = {
                     'chart': chart,
@@ -157,10 +151,9 @@ def index(request):
                 chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
                     month_start, month_end
                 )
-
-                # Reset other chart
-                chart = sp.RunningTotPlotFunctions(
-                ).form_not_submitted_or_invalid()
+                # Show last four months on daily plot
+                fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+                chart = fig.to_html()
 
                 context = {
                     'chart': chart,
@@ -175,9 +168,9 @@ def index(request):
             chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
                 start_of_four_months_ago, start_of_next_month
             )
-
-            chart = sp.RunningTotPlotFunctions(
-            ).form_not_submitted_or_invalid()
+            # Show last four months on daily plot
+            fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+            chart = fig.to_html()
 
             context = {
                 'chart': chart,
@@ -186,15 +179,17 @@ def index(request):
                 'form2': form2
             }
 
-    # If no forms submitted display all charges for all dates in db
+    # If no forms submitted display last four months for daily + monthly
     else:
         form = DateForm()
         form2 = MonthlyForm()
         chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
-        chart = sp.RunningTotPlotFunctions(
-        ).form_not_submitted_or_invalid()
+
+        fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+        chart = fig.to_html()
+
         context = {
             'chart': chart,
             'chart2': chart2,
@@ -407,10 +402,6 @@ def storage_chart(request):
         context = sp.StoragePlotFunctions(
             ).form_is_not_submitted_or_invalid(form)
 
-    # if 'reset' in request.GET:
-    #     form = StorageForm(request.GET)
-    #     context = sp.StoragePlotFunctions(
-    #         ).form_is_not_submitted_or_invalid(form)
     return render(request, 'bar_chart.html', context)
 
 

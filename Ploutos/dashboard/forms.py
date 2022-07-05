@@ -30,12 +30,12 @@ class DateForm(forms.Form):
         first_date, "%Y-%m-%d"
     ).strftime("%d/%m/%Y")
 
-    CHARGE_CHOICES = (
-        ('All', 'All'),
-        ('Storage', 'Storage'),
-        ('Compute', 'Compute'),
-        ('Egress', 'Egress'),
-    )
+    # CHARGE_CHOICES = (
+    #     ('All', 'All'),
+    #     ('Storage', 'Storage'),
+    #     ('Compute', 'Compute'),
+    #     ('Egress', 'Egress'),
+    # )
 
     start = forms.DateField(
         widget=forms.DateInput(
@@ -59,15 +59,15 @@ class DateForm(forms.Form):
         required=False
     )
 
-    charge_type = forms.ChoiceField(
-        choices=CHARGE_CHOICES,
-        required=True
-    )
+    # charge_type = forms.ChoiceField(
+    #     choices=CHARGE_CHOICES,
+    #     required=True
+    # )
 
     def clean(self):
         start = self.cleaned_data['start']
         end = self.cleaned_data['end']
-        charge_type = self.cleaned_data['charge_type']
+        # charge_type = self.cleaned_data['charge_type']
 
         # Check both dates are entered
         if start:
@@ -99,8 +99,8 @@ class DateForm(forms.Form):
             self.fields['start'].widget.attrs.update(style='max-width: 10em'),
             self.fields['end'].widget.attrs.update(style='max-width: 10em'),
             Row(
-                Column('start', css_class='form-group col-md-6 mb-0'),
-                Column('end', css_class='form-group col-md-6 mb-0'),
+                Column('start', css_class='form-group col-md-2 mb-0'),
+                Column('end', css_class='form-group col-md-2 mb-0'),
                 css_class='row'
             ),
             'charge_type',
@@ -188,8 +188,8 @@ class MonthlyForm(forms.Form):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Row(
-                Column('start_month', css_class='form-group col-md-6 mb-0'),
-                Column('end_month', css_class='form-group col-md-6 mb-0'),
+                Column('start_month', css_class='form-group col-md-2 mb-0'),
+                Column('end_month', css_class='form-group col-md-2 mb-0'),
                 css_class='row'
             ),
         )
@@ -341,13 +341,13 @@ class StorageForm(forms.Form):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Row(
-                Column('project_type', css_class='form-group col-md-6 mb-0'),
-                Column('assay_type', css_class='form-group col-md-6 mb-0'),
+                Column('project_type', css_class='form-group col-md-4 mb-0'),
+                Column('assay_type', css_class='form-group col-md-4 mb-0'),
                 css_class='row'
             ),
             Row(
-                Column('start', css_class='form-group col-md-6 mb-0'),
-                Column('end', css_class='form-group col-md-6 mb-0'),
+                Column('start', css_class='form-group col-md-2 mb-0'),
+                Column('end', css_class='form-group col-md-2 mb-0'),
                 css_class='row'
             ),
         )

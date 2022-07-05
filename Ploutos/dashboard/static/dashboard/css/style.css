@@ -10,7 +10,7 @@ form {
 
 .row {
     padding-top: 5px;
-    padding-bottom: 5px;
+    padding-bottom: 10px;
 }
 
 .alert {
@@ -25,4 +25,19 @@ form {
 .non-field-alert {
     padding-top: 10px;
     padding-bottom: 0px;
+}
+
+.highcharts-data-table table {
+    border-collapse: collapse;
+    border-spacing: 0;
+    background: white;
+    min-width: 100%;
+    margin-top: 10px;
+    font-family: "Roboto", sans-serif;
+    font-size: 0.9em;
+}
+
+.highcharts-data-table {
+    border: 1px solid silver;
+    padding: 0.5em;
 }

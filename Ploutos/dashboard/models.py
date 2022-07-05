@@ -51,12 +51,11 @@ class StorageCosts(models.Model):
 #    def __str__(self):
 #        return self.name
 
-# class ProjectDate(models.Model):
-#     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
-
 # class FileTypeCount(models.Model):
-#     project_date = models.ForeignKey(ProjectDate, on_delete=models.CASCADE)
-#     file_type = models.ForeignKey()
+#     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
+#     file_type = models.ForeignKey(FileType, on_delete=models.CASCADE)
+#     file_count = models.IntegerField()
+#     file_size = models.IntegerField()
 
 # class FileType(models.Model):
 #     type_name = models.CharField(max_length=35, unique=True)
