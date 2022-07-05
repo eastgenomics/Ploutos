@@ -2,7 +2,7 @@
 {% load crispy_forms_tags %}
 {% block content %}
 <div class="all" style='margin: 0 auto;'>
-<form method="GET" action="{% url 'index' %}">
+<form method="GET" action="{% url 'index' %}" style="padding-top: 15px;">
     <div class="container">
         <div class="row">
           {% crispy form %}
@@ -13,7 +13,7 @@
     </div>
 
 </form>
-<div id='chart_div' align='center' style='margin: 0 auto; padding-bottom: 60px;'>
+<div id='chart_div' align='center' style='margin: 0 auto; padding-bottom: 40px;'>
     {{ chart|safe }}
 </div>
 

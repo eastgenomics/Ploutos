@@ -67,7 +67,6 @@ class DateForm(forms.Form):
     def clean(self):
         start = self.cleaned_data['start']
         end = self.cleaned_data['end']
-        # charge_type = self.cleaned_data['charge_type']
 
         # Check both dates are entered
         if start:
@@ -103,7 +102,6 @@ class DateForm(forms.Form):
                 Column('end', css_class='form-group col-md-2 mb-0'),
                 css_class='row'
             ),
-            'charge_type',
         )
 
 

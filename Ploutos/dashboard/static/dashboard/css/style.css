@@ -2,10 +2,6 @@
   font-family: "Roboto", sans-serif !important;
 }
 
-form {
-    padding-top: 20px;
-    padding-bottom: 30px;
-}
 
 
 .row {
@@ -27,17 +23,6 @@ form {
     padding-bottom: 0px;
 }
 
-.highcharts-data-table table {
-    border-collapse: collapse;
-    border-spacing: 0;
-    background: white;
-    min-width: 100%;
-    margin-top: 10px;
-    font-family: "Roboto", sans-serif;
-    font-size: 0.9em;
-}
-
-.highcharts-data-table {
-    border: 1px solid silver;
-    padding: 0.5em;
+.table tr {
+    border: grey !important;
 }

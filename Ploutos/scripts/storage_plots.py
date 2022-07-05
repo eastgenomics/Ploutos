@@ -2,6 +2,7 @@
 
 import calendar
 import json
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -359,8 +360,8 @@ class StoragePlotFunctions():
                     'enabled': 'true',
                     'allowOverlap': 'true',
                     'style': {
-                        'fontWeight': 'bold',
-                        'color': 'gray'
+                        'color': 'gray',
+                        'textOutline': 0
                     },
                     'format': "{stack}"
                 }
@@ -375,6 +376,16 @@ class StoragePlotFunctions():
                 'column': {
                     'stacking': 'normal'
                     }
+            },
+            'exporting': {
+                'buttons': {
+                    'contextButton': {
+                        'menuItems': [
+                            "viewFullscreen", "printChart", "downloadPNG",
+                            "downloadJPEG", "downloadPDF"
+                        ]
+                    }
+                }
             },
             'series': "",
             "tooltip":{
@@ -474,6 +485,60 @@ class StoragePlotFunctions():
 
         return f"{live_total:,}", f"{archived_total:,}"
 
+    def convert_to_df(self, category_chart_data):
+        """
+        Convert chart data to a pandas df then convert it to HTML
+        So it can be shown below the graph and be easily exported
+
+        Parameters
+        ----------
+        category_chart_data : dict
+            dictionary which has all the chart attributes and data
+
+        Returns
+        -------
+        chart_data : pd.DataFrame as HTML table
+            the dataframe with Month, Type, State and Monthly Storage Cost
+        """
+        series_data = category_chart_data['series'].copy()
+        months = category_chart_data['xAxis']['categories'].copy()
+
+        # As data column value contains a list, expand this over multiple rows
+        # Explode fills in the relevant data for those extra rows
+        exploded = pd.json_normalize(data = series_data).explode('data')
+
+        # If data exists, expand the months table according to the df length
+        # So the correct month can be added to the right row
+        if months:
+            months = months * (int(len(exploded) / len(months)))
+            exploded['Month'] = months
+        # If no months exist (no data), keep months as empty list
+        else:
+            months = []
+
+        # Re-order columns
+        exploded = exploded.reindex(
+            columns=[
+                'Month', 'name', 'stack', 'data'
+            ]
+        )
+        exploded.rename(
+            columns={
+                "name": "Type",
+                "stack": "State",
+                'data': 'Monthly storage cost ($)'
+            },
+            inplace = True
+        )
+        # Convert to HTML to easily show with DataTables
+        chart_data = exploded.to_html(
+            index=False,
+            classes='table table-striped"',
+            justify='left'
+        )
+
+        return chart_data
+
 
     def month_range_assay_type_and_proj_type(
         self, project_type, assay_type, month_start, month_end, form
@@ -565,8 +630,11 @@ class StoragePlotFunctions():
         category_chart_data['xAxis']['categories'] = string_months
         category_chart_data['series'] = category_data_source
 
+        chart_data = self.convert_to_df(category_chart_data)
+
         context = {
             'storage_data': json.dumps(category_chart_data),
+            'storage_df': chart_data,
             'form': form,
             'live_total': self.total_live,
             'archived_total': self.total_archived
@@ -652,8 +720,11 @@ class StoragePlotFunctions():
         category_chart_data['xAxis']['categories'] = string_months
         category_chart_data['series'] = category_data_source
 
+        chart_data = self.convert_to_df(category_chart_data)
+
         context = {
             'storage_data': json.dumps(category_chart_data),
+            'storage_df': chart_data,
             'form': form,
             'live_total': self.total_live,
             'archived_total': self.total_archived
@@ -737,8 +808,11 @@ class StoragePlotFunctions():
         category_chart_data['xAxis']['categories'] = string_months
         category_chart_data['series'] = category_data_source
 
+        chart_data = self.convert_to_df(category_chart_data)
+
         context = {
             'storage_data': json.dumps(category_chart_data),
+            'storage_df': chart_data,
             'form': form,
             'live_total': self.total_live,
             'archived_total': self.total_archived
@@ -808,8 +882,11 @@ class StoragePlotFunctions():
         category_chart_data['xAxis']['categories'] = string_months
         category_chart_data['series'] = category_data_source
 
+        chart_data = self.convert_to_df(category_chart_data)
+
         context = {
             'storage_data': json.dumps(category_chart_data),
+            'storage_df': chart_data,
             'form': form,
             'live_total': self.total_live,
             'archived_total': self.total_archived
@@ -877,8 +954,11 @@ class StoragePlotFunctions():
         category_chart_data['xAxis']['categories'] = string_months
         category_chart_data['series'] = category_data_source
 
+        chart_data = self.convert_to_df(category_chart_data)
+
         context = {
                 'storage_data': json.dumps(category_chart_data),
+                'storage_df': chart_data,
                 'form': form,
                 'live_total': self.total_live,
                 'archived_total': self.total_archived

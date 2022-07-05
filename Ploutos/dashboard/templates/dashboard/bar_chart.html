@@ -12,23 +12,19 @@
     home.setAttribute("aria-current","none");
 </script>
 
-<script>
-    function CopyToClipboard(id) {
-        var r = document.createRange();
-        r.selectNode(document.getElementById(id));
-        window.getSelection().removeAllRanges();
-        window.getSelection().addRange(r);
-        document.execCommand('copy');
-        window.getSelection().removeAllRanges();
-    }
-</script>
-<script type="text/javascript" class="init">
-$(document).ready(function () {
-    var data = $storage_data ;
-    $('#storage_data').DataTable();
-});
-</script>
-<form method="GET" action="{% url 'storage' %}">
+<div class="card border-light bg-light table-responsive">
+    <div class="card-body bg-white">
+        <h5>Total size of unique files in DNAnexus today:</h5>
+        <p>
+        <ul>
+            <li> Live: {{ live_total }} GiB</li>
+            <li> Archived: {{ archived_total }} GiB</li>
+        </ul>
+        </p>
+    </div>
+</div>
+
+<form method="GET" action="{% url 'storage' %}" style="padding-top: 0px;">
     <div class="container">
         <div class="row">
           {% crispy form %}
@@ -40,22 +36,42 @@ $(document).ready(function () {
     </div>
 </form>
 
-<div id="container_data" align="center" style="padding-top: 50px;">
+<div id="container_data" align="center" style="padding-top: 30px;padding-bottom: 40px;">
 <script>
-       Highcharts.chart('container_data', {{ storage_data|safe }});
+    Highcharts.chart('container_data', {{ storage_data|safe }});
 </script>
-<div class="card border-light mt-5 mb-5 p-3 bg-light table-responsive">
-    <div class="card-body bg-white">
-        <h4>Total size of unique files in DNAnexus today:</h4>
-        <!--  Report details section -->
-        <p>
-        <ul>
-            <li> Live: {{ live_total }} GiB</li>
-            <li> Archived: {{ archived_total }} GiB</li>
-        </ul>
-        </p>
-    </div>
-</div> 
 
-</div>
+<script>
+    $(document).ready(function () {
+    $('.dataframe').DataTable( {
+        scrollY: '75vh',
+        scroller: true,
+        deferRender:    true,
+        pageResize:     true,
+        info:           false,
+        scrollCollapse: true,
+        columnDefs: [
+            { "width": "20%",
+            "targets": 0 
+        },
+        {"width": "20%",
+        "targets": 1},
+        {"width": "20%",
+        "targets": 2},
+        {"width": "20%",
+        "targets": 3}
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+        'copyHtml5', 'csv'
+        ],
+        order: [[0, 'desc']],
+    });
+});
+
+</script>
+<div style="width: 65%;margin-left: 10%;margin-right: 10%;margin-top: 5px;margin-bottom: 20px;">
+    {{ storage_df|safe }}
+ </div>
+
 {% endblock content %}
