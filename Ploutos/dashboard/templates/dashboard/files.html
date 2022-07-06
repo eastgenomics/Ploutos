@@ -1,13 +1,12 @@
 {% extends 'dashboard/base.html' %}
-
+{% load crispy_forms_tags %}
 {% block content %}
-
-<div class="card-body bg-white">
-    <h5>Jobs will be shown on this page</h5>
-</div>
+    <div class="card-body bg-white">
+        <h5>Files will be shown on this page</h5>
+    </div>
 <!-- Highlights current page and removes highlighting from previous -->
 <script>
-    var jobs = document.getElementById("jobs");
+    var jobs = document.getElementById("files");
     jobs.classList.add('active');                  
     jobs.setAttribute("aria-current", "page");
     

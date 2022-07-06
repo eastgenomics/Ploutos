@@ -404,6 +404,8 @@ def storage_chart(request):
 
     return render(request, 'bar_chart.html', context)
 
+def files(request):
+    return render(request, 'files.html')
 
 def jobs(request):
     """View to display the jobs data"""

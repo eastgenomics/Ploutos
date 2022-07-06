@@ -467,9 +467,9 @@ class StoragePlotFunctions():
 
         Returns
         -------
-        live_total : integer
+        live_total : float
             total size in GiB of all the live files in DNAnexus
-        archived_total : integer
+        archived_total : float
             total size in GiB of all the archived files in DNAnexus
         """
         todays_total = StorageCosts.objects.filter(
@@ -478,10 +478,14 @@ class StoragePlotFunctions():
             Live=Sum('unique_size_live'),
             Archived=Sum('unique_size_archived')
         )
-
-        # Convert bytes to GiB
-        live_total = round(todays_total.get('Live', 0.0) / (2**30), 2)
-        archived_total = round(todays_total.get('Archived', 0.0) / (2**30), 2)
+        # If DNANexus has been queried, convert bytes to GiB
+        # Otherwise set both to zero
+        if todays_total.get('Live'):
+            live_total = round(todays_total.get('Live') / (2**30), 2)
+            archived_total = round(todays_total.get('Archived') / (2**30), 2)
+        else:
+            live_total = 0.0
+            archived_total = 0.0
 
         return f"{live_total:,}", f"{archived_total:,}"
 
