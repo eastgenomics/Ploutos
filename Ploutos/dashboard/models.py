@@ -29,8 +29,7 @@ class Projects(models.Model):
 
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
-    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True)
-    # Could use OneToOneField here?
+    date = models.OneToOneField(Dates, on_delete=models.CASCADE)
     storage_charges = models.FloatField()
     compute_charges = models.FloatField()
     egress_charges = models.FloatField()
@@ -53,7 +52,7 @@ class StorageCosts(models.Model):
 
 class Executables(models.Model):
     executable_name = models.CharField(max_length=200)
-    # version = models.CharField(max_length=10)
+    version = models.CharField(max_length=10)
 
     def __str__(self):
         return self.excutable_name
@@ -71,6 +70,7 @@ class ComputeCosts(models.Model):
 
     def __str__(self):
         return self.dx_id
+
 
 # Models in progress
 
