@@ -11,8 +11,8 @@ from time import time, localtime, strftime
 
 from django.apps import apps
 from django.conf import settings
-from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Users, Dates, Projects, Executables, StorageCosts
-from scripts import DNAnexus_queries as q
+from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Executables, Users, Dates, Projects, StorageCosts
+from scripts import DNAnexus_queries as queries
 
 
 def populate_projects(all_projects) -> None:
@@ -90,7 +90,7 @@ def populate_running_totals() -> None:
     """
 
     # Get today's date in YYY-MM-DD format
-    today_date = q.no_of_days_in_month()[0]
+    today_date = queries.no_of_days_in_month()[0]
 
     # Describe the org to get running totals
     org_totals = dx.api.org_describe(settings.ORG)
@@ -123,7 +123,7 @@ def populate_database_files(all_projects_dict) -> None:
     none
     """
 
-    today_date = q.no_of_days_in_month()[0]
+    today_date, _ = queries.no_of_days_in_month()
 
     for key, value in all_projects_dict.items():
         new_storage, created = StorageCosts.objects.get_or_create(
@@ -143,7 +143,7 @@ def populate_database_files(all_projects_dict) -> None:
         )
 
 
-def populate_analyses(all_projects) -> None:
+def populate_executions(all_executions_df) -> None:
     """
     Populate database with data from API query.
     This function iterates over all projects and returns all parent executions
@@ -154,52 +154,47 @@ def populate_analyses(all_projects) -> None:
 
     Parameters
     ----------
-    all_projects: list of all projects in the DNAnexus ORG.
-
+    all_executions_df:
+        dataframe with all parent executions run in timeperiod specified.
     Returns
     -------
     None
+
     """
-    all_analyses = []
-    for proj in all_projects:
-        analyses = q.get_analyses(proj['dx_id'])
-        all_analyses.append(analyses)
-    all_analyses_df = q.make_analyses_df(all_analyses)
 
-    for index, row in all_analyses_df.iterrows():
-        print(row)
-        print("---\n")
-
-        # Add date for analysis started.
+    for _, row in all_executions_df.iterrows():
+        # _ represents the index
+        print(f"{row}\n")
+        # Add date for analysis when created.
+        date = dt.datetime.fromtimestamp(row['created'] / 1000)
+        date_formatted = date.strftime("%Y-%m-%d")
         a_new_date, created = Dates.objects.get_or_create(
-            date=dt.datetime.fromtimestamp(
-                (int(row['created'])) / 1000).strftime('%Y-%m-%d')
-        )
+            date=date_formatted,)
 
-        # Add data to DB - Executables Table
-        project_row_id = Projects.objects.get(dx_id=row['project'])
-        project_row_id = project_row_id.values()
-        new_analysis, created = Executables.objects.get_or_create(
-            dx_id=row['executable'],
-            excutable_name=row['name'],
-            project_id=project_row_id['project']
-        )
         # Add date for analysis started.
         user, created = Users.objects.get_or_create(
             user_name=row['launchedBy'],)
-        print(user)
+
+        # Add executable name to table
+        new_executable, created = Executables.objects.get_or_create(
+            # Get the project ID from the projects table by project dx id
+            executable_name=row['executable_name'],
+            version=row['version']
+        )
+
         # Add data to DB - ComputeCosts Table
         new_analysis_costs, created = ComputeCosts.objects.get_or_create(
             # Get the project ID from the projects table by project dx id
-            # project=Projects.objects.get(dx_id=key),
-            executable_id=new_analysis,
-            # instance_id = row['']
-            # runtime = row['']
-            total_cost = row['cost'],
+            dx_id=row['id'],
+            # job_name=row['job_name'],
+            executable_name=new_executable,
+            project=Projects.objects.get(dx_id=row['project']),
+            runtime=row['Result_td'],
+            total_cost=row['cost'],
+            state=row['state'],
             launched_by=user,
-            date_id=a_new_date
+            date=a_new_date,
         )
-        print("done")
 
 
 def run():
@@ -209,13 +204,15 @@ def run():
     start = time()
     print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
 
-    q.login()
-    all_projects, proj_list, proj_df = q.get_projects()
+    queries.login()
+    all_projects, proj_list, proj_df = queries.get_projects()
     populate_projects(all_projects)
-    populate_running_totals()
-    final_dict = q.orchestrate_get_files(proj_list, proj_df)
-    populate_database_files(final_dict)
-    # populate_analyses(all_projects)
+    # populate_running_totals()
+    # final_dict = queries.orchestrate_get_files(proj_list, proj_df)
+    # populate_database_files(final_dict)
+    executions_df = queries.orchestrate_get_executions(proj_list)
+    print(executions_df)
+    populate_executions(executions_df)
     end = time()
     total = (end - start) / 60
     print(f"Total time was {total} minutes")

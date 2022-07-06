@@ -26,9 +26,10 @@ class Projects(models.Model):
     def __str__(self):
         return self.dx_id
 
+
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
-    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True)
+    date = models.OneToOneField(Dates, on_delete=models.CASCADE)
     storage_charges = models.FloatField()
     compute_charges = models.FloatField()
     egress_charges = models.FloatField()
@@ -48,31 +49,27 @@ class StorageCosts(models.Model):
     total_cost_archived = models.FloatField()
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
-#    def __str__(self):
-#        return self.name
 
-# class Executables(models.Model):
-#     executable_id = models.AutoField(primary_key=True)
-#     dx_id = models.CharField(max_length=200)
-#     excutable_name = models.CharField(max_length=200)
-#     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
-#     #version = models.CharField(max_length=30)
+class Executables(models.Model):
+    executable_name = models.CharField(max_length=200)
+    version = models.CharField(max_length=10)
 
-# #    def __str__(self):
-# #        return self.name
+    def __str__(self):
+        return self.excutable_name
 
+class ComputeCosts(models.Model):
+    dx_id = models.CharField(max_length=200)
+    # job_name = models.CharField(max_length=200)
+    executable_name = models.ForeignKey(Executables, on_delete=models.CASCADE)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
+    runtime = models.DurationField()
+    total_cost = models.FloatField()
+    state = models.CharField(max_length=50)
+    launched_by = models.ForeignKey(Users, on_delete=models.CASCADE)
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
-# class ComputeCosts(models.Model):
-#     executable_id = models.ForeignKey(Executables, on_delete=models.CASCADE)
-#     # intstance_id = models.IntegerField(blank = True, null = True)
-#     # runtime = models.IntegerField()
-#     total_cost = models.FloatField()
-#     launched_by = models.ForeignKey(Users, on_delete=models.CASCADE)
-#     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
-#     # project = models.ForeignKey(Projects, on_delete=models.CASCADE)
-
-# #    def __str__(self):
-# #        return self.name
+    def __str__(self):
+        return self.dx_id
 
 
 # Models in progress
