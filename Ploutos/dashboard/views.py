@@ -28,7 +28,7 @@ def index(request):
         # Get the form with info, set monthly form and monthly plot to default
         form = DateForm(request.GET)
         form2 = MonthlyForm()
-        chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+        chart2, monthly_df = sp.RunningTotPlotFunctions().monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
@@ -56,7 +56,7 @@ def index(request):
 
                 # If user wants to see all charge types, render whole graph
                 # if charge_type == 'All':
-                fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+                fig, daily_df = sp.RunningTotPlotFunctions().daily_plot(totals)
                 chart = fig.to_html()
 
                 # Send filtered chart1 and unfiltered chart 2 to context
@@ -65,7 +65,9 @@ def index(request):
                     'chart': chart,
                     'chart2': chart2,
                     'form': form,
-                    'form2': form2
+                    'form2': form2,
+                    'monthly_df': monthly_df,
+                    'daily_df': daily_df
                 }
 
             else:
@@ -76,14 +78,16 @@ def index(request):
                     ]
                 )
 
-                fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+                fig, daily_df = sp.RunningTotPlotFunctions().daily_plot(totals)
                 chart = fig.to_html()
 
                 context = {
                     'chart': chart,
                     'chart2': chart2,
                     'form': form,
-                    'form2': form2
+                    'form2': form2,
+                    'monthly_df': monthly_df,
+                    'daily_df': daily_df
                 }
 
         else:
@@ -95,14 +99,16 @@ def index(request):
                 ]
             )
 
-            fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+            fig, daily_df = sp.RunningTotPlotFunctions().daily_plot(totals)
             chart = fig.to_html()
 
             context = {
                 'chart': chart,
                 'chart2': chart2,
                 'form': form,
-                'form2': form2
+                'form2': form2,
+                'monthly_df': monthly_df,
+                'daily_df': daily_df
             }
 
     # If instead form for monthly chart is submitted
@@ -123,18 +129,21 @@ def index(request):
             if start_month == "---" and end_month == "---":
 
                 # Display last four months on monthly plot
-                chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+                chart2, monthly_df = sp.RunningTotPlotFunctions(
+                ).monthly_between_dates(
                     start_of_four_months_ago, start_of_next_month
                 )
                 # And last four months on daily plot
-                fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+                fig, daily_df = sp.RunningTotPlotFunctions().daily_plot(totals)
                 chart = fig.to_html()
 
                 context = {
                     'chart': chart,
                     'chart2': chart2,
                     'form': form,
-                    'form2': form2
+                    'form2': form2,
+                    'monthly_df': monthly_df,
+                    'daily_df': daily_df
                 }
 
             else:
@@ -148,53 +157,60 @@ def index(request):
                 # Add one month to the end month
                 # So it is first of next month
                 month_end = date_month_end + relativedelta(months=+1)
-                chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+                chart2, monthly_df = sp.RunningTotPlotFunctions(
+                ).monthly_between_dates(
                     month_start, month_end
                 )
                 # Show last four months on daily plot
-                fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+                fig, daily_df = sp.RunningTotPlotFunctions().daily_plot(totals)
                 chart = fig.to_html()
 
                 context = {
                     'chart': chart,
                     'chart2': chart2,
                     'form': form,
-                    'form2': form2
+                    'form2': form2,
+                    'monthly_df': monthly_df,
+                    'daily_df': daily_df
                 }
 
         else:
             # If monthly form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
-            chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+            chart2, monthly_df = sp.RunningTotPlotFunctions().monthly_between_dates(
                 start_of_four_months_ago, start_of_next_month
             )
             # Show last four months on daily plot
-            fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+            fig, daily_df = sp.RunningTotPlotFunctions().daily_plot(totals)
             chart = fig.to_html()
 
             context = {
                 'chart': chart,
                 'chart2': chart2,
                 'form': form,
-                'form2': form2
+                'form2': form2,
+                'monthly_df': monthly_df,
+                'daily_df': daily_df
             }
 
     # If no forms submitted display last four months for daily + monthly
     else:
         form = DateForm()
         form2 = MonthlyForm()
-        chart2 = sp.RunningTotPlotFunctions().monthly_between_dates(
+        chart2, monthly_df = sp.RunningTotPlotFunctions().monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
-        fig = sp.RunningTotPlotFunctions().daily_plot(totals)
+        fig, daily_df = sp.RunningTotPlotFunctions().daily_plot(totals)
         chart = fig.to_html()
 
         context = {
             'chart': chart,
             'chart2': chart2,
             'form': form,
-            'form2': form2
+            'form2': form2,
+            'monthly_df': monthly_df,
+            'daily_df': daily_df
         }
 
     return render(request, 'index.html', context)
@@ -405,7 +421,12 @@ def storage_chart(request):
     return render(request, 'bar_chart.html', context)
 
 def files(request):
-    return render(request, 'files.html')
+    live_total, archived_total = sp.StoragePlotFunctions().get_todays_total_unique_size()
+    context = {
+    'live_total': live_total,
+    'archived_total': archived_total
+    }
+    return render(request, 'files.html', context)
 
 def jobs(request):
     """View to display the jobs data"""

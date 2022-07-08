@@ -196,9 +196,12 @@ def run():
 
     q.login()
     all_projects, proj_list, proj_df = q.get_projects()
+    print("Populating projects")
     populate_projects(all_projects)
     populate_running_totals()
+    print("Getting files")
     final_dict = q.orchestrate_get_files(proj_list, proj_df)
+    print("Putting file stuff in db")
     populate_database_files(final_dict)
     # populate_analyses(all_projects)
     end = time()

@@ -12,19 +12,7 @@
     home.setAttribute("aria-current","none");
 </script>
 
-<div class="card border-light bg-light table-responsive">
-    <div class="card-body bg-white">
-        <h5>Total size of unique files in DNAnexus today:</h5>
-        <p>
-        <ul>
-            <li> Live: {{ live_total }} GiB</li>
-            <li> Archived: {{ archived_total }} GiB</li>
-        </ul>
-        </p>
-    </div>
-</div>
-
-<form method="GET" action="{% url 'storage' %}" style="padding-top: 0px;">
+<form method="GET" action="{% url 'storage' %}" style="padding-top: 20px;">
     <div class="container">
         <div class="row">
           {% crispy form %}
@@ -42,6 +30,7 @@
 </script>
 
 <script>
+    // Sets up the DataTable
     $(document).ready(function () {
     $('.dataframe').DataTable( {
         scrollY: '75vh',
@@ -70,8 +59,8 @@
 });
 
 </script>
-<div style="width: 65%;margin-left: 10%;margin-right: 10%;margin-top: 5px;margin-bottom: 20px;">
+<div style="width: 65%;margin-left: 10%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
     {{ storage_df|safe }}
- </div>
+</div>
 
 {% endblock content %}

@@ -31,14 +31,14 @@ class RunningTotPlotFunctions():
         # So multiple db queries not needed
         self.totals = DailyOrgRunningTotal.objects.all()
 
-    def calculate_diffs(self, list_of_charges):
+    def calculate_diffs(self, tuple_of_charges):
         """
         Creates list of charge differences
         Where one charge is subtracted from the previous date
         Parameters
         ----------
-        list_of_charges :  list
-            date-sorted list of charges for a specific charge type
+        tuple_of_charges :  tuple
+            date-sorted tuple of charges for a specific charge type
 
         Returns
         -------
@@ -46,14 +46,14 @@ class RunningTotPlotFunctions():
             list with charge differences from the previous day
         """
         charge_diff = [
-            y - x for x, y in zip(list_of_charges, list_of_charges[1:])
+            y - x for x, y in zip(tuple_of_charges, tuple_of_charges[1:])
         ]
 
         return charge_diff
 
     def daily_plot(self, totals):
         """
-        Set bar chart context when all charge types are searched for
+        Set bar chart context for daily running charges plot
         Parameters
         ----------
         totals :  queryset
@@ -64,7 +64,7 @@ class RunningTotPlotFunctions():
         fig : Plotly figure object
         """
 
-        # Order the DailyOrgRunningTotal objects by date and get charges
+        # Order filtered DailyOrgRunningTotal objects by date and get charges
         charges = totals.order_by(
             'date__date'
         ).values_list(
@@ -86,6 +86,22 @@ class RunningTotPlotFunctions():
         storage_charge_diff = self.calculate_diffs(storage_charges)
         compute_charge_diff = self.calculate_diffs(compute_charges)
         egress_charge_diff = self.calculate_diffs(egress_charges)
+
+        # Turn this into df to use for DataTables
+        daily_charge_df = pd.DataFrame(
+            {
+                'Date': stringified_dates,
+                'Storage charges ($)': storage_charge_diff,
+                'Compute charges ($)': compute_charge_diff,
+                'Egress charges ($)': egress_charge_diff
+            }
+        )
+
+        daily_df = daily_charge_df.to_html(
+            index=False,
+            classes='table table-striped"',
+            justify='left'
+        )
 
         # Add unified hover label so all charges shown
         fig = go.Figure(
@@ -123,7 +139,7 @@ class RunningTotPlotFunctions():
                 'text': "Daily Running Charges",
                 'xanchor': 'center',
                 'x': 0.5,
-                'font_size': 24
+                'font_size': 20
             },
             xaxis_title="Date",
             xaxis_tickformat='%d %b %y',
@@ -141,25 +157,24 @@ class RunningTotPlotFunctions():
             marker_line_width = 1
         )
 
-        return fig
+        return fig, daily_df
 
     def monthly_between_dates(self, start_month, end_month):
         """
-        Set context for the monthly graph when no dates entered
-        Defaults to previous three months
+        Set context for the monthly graph between start_month and end_month
         Parameters
         ----------
         start_month :  str or datetime.date object
             date in YYY-MM-DD format e.g. "2022-05-01" as first date in range
         end_month : str or datetime.date object
-            date in YYY-MM-DD format e.g. "2022-06-01" as first date in range
+            date in YYY-MM-DD format e.g. "2022-06-01" as last date in range
 
         Returns
         -------
         chart : Plotly figure object converted to HTML
         """
-        # Filter between start of start_month and the 1st of the month
-        # After end_month
+        # Filter between start of start_month
+        # And 1st of the montht hat comes after end_month
         monthly_charges = self.totals.filter(
             date__date__range=[
                 start_month, end_month
@@ -212,7 +227,7 @@ class RunningTotPlotFunctions():
                 check_end_month: [egress_dic[key_list[-1]][-1]]
             })
 
-        # Get the keys (months as e.g. '05-2022') again
+        # Get the keys (months as e.g. '05-2022') again as list
         # As may include next month now
         key_list = sorted(
             storage_dic.keys(),
@@ -241,6 +256,22 @@ class RunningTotPlotFunctions():
             (datetime.strptime(month, "%m-%Y").strftime('%b %Y'))
             for month in months
         ]
+
+        # Turn this into df to use for DataTables
+        monthly_charge_df = pd.DataFrame(
+            {
+                'Month': converted_months,
+                'Storage charges': storage_charges,
+                'Compute charges': compute_charges,
+                'Egress charges': egress_charges
+            }
+        )
+
+        monthly_df = monthly_charge_df.to_html(
+            index=False,
+            classes='table table-striped"',
+            justify='left'
+        )
 
         fig = go.Figure()
 
@@ -279,7 +310,7 @@ class RunningTotPlotFunctions():
                 'text': "Monthly Running Charges",
                 'xanchor': 'center',
                 'x': 0.5,
-                'font_size': 18
+                'font_size': 20
             },
             xaxis_title="Month",
             xaxis_tickformat='%d %b %y',
@@ -298,7 +329,7 @@ class RunningTotPlotFunctions():
 
         chart = fig.to_html()
 
-        return chart
+        return chart, monthly_df
 
 
 class StoragePlotFunctions():
@@ -413,7 +444,7 @@ class StoragePlotFunctions():
             >> ['001', '002', '003']
         """
         return string.strip(',').replace(' ', '').split(',')
-    
+
     def get_month_years_as_str(self, cost_list):
         """
         Converts a list of month years to stringified month-years
@@ -487,7 +518,7 @@ class StoragePlotFunctions():
             live_total = 0.0
             archived_total = 0.0
 
-        return f"{live_total:,}", f"{archived_total:,}"
+        return f"{live_total:,.2f}", f"{archived_total:,.2f}"
 
     def convert_to_df(self, category_chart_data):
         """
@@ -639,9 +670,7 @@ class StoragePlotFunctions():
         context = {
             'storage_data': json.dumps(category_chart_data),
             'storage_df': chart_data,
-            'form': form,
-            'live_total': self.total_live,
-            'archived_total': self.total_archived
+            'form': form
         }
 
         return context
@@ -729,9 +758,7 @@ class StoragePlotFunctions():
         context = {
             'storage_data': json.dumps(category_chart_data),
             'storage_df': chart_data,
-            'form': form,
-            'live_total': self.total_live,
-            'archived_total': self.total_archived
+            'form': form
         }
 
         return context
@@ -817,9 +844,7 @@ class StoragePlotFunctions():
         context = {
             'storage_data': json.dumps(category_chart_data),
             'storage_df': chart_data,
-            'form': form,
-            'live_total': self.total_live,
-            'archived_total': self.total_archived
+            'form': form
         }
 
         return context
@@ -891,9 +916,7 @@ class StoragePlotFunctions():
         context = {
             'storage_data': json.dumps(category_chart_data),
             'storage_df': chart_data,
-            'form': form,
-            'live_total': self.total_live,
-            'archived_total': self.total_archived
+            'form': form
         }
 
         return context
@@ -963,9 +986,7 @@ class StoragePlotFunctions():
         context = {
                 'storage_data': json.dumps(category_chart_data),
                 'storage_df': chart_data,
-                'form': form,
-                'live_total': self.total_live,
-                'archived_total': self.total_archived
+                'form': form
         }
 
         return context

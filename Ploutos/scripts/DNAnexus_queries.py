@@ -4,7 +4,6 @@ DNAnexus queries script
 
 import concurrent.futures
 import datetime as dt
-import json
 import numpy as np
 import pandas as pd
 import sys
@@ -12,10 +11,8 @@ import dxpy as dx
 
 from calendar import monthrange
 from collections import defaultdict
-from time import time, localtime, strftime
+from functools import reduce
 
-from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal, StorageCosts
-from django.apps import apps
 from django.conf import settings
 
 
@@ -119,7 +116,8 @@ def get_projects():
 
 def get_files(proj):
     """
-    Get all files for the project in DNAnexus, storing each file and its size, name and archival state.
+    Get all files for the project in DNAnexus
+    Storing each file and its size, name and archival state.
     Used with ThreadExecutorPool
 
     Parameters
@@ -412,6 +410,245 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     print(f"{total_removed} projects are no longer in the table as they only contained duplicate files")
     return unique_df
 
+def make_file_type_aggregate_df(unique_df, file_type_str):
+    """
+    Make dataframes for each file type aggregating
+    The size and count of that file type per project with one row per state
+    ----------
+    unique_df : pd.DataFrame
+        dataframe with only unique files from remove_duplicates()
+    file_type_str : str
+        the file type to search for in projects, e.g. "fastq"
+
+    Returns
+    -------
+    size_count_df_grouped : pd.DataFrame
+        dataframe aggregating size and count for that file type
+    e.g.
+    +---------+--------------+---------+-----------+----------+---------------+
+    |   id    |    name      |  size   |  state    | project  | created_epoch |
+    +---------+--------------+---------+-----------+----------+---------------+
+    | file-X  | file1.vcf    |  29387  | live      | proj-X   | 1653411917000 |
+    | file-Y  | file2.bam    | 161304  | live      | proj-X   | 1653411917000 |
+    | file-Z  | file3.fastq  | 310211  | archived  | proj-X   | 1653411917000 |
+    +---------+--------------+---------+-----------+----------+---------------+
+                                |
+                                ▼
+    +------------+-----------+-------------+-------------+
+    |  project   |  state    | fastq_size  | fastq_count |
+    +------------+-----------+-------------+-------------+
+    | project-X  | live      | 9267688059  |          10 |
+    | project-Y  | archived  |  481747221  |           2 |
+    | project-Y  | live      | 1372413129  |          32 |
+    +------------+-----------+-------------+-------------+
+    """
+    # If searching for fastqs or vcfs search for this in file name + .gz
+    # Group by project + state, aggregate size and count of file type per proj
+    if file_type_str == 'fastq' or file_type_str == 'vcf':
+        file_types = [f'{file_type_str}', f'{file_type_str}.gz']
+        size_count_df_grouped = unique_df.loc[
+            np.logical_or(
+                unique_df.name.str.endswith(f'.{file_types[0]}'),
+                unique_df.name.str.endswith(f'.{file_types[1]}')
+            )
+        ].groupby(['project', 'state']).agg(
+            {'size' : ['sum', 'count']}
+        ).reset_index()
+
+    # If searching for bams search for just that extension
+    # Group by project + state, aggregate size and count of file type per proj
+    elif file_type_str == 'bam':
+        size_count_df_grouped = unique_df.loc[
+            unique_df.name.str.endswith(f'.{file_type_str}')
+        ].groupby(['project','state'], as_index=False).agg(
+            {'size' : ['sum', 'count']}
+        )
+
+    # Rename columns as flat from multiIndex
+    size_count_df_grouped.columns = size_count_df_grouped.columns.droplevel(0)
+    size_count_df_grouped = size_count_df_grouped.rename_axis(None, axis=1)
+    size_count_df_grouped.columns = [
+        'project', 'state', f'{file_type_str}_size', f'{file_type_str}_count'
+    ]
+
+    return size_count_df_grouped
+
+def add_missing_states_projects_file_types(
+    file_df, file_type_agg_df, file_type
+):
+    """
+    Add in states that are missing per project as zeros then
+    Add projects which are missing entirely from the file specific df as zeros
+    ----------
+    file_df : pd.DataFrame
+        dataframe with all the projects and their files from make_file_df()
+    file_type_agg_df : pd.DataFrame
+        file type specific df which has file type size and count per project
+    file_type : str
+        the file type from the df which is entered e.g. "fastq"
+
+    Returns
+    -------
+    aggregated_file_type_all_projs : pd.DataFrame
+        dataframe including two rows (live and archived) per project
+        with aggregated size and count for the file type for all projects
+    e.g.
+    +------------+-----------+-------------+-------------+
+    |  project   |  state    | fastq_size  | fastq_count |
+    +------------+-----------+-------------+-------------+
+    | project-X  | live      | 9267688059  |          10 |
+    | project-Y  | archived  |  481747221  |           2 |
+    | project-Y  | live      | 1372413129  |          32 |
+    +------------+-----------+-------------+-------------+
+                            |
+                            ▼
+    +------------+-----------+-------------+-------------+
+    |  project   |  state    | fastq_size  | fastq_count |
+    +------------+-----------+-------------+-------------+
+    | project-X  | live      | 9267688059  |          10 |
+    | project-X  | archived  |  481747221  |           2 |
+    | project-Y  | live      | 1372413129  |          32 |
+    | project-Y  | archived  |           0 |           0 |
+    +------------+-----------+-------------+-------------+
+    """
+    # Get unique values of projects and states
+    iterables = [
+        file_type_agg_df['project'].unique(),
+        file_type_agg_df['state'].unique()
+    ]
+
+    # Add in a row for a state for a project it doesn't exist
+    # With size and count as zero
+    states_filled_in = file_type_agg_df.set_index(['project','state'])
+    states_filled_in = states_filled_in.reindex(
+        index=pd.MultiIndex.from_product(
+            iterables, names=['project', 'state']
+        ), fill_value=0
+    ).reset_index()
+
+    # Find the projects that are in the original file df of all files
+    # Which might only contain duplicates or not that file type
+    how_many_unique_projects = list(file_df.project.unique())
+    projects_left_in_this_df = list(states_filled_in.project.unique())
+    empty_projs = [
+        i for i in how_many_unique_projects
+        if i not in projects_left_in_this_df
+    ]
+
+    # Append two dicts for live and archived rows
+    # For the projects without that file type
+    # (Or with only duplicates) to list, setting file size + count to zero
+    empty_project_rows = []
+    for proj in empty_projs:
+        empty_project_rows.append(
+            {
+                'project': proj, 'state': 'live',
+                f'{file_type}_size': 0, f'{file_type}_count': 0
+            }
+        )
+        empty_project_rows.append(
+            {
+                'project': proj, 'state': 'archived',
+                f'{file_type}_size': 0, f'{file_type}_count': 0
+            }
+        )
+
+    # Add the rows to the df for those projects
+    aggregated_file_type_all_projs = states_filled_in.append(
+        empty_project_rows, ignore_index=True, sort=False
+    )
+
+    return aggregated_file_type_all_projs
+
+def generate_merged_file_df(list_of_aggregated_dataframes):
+    """
+    Generate a df in wide format with 1 row / project and all file types+states
+    With their sizes and counts
+    ----------
+    list_of_aggregated_dataframes : list
+        list of dataframes having two rows per project + tot file size + count
+        e.g. [vcf_final, bam_final, fastq_final]
+
+    Returns
+    -------
+    aggregated_all_file_types_df : pd.DataFrame
+        dataframe with one row per proj and 12 columns, 4 per file type
+    +-----------+----------+------------+-------------+
+    |  project  |  state   | fastq_size | fastq_count |
+    +-----------+----------+------------+-------------+
+    | project-X | live     |       9267 |           7 |
+    | project-X | archived |          0 |           0 |
+    | project-Y | live     |          0 |           0 |
+    | project-Y | archived |          0 |           0 |
+    +-----------+----------+------------+-------------+
+                            +
+    +-----------+----------+----------+-----------+
+    |  project  |  state   | bam_size | bam_count |
+    +-----------+----------+----------+-----------+
+    | project-X | live     |     7691 |        29 |
+    | project-X | archived |        0 |         0 |
+    | project-Y | live     |        0 |         0 |
+    | project-Y | archived |     2460 |         3 |
+    +-----------+----------+----------+-----------+
+                            +
+    +-----------+----------+----------+-----------+
+    |  project  |  state   | vcf_size | vcf_count |
+    +-----------+----------+----------+-----------+
+    | project-X | live     |    30019 |        52 |
+    | project-X | archived |        0 |         0 |
+    | project-Y | live     |        0 |         0 |
+    | project-Y | archived |     1254 |         6 |
+    +-----------+----------+----------+-----------+
+                            |
+                            ▼
+    +-----------+-------------------+---------------+--------------------+
+    |  project  | vcf_size_archived | vcf_size_live | vcf_count_archived |
+    +-----------+-------------------+---------------+--------------------+
+    | project-X |                 0 |         30019 |                  0 |
+    | project-Y |              1254 |             0 |                  6 |
+    +-----------+-------------------+---------------+--------------------+ ...
+    +-----------+----------------+-------------------+---------------+
+    |  project  | vcf_count_live | bam_size_archived | bam_size_live |
+    +-----------+----------------+-------------------+---------------+
+    | project-X |             52 |                 0 |          7691 |
+    | project-Y |              0 |              2460 |             0 |
+    +-----------+----------------+-------------------+---------------+ ...
+    +-----------+--------------------+----------------+---------------------+
+    |  project  | bam_count_archived | bam_count_live | fastq_size_archived |
+    +-----------+--------------------+----------------+---------------------+
+    | project-X |                  0 |            29  |                   0 |
+    | project-Y |                  3 |              0 |                   0 |
+    +-----------+--------------------+----------------+---------------------+..
+    +-----------+-----------------+----------------------+------------------+
+    |  project  | fastq_size_live | fastq_count_archived | fastq_count_live |
+    +-----------+-----------------+----------------------+------------------+
+    | project-X |            9267 |                    0 |                7 |
+    | project-Y |               0 |                    0 |                0 |
+    +-----------+-----------------+----------------------+------------------+
+
+    """
+    # Merge the three dfs together on project and state
+    merged_file_df = reduce(
+        lambda left, right: pd.merge(
+            left,right,on=['project', 'state']
+        ), list_of_aggregated_dataframes
+    )
+
+    # Convert from long format to wide based on project so one row per proj
+    merged_file_df = merged_file_df.pivot(
+        index='project', columns='state',
+        values=[
+            'vcf_size', 'vcf_count', 'bam_size',
+            'bam_count', 'fastq_size', 'fastq_count'
+        ]
+    )
+
+    # Rename the columns instead of being multiIndex
+    merged_file_df.columns = merged_file_df.columns.map('_'.join)
+    aggregated_all_file_types_df = merged_file_df.reset_index()
+
+    return aggregated_all_file_types_df
+
 def group_by_project_and_rename(df_name, string_to_replace):
     """
     Group the dataframe by project to get total size per file state
@@ -447,7 +684,7 @@ def group_by_project_and_rename(df_name, string_to_replace):
 
     return grouped_df
 
-def calculate_totals(my_grouped_df, type):
+def calculate_totals(my_grouped_df, tot_or_uniq_type):
     """
     Calculate the total cost of storing per project
     by file state through rates defined in CREDENTIALS.json
@@ -455,7 +692,7 @@ def calculate_totals(my_grouped_df, type):
     my_grouped_df : pd.DataFrame
         the dataframe which is grouped by project
         and state with aggregated total size
-    type : str
+    tot_or_uniq_type : str
         'unique' or 'total'
 
     Returns
@@ -473,12 +710,13 @@ def calculate_totals(my_grouped_df, type):
     +-----------+-----------------+---------------+----------+
     """
     days_in_month = no_of_days_in_month()[1]
-    # If the state of the file is live, convert total size to GiB and times by storage cost per month
+    # If the state of the file is live
+    # Convert total size to GiB and times by storage cost per month
     # Then divide by the number of days in current month
     # Else if state not live (archived) then times by archived storage cost price
 
     my_grouped_df['cost'] = np.where(
-        my_grouped_df['state'] == type+"_live",
+        my_grouped_df['state'] == tot_or_uniq_type+"_live",
         my_grouped_df['size'] / (2**30) * settings.LIVE_STORAGE_COST_MONTH / days_in_month,
         my_grouped_df['size'] / (2**30) * settings.ARCHIVED_STORAGE_COST_MONTH / days_in_month)
 

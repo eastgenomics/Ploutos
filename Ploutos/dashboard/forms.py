@@ -12,17 +12,12 @@ class DateForm(forms.Form):
     """Date and charge type picker for the running totals"""
 
     # Find earliest object in runningtotals by date + get date
-    # This is to set initial date for datepicker + validate
+    # This is to set min date for datepicker + validate
     first_date = str(
         DailyOrgRunningTotal.objects.order_by(
             'date__date'
         ).first().date
     )
-
-    # Get this as date object so datepicker can use as initial
-    dateified_earliest_date = dt.datetime.strptime(
-        first_date, '%Y-%m-%d'
-    ).date()
 
     # Convert YYY-MM-DD to DD-MM-YYYY for validation message
     # So this fits with what is displayed by the datepicker
@@ -30,39 +25,31 @@ class DateForm(forms.Form):
         first_date, "%Y-%m-%d"
     ).strftime("%d/%m/%Y")
 
-    # CHARGE_CHOICES = (
-    #     ('All', 'All'),
-    #     ('Storage', 'Storage'),
-    #     ('Compute', 'Compute'),
-    #     ('Egress', 'Egress'),
-    # )
-
     start = forms.DateField(
+        label='Start date',
         widget=forms.DateInput(
             attrs={
                 'class': 'datepicker',
                 'type': 'date',
-                'min': f'{first_date}', 'max': dt.date.today()
+                'min': f'{first_date}',
+                'max': dt.date.today()
             }
         ),
         required=False
     )
 
     end = forms.DateField(
+        label='End date',
         widget=forms.DateInput(
             attrs={
                 'class': 'datepicker',
                 'type': 'date',
-                'min': f'{first_date}', 'max': dt.date.today()
+                'min': f'{first_date}',
+                'max': dt.date.today()
             }
         ),
         required=False
     )
-
-    # charge_type = forms.ChoiceField(
-    #     choices=CHARGE_CHOICES,
-    #     required=True
-    # )
 
     def clean(self):
         start = self.cleaned_data['start']
@@ -95,8 +82,8 @@ class DateForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            self.fields['start'].widget.attrs.update(style='max-width: 10em'),
-            self.fields['end'].widget.attrs.update(style='max-width: 10em'),
+            self.fields['start'].widget.attrs.update(style='max-width: 9.5em'),
+            self.fields['end'].widget.attrs.update(style='max-width: 9.5em'),
             Row(
                 Column('start', css_class='form-group col-md-2 mb-0'),
                 Column('end', css_class='form-group col-md-2 mb-0'),
@@ -123,9 +110,7 @@ class MonthlyForm(forms.Form):
         months_and_years.append(string)
 
     converted_entries = [
-        calendar.month_name[
-            int(entry.split("-")[1])
-        ]+" "+(entry.split("-")[0])
+        dt.datetime.strptime(entry, "%Y-%m").strftime("%b %Y")
         for entry in months_and_years
     ]
 
@@ -146,7 +131,6 @@ class MonthlyForm(forms.Form):
             months_and_years, converted_entries
             )
         )
-
 
     start_month = forms.ChoiceField(
         choices=MONTH_YEAR_CHOICES,
@@ -219,7 +203,7 @@ class StorageForm(forms.Form):
         month=ExtractMonth('date__date'),
         year=ExtractYear('date__date'),
     ).order_by().values(
-            'month', 'year'
+        'month', 'year'
     ).distinct()
 
     # Append as month-year to a list
@@ -231,9 +215,7 @@ class StorageForm(forms.Form):
 
     # Convert to format month year e.g "2022-05" -> "May 2022"
     converted_entries = [
-        calendar.month_name[
-            int(entry.split("-")[1])
-        ]+" "+(entry.split("-")[0])
+        dt.datetime.strptime(entry, "%Y-%m").strftime("%b %Y")
         for entry in months_and_years
     ]
 
