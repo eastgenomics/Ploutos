@@ -28,7 +28,7 @@
 <script>
     Highcharts.chart('container_data', {{ storage_data|safe }});
 </script>
-
+</div>
 <script>
     // Sets up the DataTable
     $(document).ready(function () {
@@ -59,7 +59,7 @@
 });
 
 </script>
-<div style="width: 65%;margin-left: 10%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
+<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
     {{ storage_df|safe }}
 </div>
 

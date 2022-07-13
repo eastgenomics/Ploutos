@@ -10,7 +10,7 @@ from collections import defaultdict
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
-from dashboard.models import StorageCosts, DailyOrgRunningTotal
+from dashboard.models import StorageCosts, DailyOrgRunningTotal, FileTypeDate
 from django.conf import settings
 from django.db.models import Sum
 from scripts import DNAnexus_queries as dx_queries
@@ -991,3 +991,183 @@ class StoragePlotFunctions():
         }
 
         return context
+
+class FilePlotFunctions():
+
+    def __init__(self) -> None:
+        self.today_date = dx_queries.no_of_days_in_month()[0]
+        self.file_type_colours = px.colors.qualitative.Pastel
+        # Chart data which is shared by all plots
+        self.chart_data = StoragePlotFunctions().chart_data
+
+    def convert_to_df(self, category_chart_data):
+        """
+        Convert chart data to a pandas df then convert it to HTML
+        So it can be shown below the graph and be easily exported
+
+        Parameters
+        ----------
+        category_chart_data : dict
+            dictionary which has all the chart attributes and data
+
+        Returns
+        -------
+        chart_data : pd.DataFrame as HTML table
+            the dataframe with Date, Type, State and Total Size
+        """
+        series_data = category_chart_data['series'].copy()
+        dates = category_chart_data['xAxis']['categories'].copy()
+
+        # As data column value contains a list, expand this over multiple rows
+        # Explode fills in the relevant data for those extra rows
+        exploded = pd.json_normalize(data = series_data).explode('data')
+
+        # If data exists, expand the months table according to the df length
+        # So the correct month can be added to the right row
+        if dates:
+            dates = dates * (int(len(exploded) / len(dates)))
+            exploded['Date'] = dates
+        # If no months exist (no data), keep months as empty list
+        else:
+            dates = []
+
+        # Re-order columns
+        exploded = exploded.reindex(
+            columns=[
+                'Date', 'name', 'stack', 'data'
+            ]
+        )
+        exploded.rename(
+            columns={
+                "name": "Type",
+                "stack": "State",
+                'data': 'Total Size (GiB)'
+            },
+            inplace = True
+        )
+        # Convert to HTML to easily show with DataTables
+        chart_data = exploded.to_html(
+            index=False,
+            classes='table table-striped"',
+            justify='left'
+        )
+
+        return chart_data
+
+    def todays_file_types_size(self):
+
+        file_type_names = ['vcf','fastq','bam']
+
+        category_data_source = []
+        # Filter by 'endswith' for each searched assay type
+        count = -2
+        for file_type in file_type_names:
+            count += 2
+            file_type_size = FileTypeDate.objects.filter(
+                date__date=self.today_date,
+                file_state__file_type__file_type=file_type
+            ).aggregate(
+                Live_Size=Sum('file_state__file_size_live'),
+                Archived_Size=Sum('file_state__file_size_archived'),
+                # Live_Count=Sum('file_state__file_count_live'),
+                # Archived_Count=Sum('file_state__file_count_archived')
+            )
+
+            live_data = {
+                'name': file_type.upper(),
+                'data': [file_type_size.get('Live_Size') / (2**30)],
+                'stack': 'Live',
+                'color': self.file_type_colours[count]
+            }
+
+            archived_data = {
+                'name': file_type.upper(),
+                'data': [file_type_size.get('Archived_Size') / (2**30)],
+                'stack': 'Archived',
+                'linkedTo': ':previous',
+                'color': self.file_type_colours[count],
+                'opacity': 0.8
+            }
+
+            category_data_source.append(live_data)
+            category_data_source.append(archived_data)
+
+        category_chart_data = self.chart_data.copy()
+        category_chart_data['xAxis']['categories'] = [self.today_date]
+        category_chart_data['series'] = category_data_source
+        category_chart_data['title']['text'] = "Today's file storage"
+        category_chart_data['yAxis']['title']['text'] = "Total size (GiB)"
+        category_chart_data['tooltip']['pointFormat'] = "{series.name}: <b>{point.y:.2f} GiB </b><br>{series.options.stack}<br>"
+
+
+
+        self.chart_data = {
+            'chart': {
+                'type': 'column',
+                'width': 1200,
+                'height': 500,
+                'style': {
+                    'float': 'center'
+                }
+            },
+            'title': {
+                'text': "Today's file storage"
+            },
+            'xAxis': {
+                'categories': "",
+                'labels': {
+                    'style': {
+                        'fontSize': '12px'
+                    }
+                }
+            },
+            'yAxis': {
+                'allowDecimals': 'false',
+                'min': '0',
+                'title': {
+                    'text': 'Total size (GiB)',
+                    'style': {
+                        'fontSize': '15px'
+                    }
+                },
+                'stackLabels': {
+                    'enabled': 'true',
+                    'allowOverlap': 'true',
+                    'style': {
+                        'color': 'gray',
+                        'textOutline': 0
+                    },
+                    'format': "{stack}"
+                }
+            },
+            'setOptions': {
+                'lang': {
+                    'thousandsSep': ',',
+                    'noData': 'No data to display'
+                }
+            },
+            'plotOptions': {
+                'column': {
+                    'stacking': 'normal'
+                    }
+            },
+            'exporting': {
+                'buttons': {
+                    'contextButton': {
+                        'menuItems': [
+                            "viewFullscreen", "printChart", "downloadPNG",
+                            "downloadJPEG", "downloadPDF"
+                        ]
+                    }
+                }
+            },
+            'series': "",
+            "tooltip": {
+                "pointFormat": "{series.name}: <b>{point.y:.2f} GiB"
+                "</b><br>{series.options.stack}<br>"
+            }
+        }
+
+        chart_df = self.convert_to_df(category_chart_data)
+
+        return category_chart_data, chart_df

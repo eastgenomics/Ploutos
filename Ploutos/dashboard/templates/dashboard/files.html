@@ -22,4 +22,44 @@
     
 </script>
 
+<script>
+    // Sets up the DataTable
+    $(document).ready(function () {
+    $('.dataframe').DataTable( {
+        scrollY: '75vh',
+        scroller: true,
+        deferRender:    true,
+        pageResize:     true,
+        info:           false,
+        scrollCollapse: true,
+        columnDefs: [
+            { "width": "20%",
+            "targets": 0 
+        },
+        {"width": "20%",
+        "targets": 1},
+        {"width": "20%",
+        "targets": 2},
+        {"width": "20%",
+        "targets": 3}
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+        'copyHtml5', 'csv'
+        ],
+        order: [[0, 'desc']],
+    });
+});
+
+</script>
+
+<div id="container_data" align="center" style="padding-top: 60px;padding-bottom: 40px;">
+    <script>
+        Highcharts.chart('container_data', {{ file_data|safe }});
+    </script>
+</div>
+<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
+        {{ chart_df|safe }}
+    </div>
+
 {% endblock content %}

@@ -1,11 +1,14 @@
 """Views containing logic for chart plotting"""
 import calendar
+import json
 
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 from dashboard.forms import DateForm, MonthlyForm, StorageForm
-from dashboard.models import DailyOrgRunningTotal
+from dashboard.models import (
+    DailyOrgRunningTotal, FileTypeDate, FileTypeState, FileTypes
+)
 from django.shortcuts import render
 from scripts import DNAnexus_queries as dx_queries
 from scripts import storage_plots as sp
@@ -423,12 +426,15 @@ def storage_chart(request):
 def files(request):
     live_total, archived_total = sp.StoragePlotFunctions().get_todays_total_unique_size()
 
-
+    category_chart_data, chart_df = sp.FilePlotFunctions().todays_file_types_size()
 
     context = {
-    'live_total': live_total,
-    'archived_total': archived_total
+        'live_total': live_total,
+        'archived_total': archived_total,
+        'file_data': json.dumps(category_chart_data),
+        'chart_df': chart_df
     }
+
     return render(request, 'files.html', context)
 
 def jobs(request):
