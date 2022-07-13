@@ -283,7 +283,7 @@ def make_file_df(list_project_files_dictionary):
     # Convert to data frame
     # Drop the name column as it's not used later
     file_df = pd.DataFrame(rows)
-    file_df.drop(columns=['name'], inplace=True)
+    #file_df.drop(columns=['name'], inplace=True)
 
     return file_df
 
@@ -373,7 +373,8 @@ def merge_files_and_proj_dfs(file_df, proj_df):
 
     files_with_proj_created = pd.merge(file_df, proj_df, on=["project"])
 
-    # Replace the state 'archival' to live for easy grouping later as they're technically charged as live
+    # Replace the state 'archival' to live for easy grouping later
+    # As they're technically charged as live
     files_with_proj_created['state'] = files_with_proj_created['state'].str.replace(
         'archival', 'live')
     # Replace unarchiving with archived so adding missing rows works
@@ -798,7 +799,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
 
     return final_all_projs_df
 
-def put_into_dict_write_to_file(final_all_projs_df):
+def put_into_dict(final_all_projs_df):
     """
     Put back into a dict for easy adding to the db
     ----------
@@ -933,13 +934,27 @@ def orchestrate_get_files(proj_list, proj_df):
         file_df, proj_list)
     merged_df = merge_files_and_proj_dfs(file_df, proj_df)
     unique_df = remove_duplicates(merged_df, unique_without_empty_projs)
+
+    fastq_df = make_file_type_aggregate_df(unique_df, "fastq")
+    vcf_df = make_file_type_aggregate_df(unique_df, "vcf")
+    bam_df = make_file_type_aggregate_df(unique_df, "bam")
+
+    fastq_final = add_missing_states_projects_file_types(
+        file_df, fastq_df, 'fastq'
+    )
+    vcf_final = add_missing_states_projects_file_types(file_df, vcf_df, 'vcf')
+    bam_final = add_missing_states_projects_file_types(file_df, bam_df, 'bam')
+
+    file_type_df = generate_merged_file_df([vcf_final, bam_final, fastq_final])
+
     unique_grouped_df = group_by_project_and_rename(unique_df, 'unique')
     total_grouped_df = group_by_project_and_rename(merged_df, 'total')
     unique_sum_df = calculate_totals(unique_grouped_df, 'unique')
     total_sum_df = calculate_totals(total_grouped_df, 'total')
     merged_total_df = merge_together_add_empty_rows(
-        unique_sum_df, total_sum_df)
+        unique_sum_df, total_sum_df
+    )
     final_all_projs_df = add_empty_projs_back_in(empty_projs, merged_total_df)
-    final_dict = put_into_dict_write_to_file(final_all_projs_df)
+    final_dict = put_into_dict(final_all_projs_df)
 
-    return final_dict
+    return final_dict, file_type_df

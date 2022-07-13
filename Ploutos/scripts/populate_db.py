@@ -11,7 +11,7 @@ from time import time, localtime, strftime
 
 from django.apps import apps
 from django.conf import settings
-from dashboard.models import DailyOrgRunningTotal, Users, Dates, Projects, StorageCosts
+from dashboard.models import DailyOrgRunningTotal, Users, Dates, Projects, StorageCosts, FileTypeDate, FileTypes, FileTypeState
 from scripts import DNAnexus_queries as q
 
 
@@ -126,6 +126,81 @@ def populate_database_files(all_projects_dict):
             date=Dates.objects.get(date=today_date),
         )
 
+def populate_file_types(file_type_df):
+    """
+    Puts the file type data into the db
+    ----------
+    file_type_df : pd.DataFrame
+        dataframe with one row per project and all the file types
+        and their sizes + counts (live + archived)
+
+    Returns
+    -------
+    None
+    """
+    # Convert to dict with projects as keys, counts + sizes as vals
+    file_types_dict = file_type_df.set_index("project").to_dict("index")
+    today_date = q.no_of_days_in_month()[0]
+
+    for project, file_vals in file_types_dict.items():
+        # Add in or get the file type
+        new_file_type, created = FileTypes.objects.get_or_create(
+            file_type='vcf'
+        )
+
+        # If the state exists, get it, or create new state id
+        state, created = FileTypeState.objects.get_or_create(
+            file_type = new_file_type,
+            file_count_live = file_vals['vcf_size_live'],
+            file_count_archived = file_vals['vcf_size_archived'],
+            file_size_live = file_vals['vcf_count_live'],
+            file_size_archived = file_vals['vcf_count_archived']
+        )
+
+        # Add the proj, date and state to the FileTypeDate table
+        object, created = FileTypeDate.objects.get_or_create(
+            project = Projects.objects.get(dx_id=project),
+            date = Dates.objects.get(date=today_date),
+            file_state = state
+        )
+
+        # Do same for BAMs
+        new_file_type, created = FileTypes.objects.get_or_create(
+            file_type='bam'
+        )
+
+        state, created = FileTypeState.objects.get_or_create(
+            file_type = new_file_type,
+            file_count_live = file_vals['bam_size_live'],
+            file_count_archived = file_vals['bam_size_archived'],
+            file_size_live = file_vals['bam_count_live'],
+            file_size_archived = file_vals['bam_count_archived']
+        )
+
+        object, created = FileTypeDate.objects.get_or_create(
+            project = Projects.objects.get(dx_id=project),
+            date = Dates.objects.get(date=today_date),
+            file_state = state
+        )
+
+        # Do same for FASTQs
+        new_file_type, created = FileTypes.objects.get_or_create(
+            file_type='fastq'
+        )
+
+        state, created = FileTypeState.objects.get_or_create(
+            file_type = new_file_type,
+            file_count_live = file_vals['fastq_size_live'],
+            file_count_archived = file_vals['fastq_size_archived'],
+            file_size_live = file_vals['fastq_count_live'],
+            file_size_archived = file_vals['fastq_count_archived'],
+        )
+
+        object, created = FileTypeDate.objects.get_or_create(
+            project = Projects.objects.get(dx_id=project),
+            date = Dates.objects.get(date=today_date),
+            file_state = state
+        )
 
 # def populate_analyses(all_projects):
 #     """
@@ -200,9 +275,10 @@ def run():
     populate_projects(all_projects)
     populate_running_totals()
     print("Getting files")
-    final_dict = q.orchestrate_get_files(proj_list, proj_df)
+    final_dict, file_type_df = q.orchestrate_get_files(proj_list, proj_df)
     print("Putting file stuff in db")
     populate_database_files(final_dict)
+    populate_file_types(file_type_df)
     # populate_analyses(all_projects)
     end = time()
     total = (end - start) / 60

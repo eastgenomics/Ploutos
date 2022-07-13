@@ -422,6 +422,9 @@ def storage_chart(request):
 
 def files(request):
     live_total, archived_total = sp.StoragePlotFunctions().get_todays_total_unique_size()
+
+
+
     context = {
     'live_total': live_total,
     'archived_total': archived_total

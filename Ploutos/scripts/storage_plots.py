@@ -99,7 +99,7 @@ class RunningTotPlotFunctions():
 
         daily_df = daily_charge_df.to_html(
             index=False,
-            classes='table table-striped"',
+            classes = 'table table-striped" id = "dailytable',
             justify='left'
         )
 
@@ -269,7 +269,8 @@ class RunningTotPlotFunctions():
 
         monthly_df = monthly_charge_df.to_html(
             index=False,
-            classes='table table-striped"',
+            #classes='table table-striped',
+            classes = 'table table-striped" id = "monthlytable',
             justify='left'
         )
 

@@ -4,7 +4,7 @@
 <script>
   // Sets up the DataTable
   $(document).ready(function () {
-  $('.dataframe').DataTable( {
+  $('#dailytable').DataTable( {
       scrollY: '400px',
       scroller: true,
       deferRender:    true,
@@ -27,6 +27,36 @@
       'copyHtml5', 'csv'
       ],
       order: [[0, 'asc']],
+  });
+});
+
+</script>
+<script>
+  // Sets up the DataTable
+  $(document).ready(function () {
+  $('#monthlytable').DataTable( {
+      scrollY: '400px',
+      scroller: true,
+      deferRender:    true,
+      pageResize:     true,
+      info:           false,
+      scrollCollapse: true,
+      columnDefs: [
+          { "width": "20%",
+          "targets": 0 
+      },
+      {"width": "20%",
+      "targets": 1},
+      {"width": "20%",
+      "targets": 2},
+      {"width": "20%",
+      "targets": 3}
+      ],
+      dom: 'Bfrtip',
+      buttons: [
+      'copyHtml5', 'csv'
+      ],
+      order: [[0, 'desc']],
   });
 });
 
