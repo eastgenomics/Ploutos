@@ -701,13 +701,16 @@ def get_executions(proj):
         print("data found")
         project_executions_dict = defaultdict(lambda: {"executions": []})
         for job in executions:
+            print(job)
             if job['describe']['state'] == "in_progress"\
                     or job['describe']['state'] == "terminating":
                 logger.log(f"{job['describe']['id']}")
+                print(f"{job['describe']['id']}")
             else:
                 if job['id'].startswith('job-'):
                     # it's a single job
                     proj = job['describe']['project']
+                    print(f"{job['describe']}")
                     if job['describe']['executable'].startswith('applet-'):
                         executable_Name = job['describe']['executableName']
                         try:
@@ -716,28 +719,54 @@ def get_executions(proj):
                         except Exception:
                             print(f"no app found {job['describe']['executable']}")
                             version = ""
-                    project_executions_dict[proj]["executions"].append({
-                        "id": job['id'],
-                        "job_name": job['describe']['name'],
-                        "executable_name": job['describe']['executableName'],
-                        "version": version,
-                        "cost": job['describe']['totalPrice'],
-                        "class": job['describe']['class'],
-                        "executable": job['describe']['executable'],
-                        "state": job['describe']['state'],
-                        "created": job['describe']['created'],
-                        "modified": job['describe']['modified'],
-                        "launchedBy": job['describe']['launchedBy']})
-                elif job['describe']['executable'].startswith(r'app-'):
-                    # slow way of doing this by adding another request.
+
+                        project_executions_dict[proj]["executions"].append({
+                            "id": job['id'],
+                            "job_name": job['describe']['name'],
+                            "executable_name": job['describe']['executableName'],
+                            "version": version,
+                            "cost": job['describe']['totalPrice'],
+                            "class": job['describe']['class'],
+                            "executable": job['describe']['executable'],
+                            "state": job['describe']['state'],
+                            "created": job['describe']['created'],
+                            "modified": job['describe']['modified'],
+                            "launchedBy": job['describe']['launchedBy']})
+                    elif job['describe']['executable'].startswith(r'app-'):
+                        # slow way of doing this by adding another request.
+                        try:
+                            app_described = dx.api.app_describe(
+                                app_name_or_id=job['describe']['executable']
+                            )
+                            version = app_described['version']
+                        except Exception:
+                            print(f"no app found {job['describe']['executable']}")
+                            version = ""
+
+                        project_executions_dict[proj]["executions"].append({
+                            "id": job['id'],
+                            "job_name": job['describe']['name'],
+                            "executable_name": job['describe']['executableName'],
+                            "version": version,
+                            "cost": job['describe']['totalPrice'],
+                            "class": job['describe']['class'],
+                            "executable": job['describe']['executable'],
+                            "state": job['describe']['state'],
+                            "created": job['describe']['created'],
+                            "modified": job['describe']['modified'],
+                            "launchedBy": job['describe']['launchedBy']})
+
+                elif job['id'].startswith('analysis-'):
+                    # its a workflow
+                    proj = job['describe']['project']
                     try:
-                        app_described = dx.api.app_describe(
-                            app_name_or_id=job['describe']['executable']
-                        )
-                        version = app_described['version']
+                        executable_Name = job['describe']['executableName']
+                        version = re.search(r'[0-9]\.[0-9]\.[0-9]',
+                                            executable_Name).group(0)
                     except Exception:
                         print(f"no app found {job['describe']['executable']}")
                         version = ""
+
                     project_executions_dict[proj]["executions"].append({
                         "id": job['id'],
                         "job_name": job['describe']['name'],
@@ -749,34 +778,11 @@ def get_executions(proj):
                         "state": job['describe']['state'],
                         "created": job['describe']['created'],
                         "modified": job['describe']['modified'],
-                        "launchedBy": job['describe']['launchedBy']})
-
-            elif job['id'].startswith('analysis-'):
-                # its a workflow
-                proj = job['describe']['project']
-                try:
-                    executable_Name = job['describe']['executableName']
-                    version = re.search(r'[0-9]\.[0-9]\.[0-9]',
-                                        executable_Name).group(0)
-                except Exception:
-                    print(f"no app found {job['describe']['executable']}")
-                    version = ""
-                project_executions_dict[proj]["executions"].append({
-                    "id": job['id'],
-                    "job_name": job['describe']['name'],
-                    "executable_name": job['describe']['executableName'],
-                    "version": version,
-                    "cost": job['describe']['totalPrice'],
-                    "class": job['describe']['class'],
-                    "executable": job['describe']['executable'],
-                    "state": job['describe']['state'],
-                    "created": job['describe']['created'],
-                    "modified": job['describe']['modified'],
-                    "launchedBy": job['describe']['launchedBy'],
-                    "createdBy": job['describe']['workflow']['createdBy'],
-                    "Stages": job['describe']['stages']})
-            else:
-                print(f"Error: New executable type found {type}")
+                        "launchedBy": job['describe']['launchedBy'],
+                        "createdBy": job['describe']['workflow']['createdBy'],
+                        "Stages": job['describe']['stages']})
+                else:
+                    print(f"Error: New executable type found {type}")
         return project_executions_dict
 
 
@@ -934,8 +940,8 @@ def get_subjobs_make_job_executions_df(list_project_executions):
     project_executions_dict = defaultdict(lambda: {"executions": []})
 
     # Create empty dataframe for collecting all executions from all projects.
-    df = pd.DataFrame()
-
+    # dfObj = pd.DataFrame()
+    appended_data = []
     for project in list_project_executions:
         keys = [key for key in project.keys()]
         if not keys:
@@ -961,18 +967,19 @@ def get_subjobs_make_job_executions_df(list_project_executions):
                         elif 'stoppedRunning' not in subjob['describe']:
                             print("error job doesn't contain stoppedRunning in describe")
                         else:
-                            # states = subjob['describe']['stateTransitions']
-                            # for item in states:
-                            #     if item.get('newState') == 'running':
-                            #         start_time = item.get('setAt')
-                            #     elif (item.get('newState') == 'failed' or
-                            #           item.get('newState') == 'done' or
-                            #           item.get('newState') == 'terminated'):
-                            #         finish_time = item.get('setAt')
-                            # runtime_epoch = finish_time - start_time
+                            states = subjob['describe']['stateTransitions']
+                            for item in states:
+                                if item.get('newState') == 'running':
+                                    start_epoch = item.get('setAt')
+                                elif (item.get('newState') == 'failed' or
+                                      item.get('newState') == 'done' or
+                                      item.get('newState') == 'terminated'):
+                                    finish_epoch = item.get('setAt')
                             runtime_epoch = subjob['describe']['stoppedRunning'] -\
                                 subjob['describe']['startedRunning']
                             subjob['describe']["runtime"] = runtime_epoch
+                            subjob['describe']["start_epoch"] = subjob['describe']['created']
+                            subjob['describe']["finish_epoch"] = finish_epoch
                             subjobs_list.append(subjob)
                     # Append data (dict) to list of executions.
                     project_executions_dict[project_id]["executions"].append({
@@ -995,38 +1002,45 @@ def get_subjobs_make_job_executions_df(list_project_executions):
                         include_subjobs=True)
                     # Loop over subjobs to calculate runtime.
                     for subjob in subjobs_info:
-                        if subjob['describe']["totalPrice"] == 0:
-                            print("no cost - skipped")
-                        elif 'stoppedRunning' not in subjob['describe']:
-                            print("error job doesn't contain describe")
+                        print(subjob['describe'])
+                        if "totalPrice" in subjob['describe']:
+                            if subjob['describe']["totalPrice"] == 0:
+                                print("no cost - skipped")
+                            elif 'stoppedRunning' not in subjob['describe']:
+                                print("error job doesn't contain describe")
+                            else:
+                                states = subjob['describe']['stateTransitions']
+                                for item in states:
+                                    if item.get('newState') == 'running':
+                                        start_epoch = item.get('setAt')
+                                    elif (item.get('newState') == 'failed' or
+                                          item.get('newState') == 'done' or
+                                          item.get('newState') == 'terminated'):
+                                        finish_epoch = item.get('setAt')
+                                runtime_epoch = subjob['describe']['stoppedRunning'] -\
+                                    subjob['describe']['startedRunning']
+                                subjob['describe']["runtime"] = runtime_epoch
+                                subjob['describe']["start_epoch"] = subjob['describe']['startedRunning']
+                                subjob['describe']["finish_epoch"] = subjob['describe']['stoppedRunning']
+                                subjobs_list.append(subjob)
+                            # Append data (dict) to list of executions.
+                            project_executions_dict[project_id]["executions"].append({
+                                "id": entry['id'],
+                                "job_name": entry['job_name'],
+                                "executable_name": entry['executable_name'],
+                                "version": entry['version'],
+                                "cost": entry['cost'],
+                                "class": entry['class'],
+                                "executable": entry['executable'],
+                                "state": entry['state'],
+                                "created": entry['created'],
+                                "modified": entry['modified'],
+                                "launchedBy": entry['launchedBy'],
+                                "Executions": subjobs_list})
+                            print(subjobs_list)
                         else:
-                            # states = subjob['describe']['stateTransitions']
-                            # for item in states:
-                            #     if item.get('newState') == 'running':
-                            #         start_time = item.get('setAt')
-                            #     elif (item.get('newState') == 'failed' or
-                            #           item.get('newState') == 'done' or
-                            #           item.get('newState') == 'terminated'):
-                            #         finish_time = item.get('setAt')
-                            # runtime_epoch = finish_time - start_time
-                            runtime_epoch = subjob['describe']['stoppedRunning'] -\
-                                subjob['describe']['startedRunning']
-                            subjob['describe']["runtime"] = runtime_epoch
-                            subjobs_list.append(subjob)
-                    # Append data (dict) to list of executions.
-                    project_executions_dict[project_id]["executions"].append({
-                        "id": entry['id'],
-                        "job_name": entry['job_name'],
-                        "executable_name": entry['executable_name'],
-                        "version": entry['version'],
-                        "cost": entry['cost'],
-                        "class": entry['class'],
-                        "executable": entry['executable'],
-                        "state": entry['state'],
-                        "created": entry['created'],
-                        "modified": entry['modified'],
-                        "launchedBy": entry['launchedBy'],
-                        "Executions": subjobs_list})
+                            print("TotalPrice not present - not charged")
+                            continue
                 else:
                     print(f"""Error - other execution class found.
                           See: {entry["class"]}""")
@@ -1037,11 +1051,26 @@ def get_subjobs_make_job_executions_df(list_project_executions):
         df["Result"] = df['Executions'].apply(
             lambda x: sum([int(value['describe']['runtime']) for value in x])
         )
+
+        # df["Runtime_epoch"] = df['Executions'].apply(
+        #     lambda x: sum([int(value['describe']['runtime']) for value in x])
+        # )
+
+        df["Runtime_min_epoch"] = df['Executions'].apply(
+            lambda x: min([int(value['describe']['start_epoch']) for value in x])
+        )
+        df["Runtime_max_epoch"] = df['Executions'].apply(
+            lambda x: max([int(value['describe']['finish_epoch']) for value in x])
+        )
+        df["Runtime_epoch"] = df["Runtime_max_epoch"] - df["created"]
+
         # convert to timedelta for storing as DurationField
         df["Result_td"] = pd.to_timedelta(df["Result"], 'ms')
+        df["Start_to_finish_td"] = pd.to_timedelta(df["Runtime_epoch"], 'ms')
+        appended_data.append(df)
+    dfObj = pd.concat(appended_data, ignore_index=True)
 
-    return df
-
+    return dfObj
 
 def get_executions_from_list():
     """
@@ -1162,16 +1191,16 @@ def get_executions_from_list():
 def peek(iterable):
     """
     This function is used to check if a generator contains any data.
-    It returns a boolean.
-
     Args:
         iterable (generator): generator object returned by DNAnexus API call.
-
     Returns:
         boolean: True if generator yields data and false if not.
     """
-    response = list(iterable)
-    if response:
+    try:
+        first = next(iterable)
+    except StopIteration:
+        return False
+    if first:
         return True
     else:
         return False
@@ -1206,8 +1235,8 @@ def make_executions_subjobs_df(list_project_executions_dictionary):
             row['project'] = project
             # Append each executions info as info to the other columns
             rows.append(row)
-
-    return pd.DataFrame(rows)
+    df_subjobs = pd.DataFrame(rows)
+    return df_subjobs
 
 
 def orchestrate_get_executions(proj_list):
