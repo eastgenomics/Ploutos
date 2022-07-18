@@ -560,6 +560,7 @@ class StoragePlotFunctions():
                 'Month', 'name', 'stack', 'data'
             ]
         )
+
         exploded.rename(
             columns={
                 "name": "Type",
@@ -1009,7 +1010,7 @@ class FilePlotFunctions():
         self.assay_colours = StoragePlotFunctions().assay_colours
         self.file_type_categories = ['VCF', 'FASTQ', 'BAM']
 
-    def convert_to_df(self, category_chart_data, size_or_count):
+    def convert_to_df(self, category_chart_data, size_or_count, multi_or_all):
         """
         Convert chart data to a pandas df then convert it to HTML
         So it can be shown below the graph and be easily exported
@@ -1020,45 +1021,71 @@ class FilePlotFunctions():
             dictionary which has all the chart attributes and data
         size_or_count : str
             a string to say whether to make a df for size or count
+        multi_or_all : str
+            a string to say whether all projects or looking at specific types
         Returns
         -------
         chart_data : pd.DataFrame as HTML table
             the dataframe with Date, Type, State and Total Size
         """
         series_data = category_chart_data['series'].copy()
-        scope = category_chart_data['xAxis']['categories'].copy()
-
-        # As data column value contains a list, expand this over multiple rows
-        # Explode fills in the relevant data for those extra rows
-        exploded = pd.json_normalize(data = series_data).explode('data')
-
-        # If data exists, expand the dates table according to the df length
-        # So the correct date can be added to the right row
-        if scope:
-            scope = scope * (int(len(exploded) / len(scope)))
-            exploded['Scope'] = scope
-        else:
-            scope = []
-
-        # Re-order columns
-        exploded = exploded.reindex(
-            columns=[
-                'Scope', 'name', 'stack', 'data'
-            ]
-        )
+        exploded = pd.json_normalize(data=series_data).explode('data')
 
         if size_or_count == 'size':
             column_title = 'Total Size (GiB)'
         else:
             column_title = 'Total Count'
-        exploded.rename(
-            columns={
-                "name": "File Type",
-                "stack": "State",
-                'data': column_title
-            },
-            inplace = True
-        )
+
+        if multi_or_all == 'all':
+            scope = category_chart_data['xAxis']['categories'].copy()
+
+            # If data exists, expand the dates table according to the df length
+            # So the correct date can be added to the right row
+            if scope:
+                scope = scope * (int(len(exploded) / len(scope)))
+                exploded['Scope'] = scope
+            else:
+                scope = []
+
+            # Re-order columns
+            exploded = exploded.reindex(
+                columns=[
+                    'Scope', 'name', 'stack', 'data'
+                ]
+            )
+
+            exploded.rename(
+                columns={
+                    "name": "File Type",
+                    "stack": "State",
+                    'data': column_title
+                },
+                inplace = True
+            )
+        elif multi_or_all == 'multi':
+            # If looking at multiple diff proj / assay types
+            file_types = category_chart_data['xAxis']['categories'].copy()
+            if file_types:
+                file_types = file_types * (int(len(exploded) / len(file_types)))
+                exploded['File Type'] = file_types
+            else:
+                file_types = []
+
+            exploded = exploded.reindex(
+                columns=[
+                    'name', 'File Type', 'stack', 'data'
+                ]
+            )
+
+            exploded.rename(
+                columns={
+                    "name": "Scope",
+                    "stack": "State",
+                    'data': column_title
+                },
+                inplace = True
+            )
+
         # Convert to HTML to easily show with DataTables
         chart_data = exploded.to_html(
             index=False,
@@ -1132,14 +1159,16 @@ class FilePlotFunctions():
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = ["All projects"]
         category_chart_data['series'] = category_data_source
-        category_chart_data['title']['text'] = "Today's File Type Sizes"
+        category_chart_data['title']['text'] = (
+            f"Today's File Type Sizes - {self.today_date}"
+        )
         category_chart_data['yAxis']['title']['text'] = "Total size (GiB)"
         category_chart_data['tooltip']['pointFormat'] = (
             "{series.name}: <b>{point.y:.2f} GiB </b><br>"
             "{series.options.stack}<br>"
         )
 
-        chart_df = self.convert_to_df(category_chart_data, "size")
+        chart_df = self.convert_to_df(category_chart_data, "size", "all")
 
         return category_chart_data, chart_df
 
@@ -1207,14 +1236,16 @@ class FilePlotFunctions():
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = ["All projects"]
         category_chart_data['series'] = category_data_source
-        category_chart_data['title']['text'] = "Today's File Type Counts"
+        category_chart_data['title']['text'] = (
+            f"Today's File Type Counts - {self.today_date}"
+        )
         category_chart_data['yAxis']['title']['text'] = "Total count"
         category_chart_data['tooltip']['pointFormat'] = (
             "{series.name}: <b>{point.y:.f}</b><br>"
             "{series.options.stack}<br>"
         )
 
-        chart_df = self.convert_to_df(category_chart_data, "count")
+        chart_df = self.convert_to_df(category_chart_data, "count", "all")
 
         return category_chart_data, chart_df
 
@@ -1274,7 +1305,7 @@ class FilePlotFunctions():
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            "Today's File Counts By Project Type"
+            f"Today's File Counts By Project Type - {self.today_date}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Count"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -1282,7 +1313,7 @@ class FilePlotFunctions():
             "{series.options.stack}<br>"
         )
 
-        chart_df = self.convert_to_df(category_chart_data, "count")
+        chart_df = self.convert_to_df(category_chart_data, "count", "multi")
 
         return category_chart_data, chart_df
 
@@ -1343,14 +1374,16 @@ class FilePlotFunctions():
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
-        category_chart_data['title']['text'] = "Today's File Sizes By Project Type"
+        category_chart_data['title']['text'] = (
+            f"Today's File Sizes By Project Type - {self.today_date}"
+        )
         category_chart_data['yAxis']['title']['text'] = "Total Size"
         category_chart_data['tooltip']['pointFormat'] = (
             "{series.name}: <b>{point.y:.2f} GiB </b><br>"
             "{series.options.stack}<br>"
         )
 
-        chart_df = self.convert_to_df(category_chart_data, "size")
+        chart_df = self.convert_to_df(category_chart_data, "size", "multi")
 
         return category_chart_data, chart_df
 
@@ -1411,14 +1444,16 @@ class FilePlotFunctions():
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
-        category_chart_data['title']['text'] = "Today's File Counts By Assay Type"
+        category_chart_data['title']['text'] = (
+            f"Today's File Counts By Assay Type - {self.today_date}"
+        )
         category_chart_data['yAxis']['title']['text'] = "Total Count"
         category_chart_data['tooltip']['pointFormat'] = (
             "{series.name}: <b>{point.y:.0f} </b><br>"
             "{series.options.stack}<br>"
         )
 
-        chart_df = self.convert_to_df(category_chart_data, "count")
+        chart_df = self.convert_to_df(category_chart_data, "count", "multi")
 
         return category_chart_data, chart_df
 
@@ -1480,7 +1515,7 @@ class FilePlotFunctions():
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            "Today's File Sizes By Assay Type"
+            f"Today's File Sizes By Assay Type - {self.today_date}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Size (GiB)"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -1488,73 +1523,7 @@ class FilePlotFunctions():
             "{series.options.stack}<br>"
         )
 
-        chart_df = self.convert_to_df(category_chart_data, "size")
-
-        return category_chart_data, chart_df
-
-    def todays_file_types_size_assay_and_proj_types(
-        self, project_type, assay_type
-    ):
-        """DO DOCSTRING"""
-        category_data_source = []
-        file_size_list = self.file_type_objs.filter(
-            date__date=self.today_date,
-            project__name__startswith=project_type,
-            project__name__endswith=assay_type
-        ).values(
-            'file_state__file_type__file_type',
-        ).annotate(
-                Live_Size=Sum('file_state__file_size_live'),
-                Archived_Size=Sum('file_state__file_size_archived')
-        )
-
-        file_type_categories = [
-            entry.get('file_state__file_type__file_type').upper()
-            for entry in file_size_list
-        ]
-
-        live_data = {
-            'name': f"{project_type}*{assay_type}",
-            'data': [
-                (entry.get('Live_Size')/(2**30))
-                for entry in file_size_list
-            ],
-            'stack': 'Live',
-            'color': self.proj_colour_dict.get(
-                project_type, self.project_colours[0]
-            ),
-        }
-
-        archived_data = {
-            'name': f"{project_type}*{assay_type}",
-            'data': [
-                (entry.get('Archived_Size')/(2**30))
-                for entry in file_size_list
-            ],
-            'stack': 'Archived',
-            'linkedTo': ':previous',
-            'color': self.proj_colour_dict.get(
-                project_type, self.project_colours[0]
-            ),
-            'opacity': 0.8
-        }
-
-        category_data_source.append(live_data)
-        category_data_source.append(archived_data)
-
-        category_chart_data = self.chart_data.copy()
-        category_chart_data['xAxis']['categories'] = file_type_categories
-        category_chart_data['series'] = category_data_source
-        category_chart_data['title']['text'] = (
-            "Today's File Sizes By Project + Assay Type"
-        )
-        category_chart_data['yAxis']['title']['text'] = "Total Size (GiB)"
-        category_chart_data['tooltip']['pointFormat'] = (
-            "{series.name}: <b>{point.y:.2f} GiB</b><br>"
-            "{series.options.stack}<br>"
-        )
-
-        chart_df = self.convert_to_df(category_chart_data, "size")
+        chart_df = self.convert_to_df(category_chart_data, "size", "multi")
 
         return category_chart_data, chart_df
 
@@ -1612,7 +1581,7 @@ class FilePlotFunctions():
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            "Today's File Counts By Project + Assay Type"
+            f"Today's File Counts By Project + Assay Type - {self.today_date}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Count"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -1620,6 +1589,72 @@ class FilePlotFunctions():
             "{series.options.stack}<br>"
         )
 
-        chart_df = self.convert_to_df(category_chart_data, "count")
+        chart_df = self.convert_to_df(category_chart_data, "count", "multi")
+
+        return category_chart_data, chart_df
+
+    def todays_file_types_size_assay_and_proj_types(
+        self, project_type, assay_type
+    ):
+        """DO DOCSTRING"""
+        category_data_source = []
+        file_size_list = self.file_type_objs.filter(
+            date__date=self.today_date,
+            project__name__startswith=project_type,
+            project__name__endswith=assay_type
+        ).values(
+            'file_state__file_type__file_type',
+        ).annotate(
+                Live_Size=Sum('file_state__file_size_live'),
+                Archived_Size=Sum('file_state__file_size_archived')
+        )
+
+        file_type_categories = [
+            entry.get('file_state__file_type__file_type').upper()
+            for entry in file_size_list
+        ]
+
+        live_data = {
+            'name': f"{project_type}*{assay_type}",
+            'data': [
+                (entry.get('Live_Size')/(2**30))
+                for entry in file_size_list
+            ],
+            'stack': 'Live',
+            'color': self.proj_colour_dict.get(
+                project_type, self.project_colours[0]
+            ),
+        }
+
+        archived_data = {
+            'name': f"{project_type}*{assay_type}",
+            'data': [
+                (entry.get('Archived_Size')/(2**30))
+                for entry in file_size_list
+            ],
+            'stack': 'Archived',
+            'linkedTo': ':previous',
+            'color': self.proj_colour_dict.get(
+                project_type, self.project_colours[0]
+            ),
+            'opacity': 0.8
+        }
+
+        category_data_source.append(live_data)
+        category_data_source.append(archived_data)
+
+        category_chart_data = self.chart_data.copy()
+        category_chart_data['xAxis']['categories'] = file_type_categories
+        category_chart_data['series'] = category_data_source
+        category_chart_data['title']['text'] = (
+            f"Today's File Sizes By Project + Assay Type - {self.today_date}"
+        )
+        category_chart_data['yAxis']['title']['text'] = "Total Size (GiB)"
+        category_chart_data['tooltip']['pointFormat'] = (
+            "{series.name}: <b>{point.y:.2f} GiB</b><br>"
+            "{series.options.stack}<br>"
+        )
+
+        chart_df = self.convert_to_df(category_chart_data, "size", "multi")
 
         return category_chart_data, chart_df
