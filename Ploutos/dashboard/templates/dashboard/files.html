@@ -26,7 +26,7 @@
     // Sets up the DataTable
     $(document).ready(function () {
     $('.dataframe').DataTable( {
-        scrollY: '75vh',
+        scrollY: '50vh',
         scroller: true,
         deferRender:    true,
         pageResize:     true,
@@ -47,19 +47,38 @@
         buttons: [
         'copyHtml5', 'csv'
         ],
-        order: [[0, 'desc']],
+        order: [[0, 'asc']],
     });
 });
 
 </script>
+<form method="GET" action="{% url 'files' %}" style="padding-top: 0px;">
+    <div class="container">
+        <div class="row">
+          {% crispy form1 %}
+        </div>
+    <!-- Submit button, 'submit' used to check if form is submitted -->
+    <input type="submit" name="submit" value="Filter"/>
+    </div>
 
+</form>
 <div id="container_data" align="center" style="padding-top: 60px;padding-bottom: 40px;">
     <script>
-        Highcharts.chart('container_data', {{ file_data|safe }});
+        Highcharts.chart('container_data', {{ file_size_data|safe }});
     </script>
 </div>
 <div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
-        {{ chart_df|safe }}
-    </div>
+        {{ size_df|safe }}
+</div>
+
+<div id="container_2" align="center" style="padding-top: 80px;padding-bottom: 40px;">
+    <script>
+        Highcharts.chart('container_2', {{ file_count_data|safe }});
+    </script>
+</div>
+
+<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
+    {{ count_df|safe }}
+</div>
 
 {% endblock content %}

@@ -332,3 +332,61 @@ class StorageForm(forms.Form):
             ),
         )
 
+class FileSizeForm(forms.Form):
+    """Form for searching project types"""
+    project_type = forms.CharField(
+        required=False,
+        label='Project type',
+        widget=forms.TextInput(
+            attrs={
+                'placeholder': 'Enter project types, separated by commas',
+                'style': 'width: 340px',
+                'class': 'form-control'
+            }
+        )
+    )
+
+    assay_type = forms.CharField(
+        required=False,
+        label='Assay type',
+        widget=forms.TextInput(
+            attrs={
+                'placeholder': 'Enter assay types, separated by commas',
+                'style': 'width: 340px',
+                'class': 'form-control'
+            }
+        )
+    )
+
+    def clean(self):
+        project_type = self.cleaned_data["project_type"]
+        assay_type = self.cleaned_data["assay_type"]
+        # Check whether >1 entries are in both proj and assay type by comma
+        if project_type and assay_type:
+            if (project_type.find(",") != -1) or (assay_type.find(",") != -1):
+                raise ValidationError(
+                    "If using both project type and assay type filters, "
+                        "please only enter one of each"
+                )
+
+        return self.cleaned_data
+
+        # Set layout for Django crispy forms
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields[
+            'project_type'
+        ].help_text = "Filters project names using 'startswith'"
+        self.fields[
+            'assay_type'
+        ].help_text = "Filters project names using 'endswith'"
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Row(
+                Column('project_type', css_class='form-group col-md-4 mb-0'),
+                Column('assay_type', css_class='form-group col-md-4 mb-0'),
+                css_class='row'
+            ),
+        )

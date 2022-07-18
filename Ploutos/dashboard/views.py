@@ -5,7 +5,9 @@ import json
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from dashboard.forms import DateForm, MonthlyForm, StorageForm
+from dashboard.forms import (
+    DateForm, MonthlyForm, StorageForm, FileSizeForm
+)
 from dashboard.models import (
     DailyOrgRunningTotal, FileTypeDate, FileTypeState, FileTypes
 )
@@ -339,8 +341,10 @@ def storage_chart(request):
                 # Get the single string from each
                 if (form.cleaned_data.get('project_type') and
                     form.cleaned_data.get('assay_type')):
-                    project_type = form.cleaned_data.get('project_type')
-                    assay_type = form.cleaned_data.get('assay_type')
+                    project_type = form.cleaned_data.get(
+                        'project_type'
+                    ).strip()
+                    assay_type = form.cleaned_data.get('assay_type').strip()
 
                     # Filter by start date of start month-year
                     # And end date of end month-year
@@ -424,15 +428,88 @@ def storage_chart(request):
     return render(request, 'bar_chart.html', context)
 
 def files(request):
-    live_total, archived_total = sp.StoragePlotFunctions().get_todays_total_unique_size()
+    """View for displaying the file type data"""
 
-    category_chart_data, chart_df = sp.FilePlotFunctions().todays_file_types_size()
+    live_total, archived_total = sp.StoragePlotFunctions(
+    ).get_todays_total_unique_size()
+
+    # If the user has submitted the form
+    if 'submit' in request.GET:
+        form = FileSizeForm(request.GET)
+        # If form is valid
+        # i.e. not >1 entry in project_types and assay_types at same time
+        if form.is_valid():
+            # If both project types and assay types entered
+            if (form.cleaned_data.get('project_type') and
+                form.cleaned_data.get('assay_type')):
+                project_type = form.cleaned_data.get('project_type').strip()
+                assay_type = form.cleaned_data.get('assay_type').strip()
+
+                count_chart_data, count_df = sp.FilePlotFunctions(
+                ).todays_file_types_count_assay_and_proj_types(
+                    project_type, assay_type
+                )
+                size_chart_data, size_df = sp.FilePlotFunctions(
+                ).todays_file_types_size_assay_and_proj_types(
+                    project_type, assay_type
+                )
+
+            else:
+                # If just project types entered
+                if form.cleaned_data.get('project_type'):
+                    proj_string = form.cleaned_data.get('project_type')
+                    proj_types = sp.StoragePlotFunctions(
+                    ).str_to_list(proj_string)
+
+                    count_chart_data, count_df = sp.FilePlotFunctions(
+                    ).todays_file_types_count_project_types(proj_types)
+                    size_chart_data, size_df = sp.FilePlotFunctions(
+                    ).todays_file_types_size_project_types(proj_types)
+
+                # If just assay types are entered
+                elif form.cleaned_data.get('assay_type'):
+                    assay_string = form.cleaned_data.get('assay_type')
+                    assay_types = sp.StoragePlotFunctions(
+                    ).str_to_list(assay_string)
+
+                    count_chart_data, count_df = sp.FilePlotFunctions(
+                    ).todays_file_types_count_assay_types(assay_types)
+                    size_chart_data, size_df = sp.FilePlotFunctions(
+                    ).todays_file_types_size_assay_types(assay_types)
+
+                else:
+                    # If form submitted but no projects or assays searched for
+                    size_chart_data, size_df = sp.FilePlotFunctions(
+                    ).todays_file_types_size_all_projects()
+
+                    count_chart_data, count_df = sp.FilePlotFunctions(
+                    ).todays_file_types_count_all_projects()
+
+        else:
+            # Form is not valid
+            size_chart_data, size_df = sp.FilePlotFunctions(
+            ).todays_file_types_size_all_projects()
+
+            count_chart_data, count_df = sp.FilePlotFunctions(
+            ).todays_file_types_count_all_projects()
+    else:
+        # Nothing is submitted
+        form = FileSizeForm()
+
+        size_chart_data, size_df = sp.FilePlotFunctions(
+        ).todays_file_types_size_all_projects()
+
+        count_chart_data, count_df = sp.FilePlotFunctions(
+        ).todays_file_types_count_all_projects()
 
     context = {
         'live_total': live_total,
         'archived_total': archived_total,
-        'file_data': json.dumps(category_chart_data),
-        'chart_df': chart_df
+        'file_size_data': json.dumps(size_chart_data),
+        'size_df': size_df,
+        'file_count_data': json.dumps(count_chart_data),
+        'count_df': count_df,
+        'form1': form
     }
 
     return render(request, 'files.html', context)
