@@ -59,10 +59,10 @@ class FileTypes(models.Model):
 class FileTypeState(models.Model):
     """Model representing the size and count of file types"""
     file_type = models.ForeignKey(FileTypes, on_delete=models.CASCADE)
-    file_count_live = models.BigIntegerField()
-    file_count_archived = models.BigIntegerField()
-    file_size_live = models.BigIntegerField()
-    file_size_archived = models.BigIntegerField()
+    file_count_live = models.IntegerField()
+    file_count_archived = models.IntegerField()
+    file_size_live = models.FloatField()
+    file_size_archived = models.FloatField()
 
 class FileTypeDate(models.Model):
     """
@@ -73,35 +73,22 @@ class FileTypeDate(models.Model):
     file_state = models.ForeignKey(FileTypeState, on_delete=models.CASCADE)
 
 # class Executables(models.Model):
-#     executable_id = models.AutoField(primary_key=True)
-#     dx_id = models.CharField(max_length=200)
-#     excutable_name = models.CharField(max_length=200)
-#     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
-#     #version = models.CharField(max_length=30)
+#     executable_name = models.CharField(max_length=200)
+#     version = models.CharField(max_length=10)
 
-# #    def __str__(self):
-# #        return self.name
-
+#     def __str__(self):
+#         return self.excutable_name
 
 # class ComputeCosts(models.Model):
-#     executable_id = models.ForeignKey(Executables, on_delete=models.CASCADE)
-#     # intstance_id = models.IntegerField(blank = True, null = True)
-#     # runtime = models.IntegerField()
+#     dx_id = models.CharField(max_length=200)
+#     # job_name = models.CharField(max_length=200)
+#     executable_name = models.ForeignKey(Executables, on_delete=models.CASCADE)
+#     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
+#     runtime = models.DurationField()
 #     total_cost = models.FloatField()
+#     state = models.CharField(max_length=50)
 #     launched_by = models.ForeignKey(Users, on_delete=models.CASCADE)
-#     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
-#     # project = models.ForeignKey(Projects, on_delete=models.CASCADE)
-
-# #    def __str__(self):
-# #        return self.name
-
-
-# Models in progress
-
-# class Egress(models.Model):
-#     project = models.ForeignKey(Projects,on_delete=models.CASCADE)
-#     egress_cost = models.FloatField()
 #     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
 #     def __str__(self):
-#         return self.project
+#         return self.dx_id

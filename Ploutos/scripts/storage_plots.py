@@ -97,6 +97,13 @@ class StoragePlotFunctions():
                             "downloadJPEG", "downloadPDF"
                         ]
                     }
+                },
+                'chartOptions': {
+                    'chart': {
+                        'style': {
+                            'fontFamily': 'Roboto'
+                        }
+                    }
                 }
             },
             'series': "",
@@ -181,9 +188,9 @@ class StoragePlotFunctions():
         Returns
         -------
         live_total : float
-            total size in GiB of all the live files in DNAnexus
+            total size in TiB of all the live files in DNAnexus
         archived_total : float
-            total size in GiB of all the archived files in DNAnexus
+            total size in TiB of all the archived files in DNAnexus
         """
         todays_total = StorageCosts.objects.filter(
             date__date=self.today_date
@@ -194,13 +201,19 @@ class StoragePlotFunctions():
         # If DNANexus has been queried, convert bytes to GiB
         # Otherwise set both to zero
         if todays_total.get('Live'):
-            live_total = round(todays_total.get('Live') / (2**30), 2)
-            archived_total = round(todays_total.get('Archived') / (2**30), 2)
+            live_total = round(
+                ((todays_total.get('Live') / (2**30))/1024), 2
+            )
+            formatted_live_total = f"{live_total:,.2f} TiB"
+            archived_total = round(
+                ((todays_total.get('Archived') / (2**30))/1024), 2
+            )
+            formatted_archived_total = f"{archived_total:,.2f} TiB"
         else:
-            live_total = 0.0
-            archived_total = 0.0
+            formatted_live_total = "Not yet calculated"
+            formatted_archived_total = "Not yet calculated"
 
-        return f"{live_total:,.2f}", f"{archived_total:,.2f}"
+        return formatted_live_total, formatted_archived_total
 
     def convert_to_df(self, category_chart_data):
         """

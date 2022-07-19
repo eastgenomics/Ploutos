@@ -149,12 +149,13 @@ def populate_file_types(file_type_df):
         )
 
         # If the state exists, get it, or create new state id
+        # Store counts and file sizes in GiB
         state, created = FileTypeState.objects.get_or_create(
             file_type = new_file_type,
             file_count_live = file_vals['vcf_count_live'],
             file_count_archived = file_vals['vcf_count_archived'],
-            file_size_live = file_vals['vcf_size_live'],
-            file_size_archived = file_vals['vcf_size_archived']
+            file_size_live = (file_vals['vcf_size_live']/(2**30)),
+            file_size_archived = (file_vals['vcf_size_archived']/(2**30))
         )
 
         # Add the proj, date and state to the FileTypeDate table
@@ -173,8 +174,8 @@ def populate_file_types(file_type_df):
             file_type = new_file_type,
             file_count_live = file_vals['bam_count_live'],
             file_count_archived = file_vals['bam_count_archived'],
-            file_size_live = file_vals['bam_size_live'],
-            file_size_archived = file_vals['bam_size_archived']
+            file_size_live = (file_vals['bam_size_live']/(2**30)),
+            file_size_archived = (file_vals['bam_size_archived']/(2**30))
         )
 
         object, created = FileTypeDate.objects.get_or_create(
@@ -192,8 +193,8 @@ def populate_file_types(file_type_df):
             file_type = new_file_type,
             file_count_live = file_vals['fastq_count_live'],
             file_count_archived = file_vals['fastq_count_archived'],
-            file_size_live = file_vals['fastq_size_live'],
-            file_size_archived = file_vals['fastq_size_archived'],
+            file_size_live = (file_vals['fastq_size_live']/(2**30)),
+            file_size_archived = (file_vals['fastq_size_archived']/(2**30)),
         )
 
         object, created = FileTypeDate.objects.get_or_create(

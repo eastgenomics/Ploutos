@@ -1,15 +1,15 @@
 {% extends 'dashboard/base.html' %}
 {% load crispy_forms_tags %}
 {% block content %}
-    <div class="card-body bg-white">
-        <h5>Total size of unique files in DNAnexus today:</h5>
-        <p>
-        <ul>
-            <li> Live: {{ live_total }} GiB</li>
-            <li> Archived: {{ archived_total }} GiB</li>
-        </ul>
-        </p>
-    </div>
+<div class="card-body bg-white">
+    <h5>Total size of unique files in DNAnexus today:</h5>
+    <p>
+    <ul>
+        <li> Live: {{ live_total }}</li>
+        <li> Archived: {{ archived_total }}</li>
+    </ul>
+    </p>
+</div>
 <!-- Highlights current page and removes highlighting from previous -->
 <script>
     var jobs = document.getElementById("files");

@@ -1,26 +1,29 @@
 import pandas as pd
 import plotly.express as px
 
-from more_itertools import unique_everseen
-
 from dashboard.models import FileTypeDate
 from django.db.models import Sum
 from scripts import storage_plots as sp
+
 
 class FilePlotFunctions():
     """Functions for the file type storage plots"""
 
     def __init__(self) -> None:
+        # Steal lots of things already defined in StoragePlotFunctions
         self.today_date = sp.StoragePlotFunctions().today_date
-        self.file_type_colours = px.colors.qualitative.Pastel
-        # Chart data which is shared by all plots
         self.chart_data = sp.StoragePlotFunctions().chart_data
-        self.file_type_objs = FileTypeDate.objects.all()
         self.proj_colour_dict = sp.StoragePlotFunctions().proj_colour_dict
         self.assay_colour_dict = sp.StoragePlotFunctions().assay_colour_dict
         self.project_colours = sp.StoragePlotFunctions().project_colours
         self.assay_colours = sp.StoragePlotFunctions().assay_colours
-        self.file_type_categories = ['VCF', 'FASTQ', 'BAM']
+
+        # Get new colour palette for BAM, FASTQ and VCF
+        # Get all the FileTypeDate objs for today to use in all the functions
+        self.file_type_colours = px.colors.qualitative.Pastel
+        self.file_type_objs = FileTypeDate.objects.filter(
+            date__date=self.today_date
+        )
 
     def convert_to_df(self, category_chart_data, size_or_count, multi_or_all):
         """
@@ -32,27 +35,35 @@ class FilePlotFunctions():
         category_chart_data : dict
             dictionary which has all the chart attributes and data
         size_or_count : str
-            a string to say whether to make a df for size or count
+            string "size" or "count" - whether to make df
+            with size or count header
         multi_or_all : str
-            a string to say whether all projects or looking at specific types
+            string "multi" or "all" - whether all projects
+            or looking at specific proj types
         Returns
         -------
         chart_data : pd.DataFrame as HTML table
-            the dataframe with Date, Type, State and Total Size
+            dataframe for DataTables
+            with Scope, File Type, State and Total Size / Count
         """
+
+        # Make df from the series data
         series_data = category_chart_data['series'].copy()
         exploded = pd.json_normalize(data=series_data).explode('data')
 
+        # Set the column header variable depending on whether size or count df
         if size_or_count == 'size':
-            column_title = 'Total Size (GiB)'
+            column_title = 'Total Size (TiB)'
         else:
             column_title = 'Total Count'
 
+        # If all projects shown, column order is slightly different to multi
         if multi_or_all == 'all':
             scope = category_chart_data['xAxis']['categories'].copy()
 
-            # If data exists, expand the dates table according to the df length
-            # So the correct date can be added to the right row
+            # If data exists, expand the scope entries according to df length
+            # So the correct scope can be added to the right row
+            # And add in as column
             if scope:
                 scope = scope * (int(len(exploded) / len(scope)))
                 exploded['Scope'] = scope
@@ -74,15 +85,18 @@ class FilePlotFunctions():
                 },
                 inplace = True
             )
+
         elif multi_or_all == 'multi':
             # If looking at multiple diff proj / assay types
             file_types = category_chart_data['xAxis']['categories'].copy()
+            # Expand file types so they match length of df and add column
             if file_types:
                 file_types = file_types * (int(len(exploded) / len(file_types)))
                 exploded['File Type'] = file_types
             else:
                 file_types = []
 
+            # Re-order columns
             exploded = exploded.reindex(
                 columns=[
                     'name', 'File Type', 'stack', 'data'
@@ -126,20 +140,23 @@ class FilePlotFunctions():
         file_type_names = ['bam', 'fastq', 'vcf']
 
         category_data_source = []
+        # Count is -2 and adding 2 because I liked those colours
         count = -2
+
         for file_type in file_type_names:
             count += 2
-            file_type_size = FileTypeDate.objects.filter(
-                date__date=self.today_date,
+            file_type_size = self.file_type_objs.filter(
                 file_state__file_type__file_type=file_type
             ).aggregate(
                 Live_Size=Sum('file_state__file_size_live'),
                 Archived_Size=Sum('file_state__file_size_archived')
             )
 
+            # If there is a summed live size for day, convert to TiB
+            # Otherwise leave as empty list
             live_size = file_type_size.get('Live_Size')
             if live_size:
-                live_size = [live_size / (2**30)]
+                live_size = [live_size / 1024]
             else:
                 live_size = []
 
@@ -150,9 +167,11 @@ class FilePlotFunctions():
                 'color': self.file_type_colours[count]
             }
 
+            # If there is a summed archived size for day, convert to TiB
+            # Otherwise leave as empty list
             archived_size = file_type_size.get('Archived_Size')
             if archived_size:
-                archived_size = [archived_size / (2**30)]
+                archived_size = [archived_size / 1024]
             else:
                 archived_size = []
 
@@ -174,9 +193,9 @@ class FilePlotFunctions():
         category_chart_data['title']['text'] = (
             f"Today's File Type Sizes - {self.today_date}"
         )
-        category_chart_data['yAxis']['title']['text'] = "Total size (GiB)"
+        category_chart_data['yAxis']['title']['text'] = "Total size (TiB)"
         category_chart_data['tooltip']['pointFormat'] = (
-            "{series.name}: <b>{point.y:.2f} GiB </b><br>"
+            "{series.name}: <b>{point.y:.2f} TiB </b><br>"
             "{series.options.stack}<br>"
         )
 
@@ -206,14 +225,15 @@ class FilePlotFunctions():
         count = -2
         for file_type in file_type_names:
             count += 2
-            file_type_size = FileTypeDate.objects.filter(
-                date__date=self.today_date,
+            file_type_size = self.file_type_objs.filter(
                 file_state__file_type__file_type=file_type
             ).aggregate(
                 Live_Count=Sum('file_state__file_count_live'),
                 Archived_Count=Sum('file_state__file_count_archived')
             )
 
+            # If there is a summed live count for day, get count
+            # Otherwise leave as empty list
             live_count = file_type_size.get('Live_Count')
             if live_count:
                 live_count = [live_count]
@@ -227,6 +247,8 @@ class FilePlotFunctions():
                 'color': self.file_type_colours[count]
             }
 
+            # If there is a summed archived count for day, get count
+            # Otherwise leave as empty list
             archived_count = file_type_size.get('Archived_Count')
             if archived_count:
                 archived_count = [archived_count]
@@ -262,14 +284,28 @@ class FilePlotFunctions():
         return category_chart_data, chart_df
 
     def todays_file_types_count_project_types(self, proj_types):
-        """DO DOCSTRING"""
+        """
+        Returns the chart data and a df for today's file counts in DNAnexus
+        When only project types have been entered
+
+        Parameters
+        ----------
+        proj_types : list
+            list of project types entered in the form e.g. ['001','002']
+
+        Returns
+        -------
+        category_chart_data : dict
+            count series data and chart options to pass to Highcharts
+        chart_df : pd.DataFrame
+            dataframe of the series count values to show under chart
+        """
         file_type_categories_dups = []
         category_data_source = []
         count = -1
         for proj_type in proj_types:
             count += 1
             file_count_list = self.file_type_objs.filter(
-                date__date=self.today_date,
                 project__name__startswith=proj_type,
             ).values(
                 'file_state__file_type__file_type',
@@ -278,6 +314,8 @@ class FilePlotFunctions():
                     Archived_Count=Sum('file_state__file_count_archived')
             )
 
+            # Get the file types values from the list of querysets
+            # This will be multiple lists
             file_types = [
                 entry.get('file_state__file_type__file_type').upper()
                 for entry in file_count_list
@@ -311,6 +349,8 @@ class FilePlotFunctions():
             category_data_source.append(archived_data)
             file_type_categories_dups.append(file_types)
 
+        # Get only the first list of file type names in the list of lists
+        # As all the lists within it will be the same
         file_type_categories = file_type_categories_dups[0]
 
         category_chart_data = self.chart_data.copy()
@@ -330,14 +370,28 @@ class FilePlotFunctions():
         return category_chart_data, chart_df
 
     def todays_file_types_size_project_types(self, proj_types):
-        """DO DOCSTRING"""
+        """
+        Returns the chart data and a df for today's file sizes in DNAnexus
+        When only project types have been entered
+
+        Parameters
+        ----------
+        proj_types : list
+            list of project types entered in the form e.g. ['001','002']
+
+        Returns
+        -------
+        category_chart_data : dict
+            size series data and chart options to pass to Highcharts
+        chart_df : pd.DataFrame
+            dataframe of the series size values to show under chart
+        """
         file_type_categories_dups = []
         category_data_source = []
         count = -1
         for proj_type in proj_types:
             count += 1
             file_size_list = self.file_type_objs.filter(
-                date__date=self.today_date,
                 project__name__startswith=proj_type,
             ).values(
                 'file_state__file_type__file_type',
@@ -354,7 +408,7 @@ class FilePlotFunctions():
             live_data = {
                 'name': f"{proj_type}*",
                 'data': [
-                    (entry.get('Live_Size')/(2**30))
+                    (entry.get('Live_Size')/1024)
                     for entry in file_size_list
                 ],
                 'stack': 'Live',
@@ -366,7 +420,7 @@ class FilePlotFunctions():
             archived_data = {
                 'name': f"{proj_type}*",
                 'data': [
-                    (entry.get('Archived_Size')/(2**30))
+                    (entry.get('Archived_Size')/1024)
                     for entry in file_size_list
                 ],
                 'stack': 'Archived',
@@ -391,7 +445,7 @@ class FilePlotFunctions():
         )
         category_chart_data['yAxis']['title']['text'] = "Total Size"
         category_chart_data['tooltip']['pointFormat'] = (
-            "{series.name}: <b>{point.y:.2f} GiB </b><br>"
+            "{series.name}: <b>{point.y:.2f} TiB </b><br>"
             "{series.options.stack}<br>"
         )
 
@@ -400,14 +454,28 @@ class FilePlotFunctions():
         return category_chart_data, chart_df
 
     def todays_file_types_count_assay_types(self, assay_types):
-        """DO DOCSTRING"""
+        """
+        Returns the chart data and a df for today's file counts in DNAnexus
+        When only assay types have been entered
+
+        Parameters
+        ----------
+        assay_types : list
+            list of project types entered in the form e.g. ['CEN','TWE']
+
+        Returns
+        -------
+        category_chart_data : dict
+            count series data and chart options to pass to Highcharts
+        chart_df : pd.DataFrame
+            dataframe of the series count values to show under chart
+        """
         file_type_categories_dups = []
         category_data_source = []
         count = -1
         for assay_type in assay_types:
             count += 1
             file_count_list = self.file_type_objs.filter(
-                date__date=self.today_date,
                 project__name__endswith=assay_type,
             ).values(
                 'file_state__file_type__file_type',
@@ -470,14 +538,28 @@ class FilePlotFunctions():
         return category_chart_data, chart_df
 
     def todays_file_types_size_assay_types(self, assay_types):
-        """DO DOCSTRING"""
+        """
+        Returns the chart data and a df for today's file sizes in DNAnexus
+        When only assay types have been entered
+
+        Parameters
+        ----------
+        assay_types : list
+            list of project types entered in the form e.g. ['CEN','TWE']
+
+        Returns
+        -------
+        category_chart_data : dict
+            size series data and chart options to pass to Highcharts
+        chart_df : pd.DataFrame
+            dataframe of the series size values to show under chart
+        """
         file_type_categories_dups = []
         category_data_source = []
         count = -1
         for assay_type in assay_types:
             count += 1
             file_size_list = self.file_type_objs.filter(
-                date__date=self.today_date,
                 project__name__endswith=assay_type,
             ).values(
                 'file_state__file_type__file_type',
@@ -494,7 +576,7 @@ class FilePlotFunctions():
             live_data = {
                 'name': f"*{assay_type}",
                 'data': [
-                    (entry.get('Live_Size')/(2**30))
+                    (entry.get('Live_Size')/1024)
                     for entry in file_size_list
                 ],
                 'stack': 'Live',
@@ -506,7 +588,7 @@ class FilePlotFunctions():
             archived_data = {
                 'name': f"*{assay_type}",
                 'data': [
-                    (entry.get('Archived_Size')/(2**30))
+                    (entry.get('Archived_Size')/1024)
                     for entry in file_size_list
                 ],
                 'stack': 'Archived',
@@ -529,9 +611,9 @@ class FilePlotFunctions():
         category_chart_data['title']['text'] = (
             f"Today's File Sizes By Assay Type - {self.today_date}"
         )
-        category_chart_data['yAxis']['title']['text'] = "Total Size (GiB)"
+        category_chart_data['yAxis']['title']['text'] = "Total Size (TiB)"
         category_chart_data['tooltip']['pointFormat'] = (
-            "{series.name}: <b>{point.y:.2f} GiB</b><br>"
+            "{series.name}: <b>{point.y:.2f} TiB</b><br>"
             "{series.options.stack}<br>"
         )
 
@@ -542,10 +624,26 @@ class FilePlotFunctions():
     def todays_file_types_count_assay_and_proj_types(
         self, project_type, assay_type
     ):
-        """DO DOCSTRING"""
+        """
+        Returns the chart data and a df for today's file counts in DNAnexus
+        When a project type and an assay type has been entered
+
+        Parameters
+        ----------
+        project_type : str
+            what the project name begins with e.g. "002"
+        assay_type : str
+            what the project name ends with e.g. "CEN"
+
+        Returns
+        -------
+        category_chart_data : dict
+            count series data and chart options to pass to Highcharts
+        chart_df : pd.DataFrame
+            dataframe of the series count values to show under chart
+        """
         category_data_source = []
         file_count_list = self.file_type_objs.filter(
-            date__date=self.today_date,
             project__name__startswith=project_type,
             project__name__endswith=assay_type
         ).values(
@@ -608,10 +706,26 @@ class FilePlotFunctions():
     def todays_file_types_size_assay_and_proj_types(
         self, project_type, assay_type
     ):
-        """DO DOCSTRING"""
+        """
+        Returns the chart data and a df for today's file sizes in DNAnexus
+        When a project type and an assay type has been entered
+
+        Parameters
+        ----------
+        project_type : str
+            what the project name begins with e.g. "002"
+        assay_type : str
+            what the project name ends with e.g. "CEN"
+
+        Returns
+        -------
+        category_chart_data : dict
+            size series data and chart options to pass to Highcharts
+        chart_df : pd.DataFrame
+            dataframe of the series size values to show under chart
+        """
         category_data_source = []
         file_size_list = self.file_type_objs.filter(
-            date__date=self.today_date,
             project__name__startswith=project_type,
             project__name__endswith=assay_type
         ).values(
@@ -629,7 +743,7 @@ class FilePlotFunctions():
         live_data = {
             'name': f"{project_type}*{assay_type}",
             'data': [
-                (entry.get('Live_Size')/(2**30))
+                (entry.get('Live_Size')/1024)
                 for entry in file_size_list
             ],
             'stack': 'Live',
@@ -641,7 +755,7 @@ class FilePlotFunctions():
         archived_data = {
             'name': f"{project_type}*{assay_type}",
             'data': [
-                (entry.get('Archived_Size')/(2**30))
+                (entry.get('Archived_Size')/1024)
                 for entry in file_size_list
             ],
             'stack': 'Archived',
@@ -661,9 +775,9 @@ class FilePlotFunctions():
         category_chart_data['title']['text'] = (
             f"Today's File Sizes By Project + Assay Type - {self.today_date}"
         )
-        category_chart_data['yAxis']['title']['text'] = "Total Size (GiB)"
+        category_chart_data['yAxis']['title']['text'] = "Total Size (TiB)"
         category_chart_data['tooltip']['pointFormat'] = (
-            "{series.name}: <b>{point.y:.2f} GiB</b><br>"
+            "{series.name}: <b>{point.y:.2f} TiB</b><br>"
             "{series.options.stack}<br>"
         )
 
