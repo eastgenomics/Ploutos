@@ -11,11 +11,14 @@ from time import time, localtime, strftime
 
 from django.apps import apps
 from django.conf import settings
-from dashboard.models import DailyOrgRunningTotal, Users, Dates, Projects, StorageCosts, FileTypeDate, FileTypes, FileTypeState
-from scripts import DNAnexus_queries as q
+from dashboard.models import (
+    ComputeCosts, Executables, Users, Dates, Projects, DailyOrgRunningTotal,
+    StorageCosts, FileTypeDate, FileTypes, FileTypeState
+)
+from scripts import DNAnexus_queries as queries
 
 
-def populate_projects(all_projects):
+def populate_projects(all_projects) -> None:
     """
     Checks whether user exists or creates it to get ID
     Checks whether date exists or creates it to get ID
@@ -69,13 +72,13 @@ def populate_projects(all_projects):
         )
 
 
-def populate_running_totals():
+def populate_running_totals() -> None:
     """
     Adds org running totals into the db, getting the date IDs or creating them first
     """
 
     # Get today's date in YYY-MM-DD format
-    today_date = q.no_of_days_in_month()[0]
+    today_date = queries.no_of_days_in_month()[0]
 
     # Describe the org to get running totals
     org_totals = dx.api.org_describe(settings.ORG)
@@ -95,7 +98,7 @@ def populate_running_totals():
     )
 
 
-def populate_database_files(all_projects_dict):
+def populate_database_files(all_projects_dict) -> None:
     """
     Puts the storage data into the db
     ----------
@@ -107,7 +110,7 @@ def populate_database_files(all_projects_dict):
     none
     """
 
-    today_date = q.no_of_days_in_month()[0]
+    today_date = queries.no_of_days_in_month()[0]
 
     for key, value in all_projects_dict.items():
         new_storage, created = StorageCosts.objects.get_or_create(
@@ -126,7 +129,7 @@ def populate_database_files(all_projects_dict):
             date=Dates.objects.get(date=today_date),
         )
 
-def populate_file_types(file_type_df):
+def populate_file_types(file_type_df) -> None:
     """
     Puts the file type data into the db
     ----------
@@ -140,7 +143,7 @@ def populate_file_types(file_type_df):
     """
     # Convert to dict with projects as keys, counts + sizes as vals
     file_types_dict = file_type_df.set_index("project").to_dict("index")
-    today_date = q.no_of_days_in_month()[0]
+    today_date = queries.no_of_days_in_month()[0]
 
     for project, file_vals in file_types_dict.items():
         # Add in or get the file type
@@ -203,64 +206,55 @@ def populate_file_types(file_type_df):
             file_state = state
         )
 
-# def populate_analyses(all_projects):
-#     """
-#     Populate database with data from API query.
-#     This function iterates over all projects and returns all parent executions
-#     that have finished in the last 24 hrs.
-#     It then populates the database with this data.
+def populate_executions(all_executions_df) -> None:
+    """
+    Populate database with data from API query.
+    This function iterates over all projects and returns all parent executions
+    that have finished in the last 24 hrs.
+    It then populates the database with this data.
+    --- This is still in development with the models.py ---
+    Parameters
+    ----------
+    all_executions_df:
+        dataframe with all parent executions run in timeperiod specified.
+    Returns
+    -------
+    None
+    """
 
-#     --- This is still in development with the models.py ---
+    for _, row in all_executions_df.iterrows():
+        # _ represents the index
+        print(f"{row}\n")
+        # Add date for analysis when created.
+        date = dt.datetime.fromtimestamp(row['created'] / 1000)
+        date_formatted = date.strftime("%Y-%m-%d")
+        a_new_date, created = Dates.objects.get_or_create(
+            date=date_formatted,)
 
-#     Parameters
-#     ----------
-#     all_projects: list of all projects in the DNAnexus ORG.
+        # Add date for analysis started.
+        user, created = Users.objects.get_or_create(
+            user_name=row['launchedBy'],)
 
-#     Returns
-#     -------
-#     None
-#     """
-#     all_analyses = []
-#     for proj in all_projects:
-#         #print(proj)
-#         analyses = q.get_analyses(proj['dx_id'])
-#         all_analyses.append(analyses)
-#     all_analyses_df = q.make_analyses_df(all_analyses)
+        # Add executable name to table
+        new_executable, created = Executables.objects.get_or_create(
+            # Get the project ID from the projects table by project dx id
+            executable_name=row['executable_name'],
+            version=row['version']
+        )
 
-#     for index, row in all_analyses_df.iterrows():
-#         print(row)
-#         print("---\n")
-
-#         #Add date for analysis started.
-#         a_new_date, created = Dates.objects.get_or_create(
-#             date=dt.datetime.fromtimestamp(
-#                 (int(row['created'])) / 1000).strftime('%Y-%m-%d')
-#         )
-
-#         # Add data to DB - Executables Table
-#         project_row_id = Projects.objects.get(dx_id=row['project'])
-#         project_row_id = project_row_id.values()
-#         new_analysis, created = Executables.objects.get_or_create(
-#             dx_id=row['executable'],
-#             excutable_name=row['name'],
-#             project_id=project_row_id['project']
-#         )
-#         #Add date for analysis started.
-#         user, created = Users.objects.get_or_create(
-#             user_name=row['launchedBy'],)
-#         print(user)
-#         # Add data to DB - ComputeCosts Table
-#         new_analysis_costs, created = ComputeCosts.objects.get_or_create(
-#             # Get the project ID from the projects table by project dx id
-#             # project=Projects.objects.get(dx_id=key),
-#             executable_id=new_analysis,
-#             # instance_id = row['']
-#             # runtime = row['']
-#             total_cost = row['cost'],
-#             launched_by=user,
-#             date_id=a_new_date
-#         )
-#         print("done")
+        # Add data to DB - ComputeCosts Table
+        new_analysis_costs, created = ComputeCosts.objects.get_or_create(
+            # Get the project ID from the projects table by project dx id
+            dx_id=row['id'],
+            # job_name=row['job_name'],
+            executable_name=new_executable,
+            project=Projects.objects.get(dx_id=row['project']),
+            runtime=row['Result_td'],
+            total_cost=row['cost'],
+            state=row['state'],
+            launched_by=user,
+            date=a_new_date,
+        )
 
 
 def run():
@@ -270,17 +264,15 @@ def run():
     start = time()
     print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
 
-    q.login()
-    all_projects, proj_list, proj_df = q.get_projects()
-    print("Populating projects")
+    queries.login()
+    all_projects, proj_list, proj_df = queries.get_projects()
     populate_projects(all_projects)
     populate_running_totals()
-    print("Getting files")
-    final_dict, file_type_df = q.orchestrate_get_files(proj_list, proj_df)
-    print("Putting file stuff in db")
+    final_dict, file_type_df = queries.orchestrate_get_files(proj_list, proj_df)
     populate_database_files(final_dict)
     populate_file_types(file_type_df)
-    # populate_analyses(all_projects)
+    # executions_df = queries.orchestrate_get_executions(proj_list)
+    # populate_executions(executions_df)
     end = time()
     total = (end - start) / 60
     print(f"Total time was {total} minutes")

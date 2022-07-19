@@ -29,7 +29,7 @@ class Projects(models.Model):
 
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
-    date = models.ForeignKey(Dates, on_delete=models.CASCADE, unique=True)
+    date = models.OneToOneField(Dates, on_delete=models.CASCADE)
     storage_charges = models.FloatField()
     compute_charges = models.FloatField()
     egress_charges = models.FloatField()
@@ -48,9 +48,6 @@ class StorageCosts(models.Model):
     total_cost_live = models.FloatField()
     total_cost_archived = models.FloatField()
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
-
-#    def __str__(self):
-#        return self.name
 
 class FileTypes(models.Model):
     """Model representing a file type"""

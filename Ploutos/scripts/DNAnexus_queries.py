@@ -4,16 +4,26 @@ DNAnexus queries script
 
 import concurrent.futures
 import datetime as dt
+import itertools
+import json
+import logging
 import numpy as np
 import pandas as pd
+import re
 import sys
 import dxpy as dx
 
 from calendar import monthrange
 from collections import defaultdict
 from functools import reduce
+from time import time, localtime, strftime
 
+from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal, StorageCosts
+from django.apps import apps
 from django.conf import settings
+
+
+logger = logging.getLogger("general")
 
 
 def login() -> None:
@@ -286,6 +296,7 @@ def make_file_df(list_project_files_dictionary):
     #file_df.drop(columns=['name'], inplace=True)
 
     return file_df
+
 
 def count_how_many_lost(df_of_files, projs_list):
     """
@@ -563,7 +574,7 @@ def add_missing_states_projects_file_types(
 
 def generate_merged_file_df(list_of_aggregated_dataframes):
     """
-    Generate a df in wide format with 1 row / project and all file types+states
+    Generate a df in wide format with 1 row per project and all file types+states
     With their sizes and counts
     ----------
     list_of_aggregated_dataframes : list
@@ -574,6 +585,8 @@ def generate_merged_file_df(list_of_aggregated_dataframes):
     -------
     aggregated_all_file_types_df : pd.DataFrame
         dataframe with one row per proj and 12 columns, 4 per file type
+        returned df below is one row per project
+        but proj row is shown for continuity (df lines were too long otherwise)
     +-----------+----------+------------+-------------+
     |  project  |  state   | fastq_size | fastq_count |
     +-----------+----------+------------+-------------+
@@ -684,6 +697,7 @@ def group_by_project_and_rename(df_name, string_to_replace):
         'archived', string_to_replace+"_archived")
 
     return grouped_df
+
 
 def calculate_totals(my_grouped_df, tot_or_uniq_type):
     """
@@ -839,81 +853,576 @@ def put_into_dict(final_all_projs_df):
 
     return all_proj_dict
 
-def get_analyses(proj):
-    """
-    Get all analyses for the project in DNAnexus,
-    storing each file and its size, name and archival state.
-    Used with ThreadExecutorPool
 
+def get_executions(proj):
+    """
+    Get all executions for the project in DNAnexus,
+    Each top-level job is stored with it's attributes,
+    mainly cost and who launched it.
+    Used with ThreadExecutorPool
     Parameters
     ----------
     proj : project_id for the DNAnexus project
-
     Returns
     -------
-     project_files_dict : collections.defaultdict
-        dictionary with all the files per project
-
+     project_executions_dict : collections.defaultdict
+        dictionary with all the executions per project
     """
 
-    # Find analyses in each project, only returning specified fields in item
-    project_analyses_dict = defaultdict(lambda: {"analysis": []})
-    jobs = dx.bindings.search.find_executions(
-            classname="analysis",
+    # Find executions in each project with describe
+    # Created before and after create a time window,
+    # of 24 hours which ended 24 hours from time of running.
+    # Further development could use epoch times to ensure constant window
+
+    # Set-up the time-period to check using epoch times
+    # Find last midnight from time of running
+
+    last_midnight = dt.datetime.combine(dt.datetime.today(), dt.time.min)
+
+    # Find the epoch time for 1 days ago.
+    midnight_1day_ago = last_midnight - dt.timedelta(days=1)
+    # Find the epoch time for 2 days ago.
+    midnight_2_days_ago = last_midnight - dt.timedelta(days=2)
+
+    # Convert to epoch_milliseconds
+    midnight_1day_ago_epoch = int(midnight_1day_ago.timestamp())*1000
+    midnight_2day_ago_epoch = int(midnight_2_days_ago.timestamp())*1000
+
+    # Query API for executions in timeperiod
+
+    executions = dx.bindings.search.find_executions(
             project=proj,
-            state="done",
             no_parent_analysis=True,
-            created_after="-1d",
-            describe=True
-        )
+            no_parent_job=True,
+            created_after=midnight_2day_ago_epoch,
+            created_before=midnight_1day_ago_epoch,
+            describe=True)
 
-    for job in jobs:
-        proj = job['describe']['project']
+    check = peek(executions)
 
-        project_analyses_dict[proj]["analysis"].append({
-                "id": job["id"],
-                "name": job['describe']['name'],
-                "cost": job['describe']['totalPrice'],
-                "class": job['describe']['class'],
-                "executable": job['describe']['executable'],
-                "state": job['describe']['state'],
-                "created": job['describe']['created'],
-                "modified": job['describe']['modified'],
-                "launchedBy": job['describe']['launchedBy'],
-                "createdBy": job['describe']['workflow']['createdBy']
-            })
-    return project_analyses_dict
+    if not check:
+        print(f'No data in {proj}, exited process')
+
+    else:
+        print("data found")
+        project_executions_dict = defaultdict(lambda: {"executions": []})
+        for job in executions:
+            if job['describe']['state'] == "in_progress"\
+                    or job['describe']['state'] == "terminating":
+                logger.log(f"{job['describe']['id']}")
+            else:
+                if job['id'].startswith('job-'):
+                    # it's a single job
+                    proj = job['describe']['project']
+                    if job['describe']['executable'].startswith('applet-'):
+                        executable_Name = job['describe']['executableName']
+                        try:
+                            version = re.search(r'[0-9]\.[0-9]\.[0-9]',
+                                                executable_Name).group(0)
+                        except Exception:
+                            print(f"no app found {job['describe']['executable']}")
+                            version = ""
+                    project_executions_dict[proj]["executions"].append({
+                        "id": job['id'],
+                        "job_name": job['describe']['name'],
+                        "executable_name": job['describe']['executableName'],
+                        "version": version,
+                        "cost": job['describe']['totalPrice'],
+                        "class": job['describe']['class'],
+                        "executable": job['describe']['executable'],
+                        "state": job['describe']['state'],
+                        "created": job['describe']['created'],
+                        "modified": job['describe']['modified'],
+                        "launchedBy": job['describe']['launchedBy']})
+                elif job['describe']['executable'].startswith(r'app-'):
+                    # slow way of doing this by adding another request.
+                    try:
+                        app_described = dx.api.app_describe(
+                            app_name_or_id=job['describe']['executable']
+                        )
+                        version = app_described['version']
+                    except Exception:
+                        print(f"no app found {job['describe']['executable']}")
+                        version = ""
+                    project_executions_dict[proj]["executions"].append({
+                        "id": job['id'],
+                        "job_name": job['describe']['name'],
+                        "executable_name": job['describe']['executableName'],
+                        "version": version,
+                        "cost": job['describe']['totalPrice'],
+                        "class": job['describe']['class'],
+                        "executable": job['describe']['executable'],
+                        "state": job['describe']['state'],
+                        "created": job['describe']['created'],
+                        "modified": job['describe']['modified'],
+                        "launchedBy": job['describe']['launchedBy']})
+
+                elif job['id'].startswith('analysis-'):
+                    # its a workflow
+                    proj = job['describe']['project']
+                    try:
+                        executable_Name = job['describe']['executableName']
+                        version = re.search(r'[0-9]\.[0-9]\.[0-9]',
+                                            executable_Name).group(0)
+                    except Exception:
+                        print(f"no app found {job['describe']['executable']}")
+                        version = ""
+                    project_executions_dict[proj]["executions"].append({
+                        "id": job['id'],
+                        "job_name": job['describe']['name'],
+                        "executable_name": job['describe']['executableName'],
+                        "version": version,
+                        "cost": job['describe']['totalPrice'],
+                        "class": job['describe']['class'],
+                        "executable": job['describe']['executable'],
+                        "state": job['describe']['state'],
+                        "created": job['describe']['created'],
+                        "modified": job['describe']['modified'],
+                        "launchedBy": job['describe']['launchedBy'],
+                        "createdBy": job['describe']['workflow']['createdBy'],
+                        "Stages": job['describe']['stages']})
+                else:
+                    print(f"Error: New executable type found {type}")
+        return project_executions_dict
 
 
-def make_analyses_df(list_project_analyses_dictionary):
+def threadify_executions(project_list):
     """
-    Get all analyses from the list of analyses per proj dict
+    Use pool of threads to asynchronously get_executions() on multiple projects
+    Parameters
+    ----------
+    project_list : list
+        list of all the projects in DNAnexus
+    Returns
+    -------
+     list_of_project_executions_dicts : list
+        list of dictionaries with all the executions per project in each dict
+     e.g.
+    [{
+        'project-X': {'executions': [
+            {
+                'executions_id': "job-1",
+                'name': "APP_NAME_v1",
+                'cost': 1.5,
+                'class': "job",
+                'executable': app-id-1,
+                'LaunchedBy': "user-name",
+                'state': 'done',
+                'created': 1655983018056,
+                'modified': 1655983125956,
+                'Executions': [list of child executions and their fields],
+                'Project': "project-X"
+            }, {
+                'executions_id': "analysis-1",
+                'name': "WORKFLOW_NAME_v1",
+                'cost': 5.3,
+                'class': "analysis",
+                'executable': workflow_id-1,
+                'LaunchedBy': "user-name",
+                'state': 'failed',
+                'created': 1655442018056,
+                'modified': 1654983165959,
+                'Executions': [list of child executions and their fields],
+                'Project': "project-X"
+            }
+        ]}
+    },
+    {
+        'project-Y': {'executions': [
+            {
+                'executions_id': "job-2",
+                'name': "APP NAME",
+                'LaunchedBy': "user-name",
+                'state': 'done',
+                'created': 1655399218056,
+                'modified': 1654583125956,
+                'Executions': [list of child executions and their fields],
+                'Project': "project-Y"
+            }, {
+                'executions_id': "analysis-3",
+                'name': "WORKFLOW_NAME",
+                'LaunchedBy': "user-name",
+                'state': 'failed',
+                'created': 1655442018056,
+                'modified': 1654983165959,
+                'Executions': [list of child executions and their fields],
+                'Project': "project-Y"
+            }
+        ]}
+    }]
+    """
+    list_of_project_executions_dicts = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        futures = []
+        # Submit the get_executions function for a project
+        for project in project_list:
+            futures.append(executor.submit(get_executions, proj=project))
+        # Once all project executions are retrieved, append the final dict
+        for future in concurrent.futures.as_completed(futures):
+            if not future.result():
+                pass
+            else:
+                list_of_project_executions_dicts.append(future.result())
+
+    return list_of_project_executions_dicts
+
+
+def get_subjobs_make_job_executions_df(list_project_executions):
+    """
+    Get all executions for the project in DNAnexus,
+        storing each executions and its attributes.
+    Parameters
+    ----------
+    list_project_executions : list of dictionaries
+        of executions from DNAnexus API call.
+    Returns
+    -------
+     df: dataframe of all executions matching query.
+    e.g.
+    [{
+        'project-X': {'executions': [
+            {
+                'executions_id': "job-1",
+                'name': "APP NAME",
+                'LaunchedBy': "user-name",
+                'state': 'done',
+                'created': 1655983018056,
+                'modified': 1655983125956,
+                'Executions': [list of child executions and their fields],
+                'Project': "project-X"
+            }, {
+                'executions_id': "analysis-1",
+                'name': "WORKFLOW_NAME",
+                'LaunchedBy': "user-name",
+                'state': 'failed',
+                'created': 1655442018056,
+                'modified': 1654983165959,
+                'Executions': [list of child executions and their fields],
+                'Project': "project-X"
+            }
+        ]}
+    }]
+                            |
+                            |
+                            |
+                            v
++------------+------------------+------+----------+---------------+
+|     id     |       name       | cost |  class   |  executable   |
++------------+------------------+------+----------+---------------+
+| job-1      | APP_NAME_v1      |  1.5 | job      | app-1         |
+| analysis-1 | WORKFLOW_NAME_v1 |  5.3 | analysis | workflow_id_1 |
++------------+------------------+------+----------+---------------+
+...
++--------+---------------+---------------+------------+
+| state  |    created    |   modified    | launchedBy |
++--------+---------------+---------------+------------+
+| done   | 1655399218056 | 1654583125956 | user-name  |
+| failed | 1655442018056 | 1654983165959 | user-name  |
++--------+---------------+---------------+------------+
+...
++---------------------------------------------+-----------+------------------------+
+|                 Executions                  |  project  |         Result         |
++---------------------------------------------+-----------+------------------------+
+| [list of child executions and their fields] | project-X | 0 days 06:02:16.187000 |
+| [list of child executions and their fields] | project-X | 0 days 01:01:12.107000 |
++---------------------------------------------+-----------+------------------------+
+    """
+
+    # Find executions in each project, only returning specified fields in item
+    project_executions_dict = defaultdict(lambda: {"executions": []})
+
+    # Create empty dataframe for collecting all executions from all projects.
+    df = pd.DataFrame()
+
+    for project in list_project_executions:
+        keys = [key for key in project.keys()]
+        if not keys:
+            # empty list => no keys
+            print(f"No key present, skipped.")
+            continue
+        else:
+            # found some keys
+            project_id = keys[0]
+            data = project[project_id]
+
+            for entry in data['executions']:
+                subjobs_list = []
+                if entry["class"] == "analysis":
+                    subjobs_info = dx.bindings.search.find_executions(
+                        parent_analysis=str(entry['id']),
+                        describe=True,
+                        include_subjobs=True)
+                    # Loop over subjobs to calculate runtime.
+                    for subjob in subjobs_info:
+                        if subjob['describe']["totalPrice"] == 0:
+                            print("no cost - skipped")
+                        elif 'stoppedRunning' not in subjob['describe']:
+                            print("error job doesn't contain stoppedRunning in describe")
+                        else:
+                            # states = subjob['describe']['stateTransitions']
+                            # for item in states:
+                            #     if item.get('newState') == 'running':
+                            #         start_time = item.get('setAt')
+                            #     elif (item.get('newState') == 'failed' or
+                            #           item.get('newState') == 'done' or
+                            #           item.get('newState') == 'terminated'):
+                            #         finish_time = item.get('setAt')
+                            # runtime_epoch = finish_time - start_time
+                            runtime_epoch = subjob['describe']['stoppedRunning'] -\
+                                subjob['describe']['startedRunning']
+                            subjob['describe']["runtime"] = runtime_epoch
+                            subjobs_list.append(subjob)
+                    # Append data (dict) to list of executions.
+                    project_executions_dict[project_id]["executions"].append({
+                        "id": entry['id'],
+                        "job_name": entry['job_name'],
+                        "executable_name": entry['executable_name'],
+                        "version": entry['version'],
+                        "cost": entry['cost'],
+                        "class": entry['class'],
+                        "executable": entry['executable'],
+                        "state": entry['state'],
+                        "created": entry['created'],
+                        "modified": entry['modified'],
+                        "launchedBy": entry['launchedBy'],
+                        "Executions": subjobs_list})
+                elif entry["class"] == "job":
+                    subjobs_info = dx.bindings.search.find_executions(
+                        origin_job=str(entry['id']),
+                        describe=True,
+                        include_subjobs=True)
+                    # Loop over subjobs to calculate runtime.
+                    for subjob in subjobs_info:
+                        if subjob['describe']["totalPrice"] == 0:
+                            print("no cost - skipped")
+                        elif 'stoppedRunning' not in subjob['describe']:
+                            print("error job doesn't contain describe")
+                        else:
+                            # states = subjob['describe']['stateTransitions']
+                            # for item in states:
+                            #     if item.get('newState') == 'running':
+                            #         start_time = item.get('setAt')
+                            #     elif (item.get('newState') == 'failed' or
+                            #           item.get('newState') == 'done' or
+                            #           item.get('newState') == 'terminated'):
+                            #         finish_time = item.get('setAt')
+                            # runtime_epoch = finish_time - start_time
+                            runtime_epoch = subjob['describe']['stoppedRunning'] -\
+                                subjob['describe']['startedRunning']
+                            subjob['describe']["runtime"] = runtime_epoch
+                            subjobs_list.append(subjob)
+                    # Append data (dict) to list of executions.
+                    project_executions_dict[project_id]["executions"].append({
+                        "id": entry['id'],
+                        "job_name": entry['job_name'],
+                        "executable_name": entry['executable_name'],
+                        "version": entry['version'],
+                        "cost": entry['cost'],
+                        "class": entry['class'],
+                        "executable": entry['executable'],
+                        "state": entry['state'],
+                        "created": entry['created'],
+                        "modified": entry['modified'],
+                        "launchedBy": entry['launchedBy'],
+                        "Executions": subjobs_list})
+                else:
+                    print(f"""Error - other execution class found.
+                          See: {entry["class"]}""")
+
+        # Convert dictionaries into dataframe (df)
+        df = make_executions_subjobs_df(project_executions_dict)
+        # Find runtime for each execution.
+        df["Result"] = df['Executions'].apply(
+            lambda x: sum([int(value['describe']['runtime']) for value in x])
+        )
+        # convert to timedelta for storing as DurationField
+        df["Result_td"] = pd.to_timedelta(df["Result"], 'ms')
+
+    return df
+
+
+def get_executions_from_list():
+    """
+    Get all executions which weren't finished and in the "done" state from
+    the last time the query was run.
+    Each top-level job is stored with it's attributes,
+    mainly cost and who launched it.
+    Parameters
+    ----------
+    None
+    Returns
+    -------
+     list_of_previous_executions : collections.defaultdict
+        dictionary with all the executions in log_executions.log
+        which are now in the "done" state.
+    """
+
+    # Find executions in each project, only returning specified fields in item
+    results = []
+    with open("log_executions.log", "r") as ids:
+        list_of_ids = ids.readlines()
+        for dxid in list_of_ids:
+            dx_id_new = dxid.replace("\n", "")
+
+            if dx_id_new.startswith('job-'):
+                result = dx.api.job_describe(object_id=str(dx_id_new))
+                results.append(result)
+
+            elif dx_id_new.startswith('analysis-'):
+                result = dx.api.analysis_describe(object_id=str(dx_id_new))
+                results.append(result)
+
+            else:
+                print(f" New executable type found {dx_id_new}")
+
+    # Rewrite file to remove old executions.
+    open("log_executions.log", "w").close()
+
+    # Check if empty. Return empty list
+    if not results:
+        print("No data found, exited process")
+        return []
+    # If data is present, for loop over and
+    # re-add to log if still non-terminal state.
+    else:
+        print("data found")
+        list_of_previous_executions = []
+        for job in results:
+            project_executions_dict = defaultdict(lambda: {"executions": []})
+            if (
+                job['state'] == "in_progress" or
+                job['state'] == "terminating" or
+                job['state'] == "debug_hold" or
+                job['state'] == "partially_failed"
+            ):
+                # Append to the log for checking again next time.
+                with open("log_executions.log") as file:
+                    file.append(f"{job['id']}")
+            elif job['class'] == 'analysis':
+                proj = job['project']
+                executable_Name = job['describe']['executableName']
+                version = re.search(r'[0-9]\.[0-9]\.[0-9]',
+                                    executable_Name).group(0)
+
+                project_executions_dict[proj]['executions'].append({
+                    "id": job['id'],
+                    "name": job['name'],
+                    "cost": job['totalPrice'],
+                    "class": job['class'],
+                    "executable": job['executable'],
+                    "version": version,
+                    "state": job['state'],
+                    "created": job['created'],
+                    "modified": job['modified'],
+                    "launchedBy": job['launchedBy'],
+                    "Stages": job['stages']})
+                list_of_previous_executions.append(project_executions_dict)
+            elif job['class'] == 'job':
+                proj = job['project']
+                if job['describe']['executable'].startswith('applet-'):
+                    executable_Name = job['describe']['executableName']
+                    try:
+                        version = re.search(r'[0-9]\.[0-9]\.[0-9]',
+                                            executable_Name).group(0)
+                    except Exception:
+                        version = ""
+                elif job['describe']['executable'].startswith('app-'):
+                    try:
+                        # slow way of doing this by adding another request.
+                        app_described = dx.api.app_describe(
+                            app_name_or_id=job['describe']['executable']
+                        )
+                        version = app_described['version']
+                    except Exception:
+                        print(f"no app found {job['describe']['executable']}")
+                        version = ""
+                project_executions_dict[proj]['executions'].append({
+                    "id": job['id'],
+                    "name": job['name'],
+                    "cost": job['totalPrice'],
+                    "class": job['class'],
+                    "executable": job['executable'],
+                    "version": version,
+                    "state": job['state'],
+                    "created": job['created'],
+                    "modified": job['modified'],
+                    "launchedBy": job['launchedBy']})
+                list_of_previous_executions.append(project_executions_dict)
+            else:
+                print(f"Error found see job: {job}")
+
+        return list_of_previous_executions
+
+
+def peek(iterable):
+    """
+    This function is used to check if a generator contains any data.
+    It returns a boolean.
+    Args:
+        iterable (generator): generator object returned by DNAnexus API call.
+    Returns:
+        boolean: True if generator yields data and false if not.
+    """
+    response = list(iterable)
+    if response:
+        return True
+    else:
+        return False
+
+
+def make_executions_subjobs_df(list_project_executions_dictionary):
+    """
+    Get all executions from the list of executions per proj dict
     and add it into a df.
     Parameters
     ----------
-    list_project_analyses_dictionary: list of all analyses for each project.
-
+    list_project_executions_dictionary:
+        list of all executions for each project.
     Returns
     -------
-    list_of_project_analyses_dicts: list
-        list of dictionaries for analyses for each project.
+    list_of_project_executions_dicts: list
+        list of dictionaries for executions for each project.
     """
 
     rows = []
-    # For each project dictionary with its associated analyses
-    for project_dict in list_project_analyses_dictionary:
-        # For the project and its associated analyses
-        for project, data in project_dict.items():
-            # Get the analyses info
-            data_row = data['analysis']
 
-            # Add the project name to the row 'project'
-            for row in data_row:
-                row['project'] = project
-                # Append each analyses info as info to the other columns
-                rows.append(row)
+    # For each project dictionary with its associated executions
+    for project, data in list_project_executions_dictionary.items():
+        # For the project and its associated executions
+        # Get the executions info
+        data_row = data['executions']
+
+        # Add the project name to the row 'project'
+
+        for row in data_row:
+            row['project'] = project
+            # Append each executions info as info to the other columns
+            rows.append(row)
 
     return pd.DataFrame(rows)
+
+
+def orchestrate_get_executions(proj_list):
+    """
+    Orchestates all the functions for getting
+    API data for executions and returning this in a pandas dataframe.
+    paramaters
+    ----------
+    proj_list: list
+        all the project IDs in a list
+    executions_df: dataframe
+        dataframe with a row for each project
+    """
+    previous_executions = get_executions_from_list()
+    project_executions_dicts_list = threadify_executions(proj_list)
+    # project_executions_dicts_list.append(previous_executions)
+    print("checking all executions format")
+    print("---")
+    all_executions = previous_executions + project_executions_dicts_list
+    executions_df = get_subjobs_make_job_executions_df(all_executions)
+    print("---")
+
+    return executions_df
 
 
 
