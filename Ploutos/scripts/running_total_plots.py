@@ -92,7 +92,8 @@ class RunningTotPlotFunctions():
         daily_df = daily_charge_df.to_html(
             index=False,
             classes = 'table table-striped" id = "dailytable',
-            justify='left'
+            justify='left',
+            float_format="%.2f"
         )
 
         # Add unified hover label so all charges shown
@@ -263,7 +264,8 @@ class RunningTotPlotFunctions():
             index=False,
             #classes='table table-striped',
             classes = 'table table-striped" id = "monthlytable',
-            justify='left'
+            justify='left',
+            float_format="%.2f"
         )
 
         fig = go.Figure()

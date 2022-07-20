@@ -20,79 +20,7 @@ class FilePlotFunctions():
 
         # Get new colour palette for BAM, FASTQ and VCF
         self.file_type_colours = px.colors.qualitative.Pastel
-        self.my_chart_data = {
-            'chart': {
-                'type': 'column',
-                'width': 1200,
-                'height': 500,
-                'style': {
-                    'float': 'center'
-                }
-            },
-            'title': {
-                'text': 'Monthly Storage Cost'
-            },
-            'xAxis': {
-                'categories': "",
-                'labels': {
-                    'style': {
-                        'fontSize': '12px'
-                    }
-                }
-            },
-            'yAxis': {
-                'allowDecimals': 'false',
-                'min': '0',
-                'title': {
-                    'text': 'Total estimated storage cost ($)',
-                    'style': {
-                        'fontSize': '15px'
-                    }
-                },
-                'stackLabels': {
-                    'enabled': 'true',
-                    'allowOverlap': 'true',
-                    'style': {
-                        'color': 'gray',
-                        'textOutline': 0
-                    },
-                    'format': "{stack}"
-                }
-            },
-            'setOptions': {
-                'lang': {
-                    'thousandsSep': ',',
-                    'noData': 'No data to display'
-                }
-            },
-            'plotOptions': {
-                'column': {
-                    'stacking': 'normal'
-                    }
-            },
-            'exporting': {
-                'buttons': {
-                    'contextButton': {
-                        'menuItems': [
-                            "viewFullscreen", "printChart", "downloadPNG",
-                            "downloadJPEG", "downloadPDF"
-                        ]
-                    }
-                },
-                'chartOptions': {
-                    'chart': {
-                        'style': {
-                            'fontFamily': 'Roboto'
-                        }
-                    }
-                }
-            },
-            'series': "",
-            "tooltip": {
-                "pointFormat": "{series.name}: <b>${point.y:.2f}"
-                "</b><br>{series.options.stack}<br>"
-            }
-        }
+        self.my_chart_data = sp.StoragePlotFunctions().chart_data.copy()
 
 
     def convert_to_df(self, category_chart_data, size_or_count, multi_or_all):
@@ -181,13 +109,30 @@ class FilePlotFunctions():
                 },
                 inplace = True
             )
-
-        # Convert to HTML to easily show with DataTables
-        chart_data = exploded.to_html(
-            index=False,
-            classes='table table-striped"',
-            justify='center',
-        )
+        # If size df, convert size column to float type
+        # So float format doesn't cause error
+        # Otherwise make int for count
+        if size_or_count == 'size':
+            if exploded['Total Size (TiB)'].isnull().values.any():
+                pass
+            else:
+                exploded[
+                    'Total Size (TiB)'
+                ] = exploded['Total Size (TiB)'].astype(float)
+                # Convert to HTML to easily show with DataTables
+            chart_data = exploded.to_html(
+                index=False,
+                classes='table table-striped"',
+                justify='left',
+                float_format="%.2f"
+            )
+        else:
+            # Convert to HTML to easily show with DataTables
+            chart_data = exploded.to_html(
+                index=False,
+                classes='table table-striped"',
+                justify='left',
+            )
 
         return chart_data
 
@@ -313,10 +258,15 @@ class FilePlotFunctions():
                 'Archived Count'
             ] = one_proj_per_row_file_types['Archived Count'].astype(int)
 
+            # This gets rid of extra row and changes index name
+            # From 'File Type' above the projects to 'Project'
+            one_proj_per_row_file_types.index.name = None
+            one_proj_per_row_file_types.columns.names = (None, "Project")
+
         # Convert to HTML to easily show with DataTables
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
             classes='table table-striped"',
-            justify='center',
+            justify='left',
             float_format="%.2f"
         )
 
@@ -644,7 +594,7 @@ class FilePlotFunctions():
         # Convert to HTML to easily show with DataTables
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
             classes='table table-striped"',
-            justify='center',
+            justify='left',
             float_format="%.2f"
         )
 
@@ -655,7 +605,7 @@ class FilePlotFunctions():
         category_chart_data['title']['text'] = (
             f"File Sizes By Project Type - {date_to_filter}"
         )
-        category_chart_data['yAxis']['title']['text'] = "Total Size"
+        category_chart_data['yAxis']['title']['text'] = "Total Size (TiB)"
         category_chart_data['tooltip']['pointFormat'] = (
             "{series.name}: <b>{point.y:.2f} TiB </b><br>"
             "{series.options.stack}<br>"
@@ -886,7 +836,7 @@ class FilePlotFunctions():
         # Convert to HTML to easily show with DataTables
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
             classes='table table-striped"',
-            justify='center',
+            justify='left',
             float_format="%.2f"
         )
 
@@ -1124,7 +1074,7 @@ class FilePlotFunctions():
         # Convert to HTML to easily show with DataTables
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
             classes='table table-striped"',
-            justify='center',
+            justify='left',
             float_format="%.2f"
         )
 

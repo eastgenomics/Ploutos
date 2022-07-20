@@ -261,11 +261,19 @@ class StoragePlotFunctions():
             },
             inplace = True
         )
+        if exploded['Monthly storage cost ($)'].isnull().values.any():
+            pass
+        else:
+            exploded[
+                    'Monthly storage cost ($)'
+                ] = exploded['Monthly storage cost ($)'].astype(float)
+
         # Convert to HTML to easily show with DataTables
         chart_data = exploded.to_html(
             index=False,
             classes='table table-striped"',
-            justify='left'
+            justify='left',
+            float_format="%.2f"
         )
 
         return chart_data
