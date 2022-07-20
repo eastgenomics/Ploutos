@@ -9,15 +9,17 @@ from dateutil.relativedelta import relativedelta
 from dashboard.forms import (
     DateForm, MonthlyForm, StorageForm, FileForm
 )
-from dashboard.models import (
-    DailyOrgRunningTotal, FileTypeDate, FileTypeState, FileTypes
-)
+from dashboard.models import DailyOrgRunningTotal
 from django.shortcuts import render
 from scripts import DNAnexus_queries as dx_queries
-from scripts import file_plots as fp
-from scripts import running_total_plots as rtp
-from scripts import storage_plots as sp
+from scripts.file_plots import FilePlotFunctions
+from scripts.running_total_plots import RunningTotPlotFunctions
+from scripts.storage_plots import StoragePlotFunctions
 
+
+rtp = RunningTotPlotFunctions()
+fp = FilePlotFunctions()
+sp = StoragePlotFunctions()
 
 def index(request):
     """View to display running total charges via Plotly"""
@@ -36,7 +38,7 @@ def index(request):
         # Get the form with info, set monthly form and monthly plot to default
         form = DateForm(request.GET)
         form2 = MonthlyForm()
-        chart2, monthly_df = rtp.RunningTotPlotFunctions().monthly_between_dates(
+        chart2, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
@@ -64,7 +66,7 @@ def index(request):
 
                 # If user wants to see all charge types, render whole graph
                 # if charge_type == 'All':
-                fig, daily_df = rtp.RunningTotPlotFunctions().daily_plot(totals)
+                fig, daily_df = rtp.daily_plot(totals)
                 chart = fig.to_html()
 
                 # Send filtered chart1 and unfiltered chart 2 to context
@@ -86,7 +88,7 @@ def index(request):
                     ]
                 )
 
-                fig, daily_df = rtp.RunningTotPlotFunctions().daily_plot(totals)
+                fig, daily_df = rtp.daily_plot(totals)
                 chart = fig.to_html()
 
                 context = {
@@ -107,7 +109,7 @@ def index(request):
                 ]
             )
 
-            fig, daily_df = rtp.RunningTotPlotFunctions().daily_plot(totals)
+            fig, daily_df = rtp.daily_plot(totals)
             chart = fig.to_html()
 
             context = {
@@ -137,12 +139,11 @@ def index(request):
             if start_month == "---" and end_month == "---":
 
                 # Display last four months on monthly plot
-                chart2, monthly_df = rtp.RunningTotPlotFunctions(
-                ).monthly_between_dates(
+                chart2, monthly_df = rtp.monthly_between_dates(
                     start_of_four_months_ago, start_of_next_month
                 )
                 # And last four months on daily plot
-                fig, daily_df = rtp.RunningTotPlotFunctions().daily_plot(totals)
+                fig, daily_df = rtp.daily_plot(totals)
                 chart = fig.to_html()
 
                 context = {
@@ -165,12 +166,11 @@ def index(request):
                 # Add one month to the end month
                 # So it is first of next month
                 month_end = date_month_end + relativedelta(months=+1)
-                chart2, monthly_df = rtp.RunningTotPlotFunctions(
-                ).monthly_between_dates(
+                chart2, monthly_df = rtp.monthly_between_dates(
                     month_start, month_end
                 )
                 # Show last four months on daily plot
-                fig, daily_df = rtp.RunningTotPlotFunctions().daily_plot(totals)
+                fig, daily_df = rtp.daily_plot(totals)
                 chart = fig.to_html()
 
                 context = {
@@ -185,11 +185,11 @@ def index(request):
         else:
             # If monthly form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
-            chart2, monthly_df = rtp.RunningTotPlotFunctions().monthly_between_dates(
+            chart2, monthly_df = rtp.monthly_between_dates(
                 start_of_four_months_ago, start_of_next_month
             )
             # Show last four months on daily plot
-            fig, daily_df = rtp.RunningTotPlotFunctions().daily_plot(totals)
+            fig, daily_df = rtp.daily_plot(totals)
             chart = fig.to_html()
 
             context = {
@@ -205,12 +205,11 @@ def index(request):
     else:
         form = DateForm()
         form2 = MonthlyForm()
-        chart2, monthly_df = rtp.RunningTotPlotFunctions(
-        ).monthly_between_dates(
+        chart2, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
-        fig, daily_df = rtp.RunningTotPlotFunctions().daily_plot(totals)
+        fig, daily_df = rtp.daily_plot(totals)
         chart = fig.to_html()
 
         context = {
@@ -269,8 +268,7 @@ def storage_chart(request):
                     assay_type = form.cleaned_data.get('assay_type')
 
                     # Month ranges are last four months
-                    context = sp.StoragePlotFunctions(
-                    ).month_range_assay_type_and_proj_type(
+                    context = sp.month_range_assay_type_and_proj_type(
                         project_type,
                         assay_type,
                         four_months_start,
@@ -286,12 +284,10 @@ def storage_chart(request):
                         # Remove all whitespace + start + end commas
                         # Split by commas and add each to new list
                         proj_string = form.cleaned_data.get('project_type')
-                        proj_types = sp.StoragePlotFunctions(
-                        ).str_to_list(proj_string)
+                        proj_types = sp.str_to_list(proj_string)
 
                         # Month ranges are last four months
-                        context = sp.StoragePlotFunctions(
-                        ).month_range_only_project_types(
+                        context = sp.month_range_only_project_types(
                             proj_types,
                             four_months_start,
                             this_months_end,
@@ -303,12 +299,10 @@ def storage_chart(request):
                     # Split on commas and add to list
                     elif form.cleaned_data.get('assay_type'):
                         assay_string = form.cleaned_data.get('assay_type')
-                        assay_types = sp.StoragePlotFunctions(
-                        ).str_to_list(assay_string)
+                        assay_types = sp.str_to_list(assay_string)
 
                         # Month ranges are last four months
-                        context = sp.StoragePlotFunctions(
-                        ).month_range_only_assay_types(
+                        context = sp.month_range_only_assay_types(
                             assay_types,
                             four_months_start,
                             this_months_end,
@@ -321,11 +315,12 @@ def storage_chart(request):
                         # And no months searched for
                         # Display all projs last 4 months grouped by month
 
-                        context = sp.StoragePlotFunctions(
-                        ).month_range_form_submitted_no_proj_or_assay(
-                            four_months_start,
-                            this_months_end,
-                            form
+                        context = (
+                            sp.month_range_form_submitted_no_proj_or_assay(
+                                four_months_start,
+                                this_months_end,
+                                form
+                            )
                         )
 
             else:
@@ -352,8 +347,7 @@ def storage_chart(request):
 
                     # Filter by start date of start month-year
                     # And end date of end month-year
-                    context = sp.StoragePlotFunctions(
-                    ).month_range_assay_type_and_proj_type(
+                    context = sp.month_range_assay_type_and_proj_type(
                         project_type,
                         assay_type,
                         month_start,
@@ -367,13 +361,11 @@ def storage_chart(request):
                         # Remove all whitespace + start + end commas
                         # Split by commas and add each to new list
                         proj_string = form.cleaned_data.get('project_type')
-                        proj_types = sp.StoragePlotFunctions(
-                        ).str_to_list(proj_string)
+                        proj_types = sp.str_to_list(proj_string)
 
                         # Filter by start date of start month-year
                         # And end date of end month-year
-                        context = sp.StoragePlotFunctions(
-                        ).month_range_only_project_types(
+                        context = sp.month_range_only_project_types(
                             proj_types,
                             month_start,
                             month_end,
@@ -385,13 +377,11 @@ def storage_chart(request):
                     # Split on commas and add to list
                     elif form.cleaned_data.get('assay_type'):
                         assay_string = form.cleaned_data.get('assay_type')
-                        assay_types = sp.StoragePlotFunctions(
-                        ).str_to_list(assay_string)
+                        assay_types = sp.str_to_list(assay_string)
 
                         # Filter by start date of start month-year
                         # And end date of end month-year
-                        context = sp.StoragePlotFunctions(
-                        ).month_range_only_assay_types(
+                        context = sp.month_range_only_assay_types(
                             assay_types,
                             month_start,
                             month_end,
@@ -404,39 +394,37 @@ def storage_chart(request):
                         # And want to see between month range
                         # Display all the projects grouped by months
 
-                        context = sp.StoragePlotFunctions(
-                        ).month_range_form_submitted_no_proj_or_assay(
-                            month_start,
-                            month_end,
-                            form
+                        context = (
+                            sp.month_range_form_submitted_no_proj_or_assay(
+                                month_start,
+                                month_end,
+                                form
+                            )
                         )
 
         else:
             # If the form is not valid, display just the standard graph
             # Grouped by last four months
             # For all projects
-            context = sp.StoragePlotFunctions(
-                ).form_is_not_submitted_or_invalid(form)
+            context = sp.form_is_not_submitted_or_invalid(form)
 
     elif 'clear' in request.GET:
         form = StorageForm()
-        context = sp.StoragePlotFunctions(
-            ).form_is_not_submitted_or_invalid(form)
+        context = sp.form_is_not_submitted_or_invalid(form)
     else:
         # If nothing is submitted on the form (normal landing page)
         # Display the all projects graph grouped by last four months
         form = StorageForm()
-        context = sp.StoragePlotFunctions(
-            ).form_is_not_submitted_or_invalid(form)
+        context = sp.form_is_not_submitted_or_invalid(form)
 
     return render(request, 'bar_chart.html', context)
 
 def files(request):
     """View for displaying the file type data"""
     date_to_filter = date.today()
-    live_total, archived_total = sp.StoragePlotFunctions(
-    ).get_todays_total_unique_size()
+    live_total, archived_total = sp.get_todays_total_unique_size()
     proj_level_df = None
+
     # If the user has submitted the form
     if 'submit' in request.GET:
         form = FileForm(request.GET)
@@ -447,6 +435,7 @@ def files(request):
                 date_to_filter = form.cleaned_data.get('date_to_filter')
             else:
                 date_to_filter = date.today()
+
             # If a project type and assay type is entered
             # Plot sizes + counts for the combination
             if (form.cleaned_data.get('project_type') and
@@ -454,13 +443,15 @@ def files(request):
                 project_type = form.cleaned_data.get('project_type').strip()
                 assay_type = form.cleaned_data.get('assay_type').strip()
 
-                count_chart_data, count_df = fp.FilePlotFunctions(
-                ).file_types_count_assay_and_proj_types(
-                    date_to_filter, project_type, assay_type
+                count_chart_data, count_df = (
+                    fp.file_types_count_assay_and_proj_types(
+                        date_to_filter, project_type, assay_type
+                    )
                 )
-                size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
-                ).file_types_size_assay_and_proj_types(
-                    date_to_filter, project_type, assay_type
+                size_chart_data, size_df, proj_level_df = (
+                    fp.file_types_size_assay_and_proj_types(
+                        date_to_filter, project_type, assay_type
+                    )
                 )
 
             else:
@@ -468,61 +459,69 @@ def files(request):
                 # Plot sizes + counts for those proj types
                 if form.cleaned_data.get('project_type'):
                     proj_string = form.cleaned_data.get('project_type')
-                    proj_types = sp.StoragePlotFunctions(
-                    ).str_to_list(proj_string)
+                    proj_types = sp.str_to_list(proj_string)
 
-                    count_chart_data, count_df = fp.FilePlotFunctions(
-                    ).file_types_count_project_types(
-                        date_to_filter, proj_types
+                    count_chart_data, count_df = (
+                        fp.file_types_count_project_types(
+                            date_to_filter, proj_types
+                        )
                     )
-                    size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
-                    ).file_types_size_project_types(
-                        date_to_filter, proj_types
+                    size_chart_data, size_df, proj_level_df = (
+                        fp.file_types_size_project_types(
+                            date_to_filter, proj_types
+                        )
                     )
 
                 # If just assay types are entered
                 # Plot sizes + counts for those assay types
                 elif form.cleaned_data.get('assay_type'):
                     assay_string = form.cleaned_data.get('assay_type')
-                    assay_types = sp.StoragePlotFunctions(
-                    ).str_to_list(assay_string)
+                    assay_types = sp.str_to_list(assay_string)
 
-                    count_chart_data, count_df = fp.FilePlotFunctions(
-                    ).file_types_count_assay_types(
-                        date_to_filter, assay_types
+                    count_chart_data, count_df = (
+                        fp.file_types_count_assay_types(
+                            date_to_filter, assay_types
+                        )
                     )
-                    size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
-                    ).file_types_size_assay_types(
-                        date_to_filter, assay_types
+                    size_chart_data, size_df, proj_level_df = (
+                        fp.file_types_size_assay_types(
+                            date_to_filter, assay_types
+                        )
                     )
 
                 else:
                     # If form submitted but no projects or assays searched for
                     # Show today's sizes + counts
-                    size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
-                    ).file_types_size_all_projects(date_to_filter)
+                    size_chart_data, size_df, proj_level_df = (
+                        fp.file_types_size_all_projects(date_to_filter)
+                    )
 
-                    count_chart_data, count_df = fp.FilePlotFunctions(
-                    ).file_types_count_all_projects(date_to_filter)
+                    count_chart_data, count_df = (
+                        fp.file_types_count_all_projects(date_to_filter)
+                    )
 
         else:
             # Form is not valid
             # Go back to showing today's sizes + counts
-            size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
-            ).file_types_size_all_projects(date_to_filter)
+            size_chart_data, size_df, proj_level_df = (
+                fp.file_types_size_all_projects(date_to_filter)
+            )
 
-            count_chart_data, count_df = fp.FilePlotFunctions(
-            ).file_types_count_all_projects(date_to_filter)
+            count_chart_data, count_df = (
+                fp.file_types_count_all_projects(date_to_filter)
+            )
     else:
         # Nothing is submitted
         # Show today's sizes + counts
         form = FileForm()
 
-        size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
-        ).file_types_size_all_projects(date_to_filter)
+        size_chart_data, size_df, proj_level_df = (
+            fp.file_types_size_all_projects(date_to_filter)
+        )
 
-        count_chart_data, count_df = fp.FilePlotFunctions(
-        ).file_types_count_all_projects(date_to_filter)
+        count_chart_data, count_df = (
+            fp.file_types_count_all_projects(date_to_filter)
+        )
 
     context = {
         'live_total': live_total,

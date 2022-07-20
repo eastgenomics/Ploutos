@@ -5,24 +5,25 @@ import plotly.express as px
 
 from dashboard.models import FileTypeDate
 from django.db.models import Sum
-from scripts import storage_plots as sp
+from scripts.storage_plots import StoragePlotFunctions
 
+
+sp = StoragePlotFunctions()
 
 class FilePlotFunctions():
     """Functions for the file type storage plots"""
 
     def __init__(self) -> None:
         # Steal lots of things already defined in StoragePlotFunctions
-        self.today_date = sp.StoragePlotFunctions().today_date
-        self.chart_data = sp.StoragePlotFunctions().chart_data
-        self.proj_colour_dict = sp.StoragePlotFunctions().proj_colour_dict
-        self.assay_colour_dict = sp.StoragePlotFunctions().assay_colour_dict
-        self.project_colours = sp.StoragePlotFunctions().project_colours
-        self.assay_colours = sp.StoragePlotFunctions().assay_colours
+        self.chart_data = sp.chart_data
+        self.proj_colour_dict = sp.proj_colour_dict
+        self.assay_colour_dict = sp.assay_colour_dict
+        self.project_colours = sp.project_colours
+        self.assay_colours = sp.assay_colours
 
         # Get new colour palette for BAM, FASTQ and VCF
-        # Get all the FileTypeDate objs for today to use in all the functions
         self.file_type_colours = px.colors.qualitative.Pastel
+
 
     def convert_to_df(self, category_chart_data, size_or_count, multi_or_all):
         """
@@ -120,6 +121,7 @@ class FilePlotFunctions():
 
         return chart_data
 
+
     def file_types_size_all_projects(self, date_to_filter):
         """
         Returns the chart data and a df for today's file sizes in DNAnexus
@@ -127,7 +129,9 @@ class FilePlotFunctions():
 
         Parameters
         ----------
-        none
+        date_to_filter : str or date object
+            date to filter the FileTypeDate objects, is either today default
+            or the date which has been entered into the datepicker
 
         Returns
         -------
@@ -217,6 +221,7 @@ class FilePlotFunctions():
                     'file_state__file_count_archived': 'Archived Count'
                 }, inplace=True
             )
+
             proj_level_file_type_df['File Type'] = proj_level_file_type_df[
                 'File Type'
             ].str.upper()
@@ -261,6 +266,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df, one_proj_per_row_file_types
 
+
     def file_types_count_all_projects(self, date_to_filter):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
@@ -268,7 +274,9 @@ class FilePlotFunctions():
 
         Parameters
         ----------
-        none
+        date_to_filter : str or date object
+            date to filter the FileTypeDate objects, is either today default
+            or the date which has been entered into the datepicker
 
         Returns
         -------
@@ -342,6 +350,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df
 
+
     def file_types_count_project_types(self, date_to_filter, proj_types):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
@@ -349,6 +358,9 @@ class FilePlotFunctions():
 
         Parameters
         ----------
+        date_to_filter : str or date object
+            date to filter the FileTypeDate objects, is either today default
+            or the date which has been entered into the datepicker
         proj_types : list
             list of project types entered in the form e.g. ['001','002']
 
@@ -429,6 +441,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df
 
+
     def file_types_size_project_types(self, date_to_filter, proj_types):
         """
         Returns the chart data and a df for today's file sizes in DNAnexus
@@ -436,6 +449,9 @@ class FilePlotFunctions():
 
         Parameters
         ----------
+        date_to_filter : str or date object
+            date to filter the FileTypeDate objects, is either today default
+            or the date which has been entered into the datepicker
         proj_types : list
             list of project types entered in the form e.g. ['001','002']
 
@@ -579,6 +595,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df, one_proj_per_row_file_types
 
+
     def file_types_count_assay_types(self, date_to_filter, assay_types):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
@@ -586,6 +603,9 @@ class FilePlotFunctions():
 
         Parameters
         ----------
+        date_to_filter : str or date object
+            date to filter the FileTypeDate objects, is either today default
+            or the date which has been entered into the datepicker
         assay_types : list
             list of project types entered in the form e.g. ['CEN','TWE']
 
@@ -664,6 +684,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df
 
+
     def file_types_size_assay_types(self, date_to_filter, assay_types):
         """
         Returns the chart data and a df for today's file sizes in DNAnexus
@@ -671,6 +692,9 @@ class FilePlotFunctions():
 
         Parameters
         ----------
+        date_to_filter : str or date object
+            date to filter the FileTypeDate objects, is either today default
+            or the date which has been entered into the datepicker
         assay_types : list
             list of project types entered in the form e.g. ['CEN','TWE']
 
@@ -814,6 +838,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df, one_proj_per_row_file_types
 
+
     def file_types_count_assay_and_proj_types(
         self, date_to_filter, project_type, assay_type
     ):
@@ -823,6 +848,9 @@ class FilePlotFunctions():
 
         Parameters
         ----------
+        date_to_filter : str or date object
+            date to filter the FileTypeDate objects, is either today default
+            or the date which has been entered into the datepicker
         project_type : str
             what the project name begins with e.g. "002"
         assay_type : str
@@ -897,6 +925,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df
 
+
     def file_types_size_assay_and_proj_types(
         self, date_to_filter, project_type, assay_type
     ):
@@ -906,6 +935,9 @@ class FilePlotFunctions():
 
         Parameters
         ----------
+        date_to_filter : str or date object
+            date to filter the FileTypeDate objects, is either today default
+            or the date which has been entered into the datepicker
         project_type : str
             what the project name begins with e.g. "002"
         assay_type : str
