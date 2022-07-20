@@ -8,7 +8,6 @@
       scrollY: '400px',
       scroller: true,
       deferRender:    true,
-      pageResize:     true,
       info:           false,
       scrollCollapse: true,
       columnDefs: [
@@ -38,7 +37,6 @@
       scrollY: '400px',
       scroller: true,
       deferRender:    true,
-      pageResize:     true,
       info:           false,
       scrollCollapse: true,
       columnDefs: [
@@ -62,11 +60,22 @@
 
 </script>
 <div class="all" style='margin: 0 auto;'>
-<form method="GET" action="{% url 'index' %}" style="padding-top: 15px;">
+<form method="GET" action="{% url 'index' %}" style="padding-top: 20px;">
     <div class="container">
         <div class="row">
+          <div class="card-body bg-white">
+            <h1><b>Ploutos</b></h1>
+            <h2><i class="bi-piggy-bank"></i> Running Totals</h2>
+            <p>
+              This page shows charges derived from querying the DNAnexus API running total billing charges daily <i>(dxpy.api.org_describe)</i>.
+              <br>
+              Note: as the API queries aim to be run just after midnight, the charges for the day the query is run are attributed to the previous day. 
+            </p>
+        </div>
+        <div class="my-form">
           {% crispy form %}
         </div>
+      </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Filter"/>
     <input type="reset" name="reset" value="Reset"/>
@@ -83,7 +92,9 @@
 <form method="GET" action="{% url 'index' %}">
 <div class="container">
   <div class="row">
+    <div class="my-form">
     {% crispy form2 %}
+    </div>
   </div>
   <input type="submit" name="monthly" value="Filter"/>
   <input type="reset" name="reset2" value="Reset"/>

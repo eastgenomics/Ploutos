@@ -1,3 +1,5 @@
+from datetime import date
+import numpy as np
 import pandas as pd
 import plotly.express as px
 
@@ -21,9 +23,6 @@ class FilePlotFunctions():
         # Get new colour palette for BAM, FASTQ and VCF
         # Get all the FileTypeDate objs for today to use in all the functions
         self.file_type_colours = px.colors.qualitative.Pastel
-        self.file_type_objs = FileTypeDate.objects.filter(
-            date__date=self.today_date
-        )
 
     def convert_to_df(self, category_chart_data, size_or_count, multi_or_all):
         """
@@ -116,12 +115,12 @@ class FilePlotFunctions():
         chart_data = exploded.to_html(
             index=False,
             classes='table table-striped"',
-            justify='left'
+            justify='center',
         )
 
         return chart_data
 
-    def todays_file_types_size_all_projects(self):
+    def file_types_size_all_projects(self, date_to_filter):
         """
         Returns the chart data and a df for today's file sizes in DNAnexus
         For all of the projects aggregated
@@ -138,14 +137,14 @@ class FilePlotFunctions():
             dataframe of the series size values to show under chart
         """
         file_type_names = ['bam', 'fastq', 'vcf']
-
         category_data_source = []
         # Count is -2 and adding 2 because I liked those colours
         count = -2
 
         for file_type in file_type_names:
             count += 2
-            file_type_size = self.file_type_objs.filter(
+            file_type_size = FileTypeDate.objects.filter(
+                date__date=date_to_filter,
                 file_state__file_type__file_type=file_type
             ).aggregate(
                 Live_Size=Sum('file_state__file_size_live'),
@@ -187,11 +186,70 @@ class FilePlotFunctions():
             category_data_source.append(live_data)
             category_data_source.append(archived_data)
 
+        # Make project level dataframe so user can see which projs
+        # Have all the files
+        proj_level_file_type_df = pd.DataFrame.from_records(
+            FileTypeDate.objects.filter(
+                date__date=date_to_filter
+            ).values(
+                'project_id__name',
+                'file_state__file_type__file_type',
+                'file_state__file_size_live',
+                'file_state__file_size_archived',
+                'file_state__file_count_live',
+                'file_state__file_count_archived'
+            )
+        )
+
+        # If the queryset was empty meaning the df is empty
+        # Because script hasn't run today, set final df to empty
+        if proj_level_file_type_df.empty:
+            one_proj_per_row_file_types = pd.DataFrame()
+        else:
+            # DataFrame not empty (there is data today)
+            proj_level_file_type_df.rename(
+                columns={
+                    'project_id__name': 'Project',
+                    'file_state__file_type__file_type': 'File Type',
+                    'file_state__file_size_live': 'Live Size (GiB)',
+                    'file_state__file_size_archived': 'Archived Size (GiB)',
+                    'file_state__file_count_live': 'Live Count',
+                    'file_state__file_count_archived': 'Archived Count'
+                }, inplace=True
+            )
+            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
+                'File Type'
+            ].str.upper()
+
+            # Get one row per project rather than 3 (one for each file type)
+            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
+                index='Project',
+                columns='File Type',
+                values=[
+                    'Live Count', 'Archived Count',
+                    'Live Size (GiB)', 'Archived Size (GiB)'
+                ]
+            )
+
+            one_proj_per_row_file_types[
+                'Live Count'
+            ] = one_proj_per_row_file_types['Live Count'].astype(int)
+            one_proj_per_row_file_types[
+                'Archived Count'
+            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
+
+        # Convert to HTML to easily show with DataTables
+        one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
+            classes='table table-striped"',
+            justify='center',
+            float_format="%.2f"
+        )
+
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = ["All projects"]
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            f"Today's File Type Sizes - {self.today_date}"
+            f"File Type Sizes - {date_to_filter}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total size (TiB)"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -201,9 +259,9 @@ class FilePlotFunctions():
 
         chart_df = self.convert_to_df(category_chart_data, "size", "all")
 
-        return category_chart_data, chart_df
+        return category_chart_data, chart_df, one_proj_per_row_file_types
 
-    def todays_file_types_count_all_projects(self):
+    def file_types_count_all_projects(self, date_to_filter):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
         For all of the projects aggregated
@@ -225,7 +283,8 @@ class FilePlotFunctions():
         count = -2
         for file_type in file_type_names:
             count += 2
-            file_type_size = self.file_type_objs.filter(
+            file_type_size = FileTypeDate.objects.filter(
+                date__date=date_to_filter,
                 file_state__file_type__file_type=file_type
             ).aggregate(
                 Live_Count=Sum('file_state__file_count_live'),
@@ -271,7 +330,7 @@ class FilePlotFunctions():
         category_chart_data['xAxis']['categories'] = ["All projects"]
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            f"Today's File Type Counts - {self.today_date}"
+            f"File Type Counts - {date_to_filter}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total count"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -283,7 +342,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df
 
-    def todays_file_types_count_project_types(self, proj_types):
+    def file_types_count_project_types(self, date_to_filter, proj_types):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
         When only project types have been entered
@@ -305,7 +364,8 @@ class FilePlotFunctions():
         count = -1
         for proj_type in proj_types:
             count += 1
-            file_count_list = self.file_type_objs.filter(
+            file_count_list = FileTypeDate.objects.filter(
+                date__date=date_to_filter,
                 project__name__startswith=proj_type,
             ).values(
                 'file_state__file_type__file_type',
@@ -357,7 +417,7 @@ class FilePlotFunctions():
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            f"Today's File Counts By Project Type - {self.today_date}"
+            f"File Counts By Project Type - {date_to_filter}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Count"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -369,7 +429,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df
 
-    def todays_file_types_size_project_types(self, proj_types):
+    def file_types_size_project_types(self, date_to_filter, proj_types):
         """
         Returns the chart data and a df for today's file sizes in DNAnexus
         When only project types have been entered
@@ -386,16 +446,18 @@ class FilePlotFunctions():
         chart_df : pd.DataFrame
             dataframe of the series size values to show under chart
         """
+        proj_level_file_type_df = pd.DataFrame()
         file_type_categories_dups = []
         category_data_source = []
         count = -1
         for proj_type in proj_types:
             count += 1
-            file_size_list = self.file_type_objs.filter(
+            file_size_list = FileTypeDate.objects.filter(
+                date__date=date_to_filter,
                 project__name__startswith=proj_type,
             ).values(
                 'file_state__file_type__file_type',
-                ).annotate(
+            ).annotate(
                     Live_Size=Sum('file_state__file_size_live'),
                     Archived_Size=Sum('file_state__file_size_archived')
             )
@@ -435,13 +497,77 @@ class FilePlotFunctions():
             category_data_source.append(archived_data)
             file_type_categories_dups.append(file_types)
 
-        file_type_categories = file_type_categories_dups[0]
+            # Make project level dataframe so user can see which projs
+            # Have all the files
+            this_df = pd.DataFrame.from_records(
+                FileTypeDate.objects.filter(
+                    date__date=date_to_filter,
+                    project__name__startswith=proj_type
+                ).values(
+                    'project_id__name',
+                    'file_state__file_type__file_type',
+                    'file_state__file_size_live',
+                    'file_state__file_size_archived',
+                    'file_state__file_count_live',
+                    'file_state__file_count_archived'
+                )
+            )
 
+            proj_level_file_type_df = pd.concat(
+                [proj_level_file_type_df, this_df]
+            )
+
+        # If the queryset was empty meaning the df is empty
+        # Because script hasn't run today, set final df to empty
+        if proj_level_file_type_df.empty:
+            one_proj_per_row_file_types = pd.DataFrame()
+        else:
+            # DataFrame not empty (there is data today)
+            proj_level_file_type_df.rename(
+                columns={
+                    'project_id__name': 'Project',
+                    'file_state__file_type__file_type': 'File Type',
+                    'file_state__file_size_live': 'Live Size (GiB)',
+                    'file_state__file_size_archived': 'Archived Size (GiB)',
+                    'file_state__file_count_live': 'Live Count',
+                    'file_state__file_count_archived': 'Archived Count'
+                }, inplace=True
+            )
+
+            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
+                'File Type'
+            ].str.upper()
+
+            # Get one row per project rather than 3 (one for each file type)
+            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
+                index='Project',
+                columns='File Type',
+                values=[
+                    'Live Count', 'Archived Count',
+                    'Live Size (GiB)', 'Archived Size (GiB)'
+                ]
+            )
+
+            one_proj_per_row_file_types[
+                'Live Count'
+            ] = one_proj_per_row_file_types['Live Count'].astype(int)
+            one_proj_per_row_file_types[
+                'Archived Count'
+            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
+
+        # Convert to HTML to easily show with DataTables
+        one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
+            classes='table table-striped"',
+            justify='center',
+            float_format="%.2f"
+        )
+
+        file_type_categories = file_type_categories_dups[0]
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            f"Today's File Sizes By Project Type - {self.today_date}"
+            f"File Sizes By Project Type - {date_to_filter}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Size"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -451,9 +577,9 @@ class FilePlotFunctions():
 
         chart_df = self.convert_to_df(category_chart_data, "size", "multi")
 
-        return category_chart_data, chart_df
+        return category_chart_data, chart_df, one_proj_per_row_file_types
 
-    def todays_file_types_count_assay_types(self, assay_types):
+    def file_types_count_assay_types(self, date_to_filter, assay_types):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
         When only assay types have been entered
@@ -475,7 +601,8 @@ class FilePlotFunctions():
         count = -1
         for assay_type in assay_types:
             count += 1
-            file_count_list = self.file_type_objs.filter(
+            file_count_list = FileTypeDate.objects.filter(
+                date__date=date_to_filter,
                 project__name__endswith=assay_type,
             ).values(
                 'file_state__file_type__file_type',
@@ -525,7 +652,7 @@ class FilePlotFunctions():
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            f"Today's File Counts By Assay Type - {self.today_date}"
+            f"File Counts By Assay Type - {date_to_filter}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Count"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -537,7 +664,7 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df
 
-    def todays_file_types_size_assay_types(self, assay_types):
+    def file_types_size_assay_types(self, date_to_filter, assay_types):
         """
         Returns the chart data and a df for today's file sizes in DNAnexus
         When only assay types have been entered
@@ -554,12 +681,14 @@ class FilePlotFunctions():
         chart_df : pd.DataFrame
             dataframe of the series size values to show under chart
         """
+        proj_level_file_type_df = pd.DataFrame()
         file_type_categories_dups = []
         category_data_source = []
         count = -1
         for assay_type in assay_types:
             count += 1
-            file_size_list = self.file_type_objs.filter(
+            file_size_list = FileTypeDate.objects.filter(
+                date__date=date_to_filter,
                 project__name__endswith=assay_type,
             ).values(
                 'file_state__file_type__file_type',
@@ -603,13 +732,77 @@ class FilePlotFunctions():
             category_data_source.append(archived_data)
             file_type_categories_dups.append(file_types)
 
+            # Make project level dataframe so user can see which projs
+            # Have all the files
+            this_df = pd.DataFrame.from_records(
+                FileTypeDate.objects.filter(
+                    date__date=date_to_filter,
+                    project__name__endswith=assay_type
+                ).values(
+                    'project_id__name',
+                    'file_state__file_type__file_type',
+                    'file_state__file_size_live',
+                    'file_state__file_size_archived',
+                    'file_state__file_count_live',
+                    'file_state__file_count_archived'
+                )
+            )
+
+            proj_level_file_type_df = pd.concat(
+                [proj_level_file_type_df, this_df]
+            )
+
+        # If the queryset was empty meaning the df is empty
+        # Because script hasn't run today, set final df to empty
+        if proj_level_file_type_df.empty:
+            one_proj_per_row_file_types = pd.DataFrame()
+        else:
+            # DataFrame not empty (there is data today)
+            proj_level_file_type_df.rename(
+                columns={
+                    'project_id__name': 'Project',
+                    'file_state__file_type__file_type': 'File Type',
+                    'file_state__file_size_live': 'Live Size (GiB)',
+                    'file_state__file_size_archived': 'Archived Size (GiB)',
+                    'file_state__file_count_live': 'Live Count',
+                    'file_state__file_count_archived': 'Archived Count'
+                }, inplace=True
+            )
+            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
+                'File Type'
+            ].str.upper()
+
+            # Get one row per project rather than 3 (one for each file type)
+            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
+                index='Project',
+                columns='File Type',
+                values=[
+                    'Live Count', 'Archived Count',
+                    'Live Size (GiB)', 'Archived Size (GiB)'
+                ]
+            )
+
+            one_proj_per_row_file_types[
+                'Live Count'
+            ] = one_proj_per_row_file_types['Live Count'].astype(int)
+            one_proj_per_row_file_types[
+                'Archived Count'
+            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
+
+        # Convert to HTML to easily show with DataTables
+        one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
+            classes='table table-striped"',
+            justify='center',
+            float_format="%.2f"
+        )
+
         file_type_categories = file_type_categories_dups[0]
 
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            f"Today's File Sizes By Assay Type - {self.today_date}"
+            f"File Sizes By Assay Type - {date_to_filter}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Size (TiB)"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -619,10 +812,10 @@ class FilePlotFunctions():
 
         chart_df = self.convert_to_df(category_chart_data, "size", "multi")
 
-        return category_chart_data, chart_df
+        return category_chart_data, chart_df, one_proj_per_row_file_types
 
-    def todays_file_types_count_assay_and_proj_types(
-        self, project_type, assay_type
+    def file_types_count_assay_and_proj_types(
+        self, date_to_filter, project_type, assay_type
     ):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
@@ -643,7 +836,8 @@ class FilePlotFunctions():
             dataframe of the series count values to show under chart
         """
         category_data_source = []
-        file_count_list = self.file_type_objs.filter(
+        file_count_list = FileTypeDate.objects.filter(
+            date__date=date_to_filter,
             project__name__startswith=project_type,
             project__name__endswith=assay_type
         ).values(
@@ -691,7 +885,7 @@ class FilePlotFunctions():
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            f"Today's File Counts By Project + Assay Type - {self.today_date}"
+            f"File Counts By Project + Assay Type - {date_to_filter}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Count"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -703,8 +897,8 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df
 
-    def todays_file_types_size_assay_and_proj_types(
-        self, project_type, assay_type
+    def file_types_size_assay_and_proj_types(
+        self, date_to_filter, project_type, assay_type
     ):
         """
         Returns the chart data and a df for today's file sizes in DNAnexus
@@ -725,7 +919,8 @@ class FilePlotFunctions():
             dataframe of the series size values to show under chart
         """
         category_data_source = []
-        file_size_list = self.file_type_objs.filter(
+        file_size_list = FileTypeDate.objects.filter(
+            date__date=date_to_filter,
             project__name__startswith=project_type,
             project__name__endswith=assay_type
         ).values(
@@ -769,11 +964,73 @@ class FilePlotFunctions():
         category_data_source.append(live_data)
         category_data_source.append(archived_data)
 
+        # Make project level dataframe so user can see which projs
+        # Have all the files
+        proj_level_file_type_df = pd.DataFrame.from_records(
+            FileTypeDate.objects.filter(
+                date__date=date_to_filter,
+                project__name__startswith=project_type,
+                project__name__endswith=assay_type
+            ).values(
+                'project_id__name',
+                'file_state__file_type__file_type',
+                'file_state__file_size_live',
+                'file_state__file_size_archived',
+                'file_state__file_count_live',
+                'file_state__file_count_archived'
+            )
+        )
+
+        # If the queryset was empty meaning the df is empty
+        # Because script hasn't run today, set final df to empty
+        if proj_level_file_type_df.empty:
+            one_proj_per_row_file_types = pd.DataFrame()
+        else:
+            # DataFrame not empty (there is data today)
+            proj_level_file_type_df.rename(
+                columns={
+                    'project_id__name': 'Project',
+                    'file_state__file_type__file_type': 'File Type',
+                    'file_state__file_size_live': 'Live Size (GiB)',
+                    'file_state__file_size_archived': 'Archived Size (GiB)',
+                    'file_state__file_count_live': 'Live Count',
+                    'file_state__file_count_archived': 'Archived Count'
+                }, inplace=True
+            )
+
+            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
+                'File Type'
+            ].str.upper()
+
+            # Get one row per project rather than 3 (one for each file type)
+            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
+                index='Project',
+                columns='File Type',
+                values=[
+                    'Live Count', 'Archived Count',
+                    'Live Size (GiB)', 'Archived Size (GiB)'
+                ]
+            )
+
+            one_proj_per_row_file_types[
+                'Live Count'
+            ] = one_proj_per_row_file_types['Live Count'].astype(int)
+            one_proj_per_row_file_types[
+                'Archived Count'
+            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
+
+        # Convert to HTML to easily show with DataTables
+        one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
+            classes='table table-striped"',
+            justify='center',
+            float_format="%.2f"
+        )
+
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
-            f"Today's File Sizes By Project + Assay Type - {self.today_date}"
+            f"File Sizes By Project + Assay Type - {date_to_filter}"
         )
         category_chart_data['yAxis']['title']['text'] = "Total Size (TiB)"
         category_chart_data['tooltip']['pointFormat'] = (
@@ -783,4 +1040,4 @@ class FilePlotFunctions():
 
         chart_df = self.convert_to_df(category_chart_data, "size", "multi")
 
-        return category_chart_data, chart_df
+        return category_chart_data, chart_df, one_proj_per_row_file_types

@@ -1,12 +1,13 @@
 """Views containing logic for chart plotting"""
 import calendar
 import json
+import pandas as pd
 
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 from dashboard.forms import (
-    DateForm, MonthlyForm, StorageForm, FileSizeForm
+    DateForm, MonthlyForm, StorageForm, FileForm
 )
 from dashboard.models import (
     DailyOrgRunningTotal, FileTypeDate, FileTypeState, FileTypes
@@ -432,78 +433,96 @@ def storage_chart(request):
 
 def files(request):
     """View for displaying the file type data"""
-
+    date_to_filter = date.today()
     live_total, archived_total = sp.StoragePlotFunctions(
     ).get_todays_total_unique_size()
-
+    proj_level_df = None
     # If the user has submitted the form
     if 'submit' in request.GET:
-        form = FileSizeForm(request.GET)
+        form = FileForm(request.GET)
         # If form is valid
         # i.e. not >1 entry in project_types and assay_types at same time
         if form.is_valid():
-            # If both project types and assay types entered
+            if form.cleaned_data.get('date_to_filter'):
+                date_to_filter = form.cleaned_data.get('date_to_filter')
+            else:
+                date_to_filter = date.today()
+            # If a project type and assay type is entered
+            # Plot sizes + counts for the combination
             if (form.cleaned_data.get('project_type') and
                 form.cleaned_data.get('assay_type')):
                 project_type = form.cleaned_data.get('project_type').strip()
                 assay_type = form.cleaned_data.get('assay_type').strip()
 
                 count_chart_data, count_df = fp.FilePlotFunctions(
-                ).todays_file_types_count_assay_and_proj_types(
-                    project_type, assay_type
+                ).file_types_count_assay_and_proj_types(
+                    date_to_filter, project_type, assay_type
                 )
-                size_chart_data, size_df = fp.FilePlotFunctions(
-                ).todays_file_types_size_assay_and_proj_types(
-                    project_type, assay_type
+                size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
+                ).file_types_size_assay_and_proj_types(
+                    date_to_filter, project_type, assay_type
                 )
 
             else:
                 # If just project types entered
+                # Plot sizes + counts for those proj types
                 if form.cleaned_data.get('project_type'):
                     proj_string = form.cleaned_data.get('project_type')
                     proj_types = sp.StoragePlotFunctions(
                     ).str_to_list(proj_string)
 
                     count_chart_data, count_df = fp.FilePlotFunctions(
-                    ).todays_file_types_count_project_types(proj_types)
-                    size_chart_data, size_df = fp.FilePlotFunctions(
-                    ).todays_file_types_size_project_types(proj_types)
+                    ).file_types_count_project_types(
+                        date_to_filter, proj_types
+                    )
+                    size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
+                    ).file_types_size_project_types(
+                        date_to_filter, proj_types
+                    )
 
                 # If just assay types are entered
+                # Plot sizes + counts for those assay types
                 elif form.cleaned_data.get('assay_type'):
                     assay_string = form.cleaned_data.get('assay_type')
                     assay_types = sp.StoragePlotFunctions(
                     ).str_to_list(assay_string)
 
                     count_chart_data, count_df = fp.FilePlotFunctions(
-                    ).todays_file_types_count_assay_types(assay_types)
-                    size_chart_data, size_df = fp.FilePlotFunctions(
-                    ).todays_file_types_size_assay_types(assay_types)
+                    ).file_types_count_assay_types(
+                        date_to_filter, assay_types
+                    )
+                    size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
+                    ).file_types_size_assay_types(
+                        date_to_filter, assay_types
+                    )
 
                 else:
                     # If form submitted but no projects or assays searched for
-                    size_chart_data, size_df = fp.FilePlotFunctions(
-                    ).todays_file_types_size_all_projects()
+                    # Show today's sizes + counts
+                    size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
+                    ).file_types_size_all_projects(date_to_filter)
 
                     count_chart_data, count_df = fp.FilePlotFunctions(
-                    ).todays_file_types_count_all_projects()
+                    ).file_types_count_all_projects(date_to_filter)
 
         else:
             # Form is not valid
-            size_chart_data, size_df = fp.FilePlotFunctions(
-            ).todays_file_types_size_all_projects()
+            # Go back to showing today's sizes + counts
+            size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
+            ).file_types_size_all_projects(date_to_filter)
 
             count_chart_data, count_df = fp.FilePlotFunctions(
-            ).todays_file_types_count_all_projects()
+            ).file_types_count_all_projects(date_to_filter)
     else:
         # Nothing is submitted
-        form = FileSizeForm()
+        # Show today's sizes + counts
+        form = FileForm()
 
-        size_chart_data, size_df = fp.FilePlotFunctions(
-        ).todays_file_types_size_all_projects()
+        size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
+        ).file_types_size_all_projects(date_to_filter)
 
         count_chart_data, count_df = fp.FilePlotFunctions(
-        ).todays_file_types_count_all_projects()
+        ).file_types_count_all_projects(date_to_filter)
 
     context = {
         'live_total': live_total,
@@ -512,7 +531,9 @@ def files(request):
         'size_df': size_df,
         'file_count_data': json.dumps(count_chart_data),
         'count_df': count_df,
-        'form1': form
+        'form1': form,
+        'detailed_df': proj_level_df,
+        'date_to_display': date_to_filter
     }
 
     return render(request, 'files.html', context)

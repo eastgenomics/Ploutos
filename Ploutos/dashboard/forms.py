@@ -6,7 +6,7 @@ from crispy_forms.layout import Layout, Submit, Row, Column
 from django import forms
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.core.exceptions import ValidationError
-from dashboard.models import DailyOrgRunningTotal, StorageCosts
+from dashboard.models import DailyOrgRunningTotal, StorageCosts, FileTypeDate
 
 class DateForm(forms.Form):
     """Date and charge type picker for the running totals"""
@@ -32,7 +32,8 @@ class DateForm(forms.Form):
                 'class': 'datepicker',
                 'type': 'date',
                 'min': f'{first_date}',
-                'max': dt.date.today()
+                'max': dt.date.today(),
+                'style': 'width: 150px',
             }
         ),
         required=False
@@ -45,7 +46,8 @@ class DateForm(forms.Form):
                 'class': 'datepicker',
                 'type': 'date',
                 'min': f'{first_date}',
-                'max': dt.date.today()
+                'max': dt.date.today(),
+                'style': 'width: 150px',
             }
         ),
         required=False
@@ -332,8 +334,37 @@ class StorageForm(forms.Form):
             ),
         )
 
-class FileSizeForm(forms.Form):
+class FileForm(forms.Form):
     """Form for searching project types"""
+
+    # Find earliest object in runningtotals by date + get date
+    # This is to set min date for datepicker + validate
+    first_date = str(
+        FileTypeDate.objects.order_by(
+            'date__date'
+        ).first().date
+    )
+
+    # Convert YYY-MM-DD to DD-MM-YYYY for validation message
+    # So this fits with what is displayed by the datepicker
+    earliest_date = dt.datetime.strptime(
+        first_date, "%Y-%m-%d"
+    ).strftime("%d/%m/%Y")
+
+    date_to_filter = forms.DateField(
+        label='Date',
+        widget=forms.DateInput(
+            attrs={
+                'class': 'datepicker',
+                'type': 'date',
+                'min': f'{first_date}',
+                'max': dt.date.today(),
+                'style': 'width: 150px',
+            }
+        ),
+        required=False
+    )
+
     project_type = forms.CharField(
         required=False,
         label='Project type',
@@ -359,8 +390,10 @@ class FileSizeForm(forms.Form):
     )
 
     def clean(self):
+        date_to_filter = self.cleaned_data["date_to_filter"]
         project_type = self.cleaned_data["project_type"]
         assay_type = self.cleaned_data["assay_type"]
+
         # Check whether >1 entries are in both proj and assay type by comma
         if project_type and assay_type:
             if (project_type.find(",") != -1) or (assay_type.find(",") != -1):
@@ -384,6 +417,9 @@ class FileSizeForm(forms.Form):
 
         self.helper = FormHelper()
         self.helper.layout = Layout(
+            Row(
+                Column('date_to_filter', css_class='form-group col-md-2 mb-0')
+            ),
             Row(
                 Column('project_type', css_class='form-group col-md-4 mb-0'),
                 Column('assay_type', css_class='form-group col-md-4 mb-0'),

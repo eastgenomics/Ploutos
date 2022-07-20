@@ -15,8 +15,33 @@
 <form method="GET" action="{% url 'storage' %}" style="padding-top: 20px;">
     <div class="container">
         <div class="row">
+            <div class="card-body bg-white">
+                <h2><i class="bi-bank"></i> Storage Cost</h2>
+                    <p>
+                    This page shows estimated monthly charges on different levels; all projects aggregated (default), searching project type or assay type (or both) or a single project (by searching its full name in either box). This is done through:
+                    <ul>
+                        <li>
+                            Querying files per project, removing duplicates found in multiple projects by attributing them only to the oldest project
+                    </li>
+                    <li>
+                        Summing the size of files in that project per state (live vs archived)
+                    </li>
+                    <li>
+                        Converting size to GiB and calculating the cost of storage per month according to our DNAnexus rates (live vs archived)
+                    </li>
+                    <li>
+                        Dividing by the number of days in the month to get a daily estimated storage cost per project
+                    </li>
+                    <li>
+                        Aggregating that daily cost over a month for a monthly total estimated cost
+                    </li>
+                    </ul>
+
+                </p>
+            </div>
+            <div class="my-form">
           {% crispy form %}
-        
+            </div>
         </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Filter"/>
@@ -36,7 +61,6 @@
         scrollY: '75vh',
         scroller: true,
         deferRender:    true,
-        pageResize:     true,
         info:           false,
         scrollCollapse: true,
         columnDefs: [
