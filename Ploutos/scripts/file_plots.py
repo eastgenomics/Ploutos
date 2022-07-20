@@ -5,24 +5,94 @@ import plotly.express as px
 
 from dashboard.models import FileTypeDate
 from django.db.models import Sum
-from scripts.storage_plots import StoragePlotFunctions
+from scripts import storage_plots as sp
 
-
-sp = StoragePlotFunctions()
 
 class FilePlotFunctions():
     """Functions for the file type storage plots"""
 
     def __init__(self) -> None:
         # Steal lots of things already defined in StoragePlotFunctions
-        self.chart_data = sp.chart_data
-        self.proj_colour_dict = sp.proj_colour_dict
-        self.assay_colour_dict = sp.assay_colour_dict
-        self.project_colours = sp.project_colours
-        self.assay_colours = sp.assay_colours
+        self.proj_colour_dict = sp.StoragePlotFunctions().proj_colour_dict.copy()
+        self.assay_colour_dict = sp.StoragePlotFunctions().assay_colour_dict.copy()
+        self.project_colours = sp.StoragePlotFunctions().project_colours.copy()
+        self.assay_colours = sp.StoragePlotFunctions().assay_colours.copy()
 
         # Get new colour palette for BAM, FASTQ and VCF
         self.file_type_colours = px.colors.qualitative.Pastel
+        self.my_chart_data = {
+            'chart': {
+                'type': 'column',
+                'width': 1200,
+                'height': 500,
+                'style': {
+                    'float': 'center'
+                }
+            },
+            'title': {
+                'text': 'Monthly Storage Cost'
+            },
+            'xAxis': {
+                'categories': "",
+                'labels': {
+                    'style': {
+                        'fontSize': '12px'
+                    }
+                }
+            },
+            'yAxis': {
+                'allowDecimals': 'false',
+                'min': '0',
+                'title': {
+                    'text': 'Total estimated storage cost ($)',
+                    'style': {
+                        'fontSize': '15px'
+                    }
+                },
+                'stackLabels': {
+                    'enabled': 'true',
+                    'allowOverlap': 'true',
+                    'style': {
+                        'color': 'gray',
+                        'textOutline': 0
+                    },
+                    'format': "{stack}"
+                }
+            },
+            'setOptions': {
+                'lang': {
+                    'thousandsSep': ',',
+                    'noData': 'No data to display'
+                }
+            },
+            'plotOptions': {
+                'column': {
+                    'stacking': 'normal'
+                    }
+            },
+            'exporting': {
+                'buttons': {
+                    'contextButton': {
+                        'menuItems': [
+                            "viewFullscreen", "printChart", "downloadPNG",
+                            "downloadJPEG", "downloadPDF"
+                        ]
+                    }
+                },
+                'chartOptions': {
+                    'chart': {
+                        'style': {
+                            'fontFamily': 'Roboto'
+                        }
+                    }
+                }
+            },
+            'series': "",
+            "tooltip": {
+                "pointFormat": "{series.name}: <b>${point.y:.2f}"
+                "</b><br>{series.options.stack}<br>"
+            }
+        }
 
 
     def convert_to_df(self, category_chart_data, size_or_count, multi_or_all):
@@ -250,7 +320,7 @@ class FilePlotFunctions():
             float_format="%.2f"
         )
 
-        category_chart_data = self.chart_data.copy()
+        category_chart_data = self.my_chart_data.copy()
         category_chart_data['xAxis']['categories'] = ["All projects"]
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
@@ -334,7 +404,7 @@ class FilePlotFunctions():
             category_data_source.append(live_data)
             category_data_source.append(archived_data)
 
-        category_chart_data = self.chart_data.copy()
+        category_chart_data = self.my_chart_data.copy()
         category_chart_data['xAxis']['categories'] = ["All projects"]
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
@@ -425,7 +495,7 @@ class FilePlotFunctions():
         # As all the lists within it will be the same
         file_type_categories = file_type_categories_dups[0]
 
-        category_chart_data = self.chart_data.copy()
+        category_chart_data = self.my_chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
@@ -579,7 +649,7 @@ class FilePlotFunctions():
         )
 
         file_type_categories = file_type_categories_dups[0]
-        category_chart_data = self.chart_data.copy()
+        category_chart_data = self.my_chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
@@ -668,7 +738,7 @@ class FilePlotFunctions():
 
         file_type_categories = file_type_categories_dups[0]
 
-        category_chart_data = self.chart_data.copy()
+        category_chart_data = self.my_chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
@@ -822,7 +892,7 @@ class FilePlotFunctions():
 
         file_type_categories = file_type_categories_dups[0]
 
-        category_chart_data = self.chart_data.copy()
+        category_chart_data = self.my_chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
@@ -909,7 +979,7 @@ class FilePlotFunctions():
         category_data_source.append(live_data)
         category_data_source.append(archived_data)
 
-        category_chart_data = self.chart_data.copy()
+        category_chart_data = self.my_chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
@@ -1058,7 +1128,7 @@ class FilePlotFunctions():
             float_format="%.2f"
         )
 
-        category_chart_data = self.chart_data.copy()
+        category_chart_data = self.my_chart_data.copy()
         category_chart_data['xAxis']['categories'] = file_type_categories
         category_chart_data['series'] = category_data_source
         category_chart_data['title']['text'] = (
