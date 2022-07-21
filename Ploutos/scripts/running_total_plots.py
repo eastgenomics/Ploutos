@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from dashboard.models import DailyOrgRunningTotal
 from scripts import DNAnexus_queries as dx_queries
 
+
 class RunningTotPlotFunctions():
     """Class for plotting functions for the running total graph"""
 
@@ -91,7 +92,7 @@ class RunningTotPlotFunctions():
 
         daily_df = daily_charge_df.to_html(
             index=False,
-            classes = 'table table-striped" id = "dailytable',
+            classes='table table-striped" id = "dailytable',
             justify='left',
             float_format="%.2f"
         )
@@ -146,8 +147,8 @@ class RunningTotPlotFunctions():
 
         # Add black border to bars
         fig.update_traces(
-            marker_line_color = 'rgb(0,0,0)',
-            marker_line_width = 1
+            marker_line_color='rgb(0,0,0)',
+            marker_line_width=1
         )
 
         return fig, daily_df
@@ -202,7 +203,7 @@ class RunningTotPlotFunctions():
         # Only need to do this for storage_dic as all have same keys
         key_list = sorted(
             storage_dic.keys(),
-            key = lambda x: datetime.strptime(x, '%m-%Y')
+            key=lambda x: datetime.strptime(x, '%m-%Y')
         )
 
         # If the end month is for the 1st of next month
@@ -224,7 +225,7 @@ class RunningTotPlotFunctions():
         # As may include next month now
         key_list = sorted(
             storage_dic.keys(),
-            key = lambda x: datetime.strptime(x, '%m-%Y')
+            key=lambda x: datetime.strptime(x, '%m-%Y')
         )
 
         # Append the first charge of each month to lists
@@ -262,8 +263,7 @@ class RunningTotPlotFunctions():
 
         monthly_df = monthly_charge_df.to_html(
             index=False,
-            #classes='table table-striped',
-            classes = 'table table-striped" id = "monthlytable',
+            classes='table table-striped" id = "monthlytable',
             justify='left',
             float_format="%.2f"
         )
@@ -274,29 +274,37 @@ class RunningTotPlotFunctions():
             x=converted_months,
             y=compute_charges,
             name='Compute',
-            hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                '<extra></extra>',
+            hovertemplate=(
+                '<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
+                '<extra></extra>'
+            ),
             marker=dict(color='#636EFA')
             )
         )
 
-        fig.add_trace(go.Bar(
-            x=converted_months,
-            y=storage_charges,
-            name='Storage',
-            hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                '<extra></extra>',
-            marker=dict(color='#EF553B')
+        fig.add_trace(
+            go.Bar(
+                x=converted_months,
+                y=storage_charges,
+                name='Storage',
+                hovertemplate=(
+                    '<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
+                    '<extra></extra>'
+                ),
+                marker=dict(color='#EF553B')
             )
         )
 
-        fig.add_trace(go.Bar(
-            x=converted_months,
-            y=egress_charges,
-            name='Egress',
-            hovertemplate='<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                '<extra></extra>',
-            marker=dict(color="#00CC96")
+        fig.add_trace(
+            go.Bar(
+                x=converted_months,
+                y=egress_charges,
+                name='Egress',
+                hovertemplate=(
+                    '<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
+                    '<extra></extra>'
+                ),
+                marker=dict(color="#00CC96")
             )
         )
 
@@ -318,8 +326,8 @@ class RunningTotPlotFunctions():
 
         # Add black border to bars
         fig.update_traces(
-            marker_line_color = 'rgb(0,0,0)',
-            marker_line_width = 1,
+            marker_line_color='rgb(0,0,0)',
+            marker_line_width=1,
         )
 
         chart = fig.to_html()

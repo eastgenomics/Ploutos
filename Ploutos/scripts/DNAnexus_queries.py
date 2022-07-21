@@ -293,7 +293,6 @@ def make_file_df(list_project_files_dictionary):
     # Convert to data frame
     # Drop the name column as it's not used later
     file_df = pd.DataFrame(rows)
-    #file_df.drop(columns=['name'], inplace=True)
 
     return file_df
 
@@ -318,14 +317,15 @@ def count_how_many_lost(df_of_files, projs_list):
     """
     how_many_unique = list(df_of_files.project.unique())
     unique_after_empty_projs_removed = len(how_many_unique)
-    #print(f"There are {unique_after_empty_projs_removed} unique projects in the df")
 
     total_projs = len(projs_list)
-    #print(f"There are {total_projs} total projects")
 
     empty_projs = [i for i in projs_list if i not in how_many_unique]
     how_many_empty = len(empty_projs)
-    print(f"There are {how_many_empty} projects with no files so they weren't added to the df")
+    print(
+        f"There are {how_many_empty} projects with no files"
+        "so they weren't added to the df"
+    )
     return unique_after_empty_projs_removed, empty_projs
 
 def merge_files_and_proj_dfs(file_df, proj_df):
@@ -396,6 +396,7 @@ def merge_files_and_proj_dfs(file_df, proj_df):
 
     return files_with_proj_created
 
+
 def remove_duplicates(merged_df, unique_without_empty_projs):
     """
     Remove duplicate files, attributing a file only to the oldest project
@@ -421,6 +422,7 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     total_removed = unique_without_empty_projs - unique_projects_after_dups_removed
     print(f"{total_removed} projects are no longer in the table as they only contained duplicate files")
     return unique_df
+
 
 def make_file_type_aggregate_df(unique_df, file_type_str):
     """
@@ -464,7 +466,7 @@ def make_file_type_aggregate_df(unique_df, file_type_str):
                 unique_df.name.str.endswith(f'.{file_types[1]}')
             )
         ].groupby(['project', 'state']).agg(
-            {'size' : ['sum', 'count']}
+            {'size': ['sum', 'count']}
         ).reset_index()
 
     # If searching for bams search for just that extension
@@ -472,8 +474,8 @@ def make_file_type_aggregate_df(unique_df, file_type_str):
     elif file_type_str == 'bam':
         size_count_df_grouped = unique_df.loc[
             unique_df.name.str.endswith(f'.{file_type_str}')
-        ].groupby(['project','state'], as_index=False).agg(
-            {'size' : ['sum', 'count']}
+        ].groupby(['project', 'state'], as_index=False).agg(
+            {'size': ['sum', 'count']}
         )
 
     # Rename columns as flat from multiIndex
@@ -484,6 +486,7 @@ def make_file_type_aggregate_df(unique_df, file_type_str):
     ]
 
     return size_count_df_grouped
+
 
 def add_missing_states_projects_file_types(
     file_df, file_type_agg_df, file_type
@@ -531,7 +534,7 @@ def add_missing_states_projects_file_types(
 
     # Add in a row for a state for a project it doesn't exist
     # With size and count as zero
-    states_filled_in = file_type_agg_df.set_index(['project','state'])
+    states_filled_in = file_type_agg_df.set_index(['project', 'state'])
     states_filled_in = states_filled_in.reindex(
         index=pd.MultiIndex.from_product(
             iterables, names=['project', 'state']
@@ -572,9 +575,10 @@ def add_missing_states_projects_file_types(
 
     return aggregated_file_type_all_projs
 
+
 def generate_merged_file_df(list_of_aggregated_dataframes):
     """
-    Generate a df in wide format with 1 row per project and all file types+states
+    Generate a df in wide format with 1 row / project and all file types+states
     With their sizes and counts
     ----------
     list_of_aggregated_dataframes : list
@@ -644,7 +648,7 @@ def generate_merged_file_df(list_of_aggregated_dataframes):
     # Merge the three dfs together on project and state
     merged_file_df = reduce(
         lambda left, right: pd.merge(
-            left,right,on=['project', 'state']
+            left, right, on=['project', 'state']
         ), list_of_aggregated_dataframes
     )
 
@@ -813,6 +817,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
 
     return final_all_projs_df
 
+
 def put_into_dict(final_all_projs_df):
     """
     Put back into a dict for easy adding to the db
@@ -915,7 +920,9 @@ def get_executions(proj):
                     # it's a single job
                     proj = job['describe']['project']
                     if job['describe']['executable'].startswith('applet-'):
-                        executable_Name = job['describe']['executableName']
+                        executable_Name = job[
+                            'describe'
+                        ]['executableName']
                         try:
                             version = re.search(r'[0-9]\.[0-9]\.[0-9]',
                                                 executable_Name).group(0)

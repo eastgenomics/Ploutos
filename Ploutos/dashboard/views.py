@@ -42,8 +42,6 @@ def index(request):
 
         # If the dates entered are validated
         if form.is_valid():
-            # Get the charge type (always entered)
-            #charge_type = form.cleaned_data.get("charge_type")
 
             # If there's a date entered get dates
             if form.cleaned_data.get("start"):
@@ -334,7 +332,7 @@ def storage_chart(request):
                 # e.g. "2022-05-14" to "2022-05-31"
                 month_start = f"{start}-01"
                 last_day_of_end_month = calendar.monthrange(
-                    int(end.split("-")[0]),int(end.split("-")[1])
+                    int(end.split("-")[0]), int(end.split("-")[1])
                 )[1]
                 month_end = f"{end}-{last_day_of_end_month}"
 
@@ -401,7 +399,7 @@ def storage_chart(request):
                         # And want to see between month range
                         # Display all the projects grouped by months
 
-                        context =sp.StoragePlotFunctions(
+                        context = sp.StoragePlotFunctions(
                         ).all_projects_between_months(
                             month_start,
                             month_end,
@@ -440,6 +438,7 @@ def storage_chart(request):
             )
 
     return render(request, 'bar_chart.html', context)
+
 
 def files(request):
     """View for displaying the file type data"""

@@ -49,9 +49,11 @@ class StorageCosts(models.Model):
     total_cost_archived = models.FloatField()
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
+
 class FileTypes(models.Model):
     """Model representing a file type"""
     file_type = models.CharField(max_length=35, unique=True)
+
 
 class FileTypeState(models.Model):
     """Model representing the size and count of file types"""
@@ -60,6 +62,7 @@ class FileTypeState(models.Model):
     file_count_archived = models.IntegerField()
     file_size_live = models.FloatField()
     file_size_archived = models.FloatField()
+
 
 class FileTypeDate(models.Model):
     """
@@ -79,7 +82,9 @@ class FileTypeDate(models.Model):
 # class ComputeCosts(models.Model):
 #     dx_id = models.CharField(max_length=200)
 #     # job_name = models.CharField(max_length=200)
-#     executable_name = models.ForeignKey(Executables, on_delete=models.CASCADE)
+#     executable_name = models.ForeignKey(
+#         Executables, on_delete=models.CASCADE
+#     )
 #     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
 #     runtime = models.DurationField()
 #     total_cost = models.FloatField()

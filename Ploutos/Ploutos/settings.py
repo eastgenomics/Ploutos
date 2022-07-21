@@ -145,8 +145,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-
 # Settings for logging
 with open('ploutos-error.log', 'a'):
     pass
@@ -155,13 +153,15 @@ with open('ploutos-debug.log', 'a'):
 # Set up execution tracker log
 with open('executions_log.log', 'a'):
     pass
-
+("http://graph.facebook.com/{0}/"
+           "picture?width=100&height=100".format(me['id']))
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format': ('{levelname} {asctime} {module}'
+                        '{process:d} {thread:d} {message}'),
             'style': '{',
         },
         'simple': {

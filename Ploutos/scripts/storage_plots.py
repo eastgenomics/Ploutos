@@ -162,10 +162,11 @@ class StoragePlotFunctions():
         get_month_years_as_str(test)
             >> ['May 2022', 'June 2022']
         """
-        months = [(str(
-            entry.get('date__date__month')), str(entry.get('date__date__year')
-            )
-        ) for entry in cost_list
+        months = [
+            (
+                str(entry.get('date__date__month')),
+                str(entry.get('date__date__year'))
+            ) for entry in cost_list
         ]
 
         converted_months = [(
@@ -235,7 +236,7 @@ class StoragePlotFunctions():
 
         # As data column value contains a list, expand this over multiple rows
         # Explode to fill in the relevant data for those extra rows
-        exploded = pd.json_normalize(data = series_data).explode('data')
+        exploded = pd.json_normalize(data=series_data).explode('data')
 
         # If data exists, expand the months table according to the df length
         # So the correct month can be added to the right row
@@ -259,7 +260,7 @@ class StoragePlotFunctions():
                 "stack": "State",
                 'data': 'Monthly storage cost ($)'
             },
-            inplace = True
+            inplace=True
         )
         if exploded['Monthly storage cost ($)'].isnull().values.any():
             pass
@@ -343,7 +344,7 @@ class StoragePlotFunctions():
 
             proj_level_df.rename(
                 columns={
-                    'project__name':'Project',
+                    'project__name': 'Project',
                     'Live_Cost': 'Live Cost ($)',
                     'Archived_Cost': 'Archived Cost ($)'
                 }, inplace=True
@@ -357,7 +358,6 @@ class StoragePlotFunctions():
             )
 
         return formatted_html_proj_table
-
 
     def month_range_assay_type_and_proj_type(
         self, project_type, assay_type, month_start, month_end, form
@@ -760,7 +760,7 @@ class StoragePlotFunctions():
 
         # Add project-level df
         proj_level_qs = pd.DataFrame.from_records(
-                StorageCosts.objects.filter(
+            StorageCosts.objects.filter(
                 date__date__range=[month_start, month_end]
             ).order_by().values(
                 'project__name',

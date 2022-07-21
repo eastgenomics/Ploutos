@@ -102,13 +102,13 @@ class MonthlyForm(forms.Form):
         month=ExtractMonth('date__date'),
         year=ExtractYear('date__date'),
     ).order_by().values(
-            'month','year'
+            'month', 'year'
     ).distinct()
 
     for month_years in months_years_present:
-        month=month_years.get('month')
-        year=month_years.get('year')
-        string=f"{year}-0{month}"
+        month = month_years.get('month')
+        year = month_years.get('year')
+        string = f"{year}-0{month}"
         months_and_years.append(string)
 
     converted_entries = [
@@ -159,7 +159,7 @@ class MonthlyForm(forms.Form):
             self.add_error(
                 "end_month",
                 "If entering a start month please include an end month"
-        )
+            )
 
         # Check end month not before start
         if end_month < start_month:
@@ -299,7 +299,7 @@ class StorageForm(forms.Form):
         if end == "---" and start != "---":
             raise ValidationError(
                 "Please include an end month if entering a start month"
-        )
+            )
 
         # Check end month not before start
         if end < start:
@@ -333,6 +333,7 @@ class StorageForm(forms.Form):
                 css_class='row'
             ),
         )
+
 
 class FileForm(forms.Form):
     """Form for searching project types"""
@@ -399,7 +400,7 @@ class FileForm(forms.Form):
             if (project_type.find(",") != -1) or (assay_type.find(",") != -1):
                 raise ValidationError(
                     "If using both project type and assay type filters, "
-                        "please only enter one of each"
+                    "please only enter one of each"
                 )
 
         return self.cleaned_data

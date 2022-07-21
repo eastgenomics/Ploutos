@@ -129,6 +129,7 @@ def populate_database_files(all_projects_dict) -> None:
             date=Dates.objects.get(date=today_date),
         )
 
+
 def populate_file_types(file_type_df) -> None:
     """
     Puts the file type data into the db
@@ -154,18 +155,18 @@ def populate_file_types(file_type_df) -> None:
         # If the state exists, get it, or create new state id
         # Store counts and file sizes in GiB
         state, created = FileTypeState.objects.get_or_create(
-            file_type = new_file_type,
-            file_count_live = file_vals['vcf_count_live'],
-            file_count_archived = file_vals['vcf_count_archived'],
-            file_size_live = (file_vals['vcf_size_live']/(2**30)),
-            file_size_archived = (file_vals['vcf_size_archived']/(2**30))
+            file_type=new_file_type,
+            file_count_live=file_vals['vcf_count_live'],
+            file_count_archived=file_vals['vcf_count_archived'],
+            file_size_live=(file_vals['vcf_size_live']/(2**30)),
+            file_size_archived=(file_vals['vcf_size_archived']/(2**30))
         )
 
         # Add the proj, date and state to the FileTypeDate table
         object, created = FileTypeDate.objects.get_or_create(
-            project = Projects.objects.get(dx_id=project),
-            date = Dates.objects.get(date=today_date),
-            file_state = state
+            project=Projects.objects.get(dx_id=project),
+            date=Dates.objects.get(date=today_date),
+            file_state=state
         )
 
         # Do same for BAMs
@@ -174,17 +175,17 @@ def populate_file_types(file_type_df) -> None:
         )
 
         state, created = FileTypeState.objects.get_or_create(
-            file_type = new_file_type,
-            file_count_live = file_vals['bam_count_live'],
-            file_count_archived = file_vals['bam_count_archived'],
-            file_size_live = (file_vals['bam_size_live']/(2**30)),
-            file_size_archived = (file_vals['bam_size_archived']/(2**30))
+            file_type=new_file_type,
+            file_count_live=file_vals['bam_count_live'],
+            file_count_archived=file_vals['bam_count_archived'],
+            file_size_live=(file_vals['bam_size_live']/(2**30)),
+            file_size_archived=(file_vals['bam_size_archived']/(2**30))
         )
 
         object, created = FileTypeDate.objects.get_or_create(
-            project = Projects.objects.get(dx_id=project),
-            date = Dates.objects.get(date=today_date),
-            file_state = state
+            project=Projects.objects.get(dx_id=project),
+            date=Dates.objects.get(date=today_date),
+            file_state=state
         )
 
         # Do same for FASTQs
@@ -193,17 +194,17 @@ def populate_file_types(file_type_df) -> None:
         )
 
         state, created = FileTypeState.objects.get_or_create(
-            file_type = new_file_type,
-            file_count_live = file_vals['fastq_count_live'],
-            file_count_archived = file_vals['fastq_count_archived'],
-            file_size_live = (file_vals['fastq_size_live']/(2**30)),
-            file_size_archived = (file_vals['fastq_size_archived']/(2**30)),
+            file_type=new_file_type,
+            file_count_live=file_vals['fastq_count_live'],
+            file_count_archived=file_vals['fastq_count_archived'],
+            file_size_live=(file_vals['fastq_size_live']/(2**30)),
+            file_size_archived=(file_vals['fastq_size_archived']/(2**30)),
         )
 
         object, created = FileTypeDate.objects.get_or_create(
-            project = Projects.objects.get(dx_id=project),
-            date = Dates.objects.get(date=today_date),
-            file_state = state
+            project=Projects.objects.get(dx_id=project),
+            date=Dates.objects.get(date=today_date),
+            file_state=state
         )
 
 # def populate_executions(all_executions_df) -> None:

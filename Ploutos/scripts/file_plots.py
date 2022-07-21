@@ -25,7 +25,6 @@ class FilePlotFunctions():
         self.file_type_colours = px.colors.qualitative.Pastel
         self.my_chart_data = sp.StoragePlotFunctions().chart_data.copy()
 
-
     def convert_to_df(self, category_chart_data, size_or_count, multi_or_all):
         """
         Convert chart data to a pandas df then convert it to HTML
@@ -84,7 +83,7 @@ class FilePlotFunctions():
                     "stack": "State",
                     'data': column_title
                 },
-                inplace = True
+                inplace=True
             )
 
         elif multi_or_all == 'multi':
@@ -92,7 +91,9 @@ class FilePlotFunctions():
             file_types = category_chart_data['xAxis']['categories'].copy()
             # Expand file types so they match length of df and add column
             if file_types:
-                file_types = file_types * (int(len(exploded) / len(file_types)))
+                file_types = file_types * (
+                    int(len(exploded) / len(file_types))
+                )
                 exploded['File Type'] = file_types
             else:
                 file_types = []
@@ -110,7 +111,7 @@ class FilePlotFunctions():
                     "stack": "State",
                     'data': column_title
                 },
-                inplace = True
+                inplace=True
             )
         # If size df, convert size column to float type
         # So float format doesn't cause error
@@ -199,7 +200,6 @@ class FilePlotFunctions():
             one_proj_per_row_file_types.columns.names = (None, "Project")
 
         return one_proj_per_row_file_types
-
 
     def file_types_size_all_projects(self, date_to_filter):
         """
@@ -311,7 +311,6 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df, one_proj_per_row_file_types
 
-
     def file_types_count_all_projects(self, date_to_filter):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
@@ -330,7 +329,7 @@ class FilePlotFunctions():
         chart_df : pd.DataFrame
             dataframe of the series count values to show under chart
         """
-        file_type_names = ['bam','fastq','vcf']
+        file_type_names = ['bam', 'fastq', 'vcf']
 
         category_data_source = []
         count = -2
@@ -394,7 +393,6 @@ class FilePlotFunctions():
         chart_df = self.convert_to_df(category_chart_data, "count", "all")
 
         return category_chart_data, chart_df
-
 
     def file_types_count_project_types(self, date_to_filter, proj_types):
         """
@@ -485,7 +483,6 @@ class FilePlotFunctions():
         chart_df = self.convert_to_df(category_chart_data, "count", "multi")
 
         return category_chart_data, chart_df
-
 
     def file_types_size_project_types(self, date_to_filter, proj_types):
         """
@@ -606,7 +603,6 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df, one_proj_per_row_file_types
 
-
     def file_types_count_assay_types(self, date_to_filter, assay_types):
         """
         Returns the chart data and a df for today's file counts in DNAnexus
@@ -694,7 +690,6 @@ class FilePlotFunctions():
         chart_df = self.convert_to_df(category_chart_data, "count", "multi")
 
         return category_chart_data, chart_df
-
 
     def file_types_size_assay_types(self, date_to_filter, assay_types):
         """
@@ -816,7 +811,6 @@ class FilePlotFunctions():
 
         return category_chart_data, chart_df, one_proj_per_row_file_types
 
-
     def file_types_count_assay_and_proj_types(
         self, date_to_filter, project_type, assay_type
     ):
@@ -902,7 +896,6 @@ class FilePlotFunctions():
         chart_df = self.convert_to_df(category_chart_data, "count", "multi")
 
         return category_chart_data, chart_df
-
 
     def file_types_size_assay_and_proj_types(
         self, date_to_filter, project_type, assay_type
