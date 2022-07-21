@@ -153,8 +153,7 @@ with open('ploutos-debug.log', 'a'):
 # Set up execution tracker log
 with open('executions_log.log', 'a'):
     pass
-("http://graph.facebook.com/{0}/"
-           "picture?width=100&height=100".format(me['id']))
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
