@@ -27,6 +27,7 @@ class Projects(models.Model):
     def __str__(self):
         return self.dx_id
 
+
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
     date = models.OneToOneField(Dates, on_delete=models.CASCADE)

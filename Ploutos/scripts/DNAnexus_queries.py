@@ -1,5 +1,18 @@
 """
 DNAnexus queries script
+This generates data in dictionary format which can then be added
+    to the database by populate_db.py
+
+Definitions:
+Files: Files are single point of storage of data, they can be shared across
+        projects but only billed once, they have a single dxid.
+Workflows: These are apps that are piped together to form a pipeline.
+Analyses: These are the instances of a workflow running.
+Apps: These are standalone tools which can be used to make a workflow.
+Jobs: These are instances of apps running.
+Parent:Jobs and analyses can spawn other instances of analyses and jobs.
+       Therefore, to gather all the top-level costings we only look at parents.
+
 """
 
 import concurrent.futures
@@ -33,6 +46,8 @@ def login() -> None:
         ----------
         token : str
             authorisation token for DNAnexus, from settings.py
+
+
         Raises
         ------
         Error
@@ -53,8 +68,9 @@ def login() -> None:
         dx.api.system_whoami()
         print("DNAnexus login successful")
     except Exception as e:
-        print(f'Error logging into DNAnexus: {e}')
+        logger.error(f'Error with using credentials to log into DNAnexus: {e}')
         sys.exit(1)
+
 
 def no_of_days_in_month():
     """
@@ -174,6 +190,7 @@ def threadify(project_list):
     ----------
     project_list : list
         list of all the projects in DNAnexus
+
     Returns
     -------
      list_of_project_file_dicts : list
@@ -211,7 +228,7 @@ def threadify(project_list):
         # Submit the get_files function for a project
         for project in project_list:
             futures.append(executor.submit(get_files, proj=project))
-        # Once all project files are retrieved, append the final dict  
+        # Once all project files are retrieved, append the final dict
         for future in concurrent.futures.as_completed(futures):
             list_of_project_file_dicts.append(future.result())
 
@@ -328,6 +345,7 @@ def count_how_many_lost(df_of_files, projs_list):
     )
     return unique_after_empty_projs_removed, empty_projs
 
+
 def merge_files_and_proj_dfs(file_df, proj_df):
     """
     Merge the files and projects dfs together so oldest project can be found
@@ -420,7 +438,9 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     unique_projects_after_dups_removed = len(unique_df.project.unique())
 
     total_removed = unique_without_empty_projs - unique_projects_after_dups_removed
-    print(f"{total_removed} projects are no longer in the table as they only contained duplicate files")
+    print(f"""{total_removed} projects are no longer in
+          the table as they only contained duplicate files""")
+
     return unique_df
 
 
@@ -667,6 +687,7 @@ def generate_merged_file_df(list_of_aggregated_dataframes):
 
     return aggregated_all_file_types_df
 
+
 def group_by_project_and_rename(df_name, string_to_replace):
     """
     Group the dataframe by project to get total size per file state
@@ -703,6 +724,7 @@ def group_by_project_and_rename(df_name, string_to_replace):
     return grouped_df
 
 
+
 def calculate_totals(my_grouped_df, tot_or_uniq_type):
     """
     Calculate the total cost of storing per project
@@ -729,6 +751,7 @@ def calculate_totals(my_grouped_df, tot_or_uniq_type):
     +-----------+-----------------+---------------+----------+
     """
     days_in_month = no_of_days_in_month()[1]
+
     # If the state of the file is live
     # Convert total size to GiB and times by storage cost per month
     # Then divide by the number of days in current month
@@ -740,6 +763,7 @@ def calculate_totals(my_grouped_df, tot_or_uniq_type):
         my_grouped_df['size'] / (2**30) * settings.ARCHIVED_STORAGE_COST_MONTH / days_in_month)
 
     return my_grouped_df
+
 
 def merge_together_add_empty_rows(df1, df2):
     """
@@ -754,7 +778,8 @@ def merge_together_add_empty_rows(df1, df2):
     Returns
     -------
     total_merged_df : pd.DataFrame
-        merged dataframe with project, all file states (total_live, total_archived, unique_live, unique_archived),
+        merged dataframe with project, all file states
+        (total_live, total_archived, unique_live, unique_archived),
         cost and size with zeros if did not exist
     e.g.
     +-----------+-----------------+---------------+----------+
@@ -783,6 +808,7 @@ def merge_together_add_empty_rows(df1, df2):
 
     return total_merged_df
 
+
 def add_empty_projs_back_in(empty_projs, total_merged_df):
     """
     Add entries for projects which do not contain any files so all projects are represented
@@ -796,6 +822,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
     -------
     final_all_projs_df : pd.DataFrame
         final df with proj, file state, total size+cost for all projects
+
     """
     # For the projects that were removed at the beginning because they are empty
     # Create a list of dictionaries with all the fields as zero
@@ -818,6 +845,7 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
     return final_all_projs_df
 
 
+
 def put_into_dict(final_all_projs_df):
     """
     Put back into a dict for easy adding to the db
@@ -828,7 +856,8 @@ def put_into_dict(final_all_projs_df):
     Returns
     -------
     all_proj_dict : dict
-        final dictionary with key project and nested keys total_live, total_archived, unique_live, unique_archived
+        final dictionary with key project and nested keys total_live,
+        total_archived, unique_live, unique_archived
          (and nested size and cost within) for all projects
     e.g. {"project-XYZ": {
         "total_live": {
@@ -864,6 +893,7 @@ def get_executions(proj):
     Get all executions for the project in DNAnexus,
     Each top-level job is stored with it's attributes,
     mainly cost and who launched it.
+
     Used with ThreadExecutorPool
     Parameters
     ----------
@@ -920,9 +950,7 @@ def get_executions(proj):
                     # it's a single job
                     proj = job['describe']['project']
                     if job['describe']['executable'].startswith('applet-'):
-                        executable_Name = job[
-                            'describe'
-                        ]['executableName']
+                        executable_Name = job['describe']['executableName']
                         try:
                             version = re.search(r'[0-9]\.[0-9]\.[0-9]',
                                                 executable_Name).group(0)
@@ -990,16 +1018,20 @@ def get_executions(proj):
                         "Stages": job['describe']['stages']})
                 else:
                     print(f"Error: New executable type found {type}")
+
         return project_executions_dict
 
 
 def threadify_executions(project_list):
     """
     Use pool of threads to asynchronously get_executions() on multiple projects
+
+
     Parameters
     ----------
     project_list : list
         list of all the projects in DNAnexus
+
     Returns
     -------
      list_of_project_executions_dicts : list
@@ -1078,6 +1110,8 @@ def get_subjobs_make_job_executions_df(list_project_executions):
     """
     Get all executions for the project in DNAnexus,
         storing each executions and its attributes.
+
+
     Parameters
     ----------
     list_project_executions : list of dictionaries
@@ -1085,6 +1119,7 @@ def get_subjobs_make_job_executions_df(list_project_executions):
     Returns
     -------
      df: dataframe of all executions matching query.
+
     e.g.
     [{
         'project-X': {'executions': [
@@ -1109,10 +1144,12 @@ def get_subjobs_make_job_executions_df(list_project_executions):
             }
         ]}
     }]
+
                             |
                             |
                             |
                             v
+
 +------------+------------------+------+----------+---------------+
 |     id     |       name       | cost |  class   |  executable   |
 +------------+------------------+------+----------+---------------+
@@ -1133,6 +1170,7 @@ def get_subjobs_make_job_executions_df(list_project_executions):
 | [list of child executions and their fields] | project-X | 0 days 06:02:16.187000 |
 | [list of child executions and their fields] | project-X | 0 days 01:01:12.107000 |
 +---------------------------------------------+-----------+------------------------+
+
     """
 
     # Find executions in each project, only returning specified fields in item
@@ -1254,14 +1292,17 @@ def get_executions_from_list():
     the last time the query was run.
     Each top-level job is stored with it's attributes,
     mainly cost and who launched it.
+
     Parameters
     ----------
     None
+
     Returns
     -------
      list_of_previous_executions : collections.defaultdict
         dictionary with all the executions in log_executions.log
         which are now in the "done" state.
+
     """
 
     # Find executions in each project, only returning specified fields in item
@@ -1365,8 +1406,10 @@ def peek(iterable):
     """
     This function is used to check if a generator contains any data.
     It returns a boolean.
+
     Args:
         iterable (generator): generator object returned by DNAnexus API call.
+
     Returns:
         boolean: True if generator yields data and false if not.
     """
@@ -1385,6 +1428,8 @@ def make_executions_subjobs_df(list_project_executions_dictionary):
     ----------
     list_project_executions_dictionary:
         list of all executions for each project.
+
+
     Returns
     -------
     list_of_project_executions_dicts: list
@@ -1413,10 +1458,13 @@ def orchestrate_get_executions(proj_list):
     """
     Orchestates all the functions for getting
     API data for executions and returning this in a pandas dataframe.
+
+
     paramaters
     ----------
     proj_list: list
         all the project IDs in a list
+
     executions_df: dataframe
         dataframe with a row for each project
     """
@@ -1430,7 +1478,6 @@ def orchestrate_get_executions(proj_list):
     print("---")
 
     return executions_df
-
 
 
 def orchestrate_get_files(proj_list, proj_df):
