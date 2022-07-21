@@ -1,5 +1,4 @@
 from datetime import date
-import numpy as np
 import pandas as pd
 import plotly.express as px
 
@@ -13,10 +12,14 @@ class FilePlotFunctions():
 
     def __init__(self) -> None:
         # Steal lots of things already defined in StoragePlotFunctions
-        self.proj_colour_dict = sp.StoragePlotFunctions().proj_colour_dict.copy()
-        self.assay_colour_dict = sp.StoragePlotFunctions().assay_colour_dict.copy()
-        self.project_colours = sp.StoragePlotFunctions().project_colours.copy()
-        self.assay_colours = sp.StoragePlotFunctions().assay_colours.copy()
+        self.proj_colour_dict = sp.StoragePlotFunctions(
+        ).proj_colour_dict.copy()
+        self.assay_colour_dict = sp.StoragePlotFunctions(
+        ).assay_colour_dict.copy()
+        self.project_colours = sp.StoragePlotFunctions(
+        ).project_colours.copy()
+        self.assay_colours = sp.StoragePlotFunctions(
+        ).assay_colours.copy()
 
         # Get new colour palette for BAM, FASTQ and VCF
         self.file_type_colours = px.colors.qualitative.Pastel
@@ -136,6 +139,67 @@ class FilePlotFunctions():
 
         return chart_data
 
+    def format_proj_level_df(self, proj_level_file_type_df):
+        """
+        Creates formatted table with one row per project and its Live Count,
+        Archived Count, Live Size (GiB) and Archived Size (GiB) per proj
+        Return as HTML table to be used by DataTables
+
+        Parameters
+        ----------
+        proj_level_file_type_df : pd.DataFrame
+            df with all the project level data
+
+        Returns
+        -------
+        one_proj_per_row_file_types : pd.DataFrame as HTML table
+            final formatted HTML stringified-df to be used by DataTables
+        """
+        # If the queryset was empty meaning the df is empty
+        # Because script hasn't run today, set final df to empty
+        if proj_level_file_type_df.empty:
+            one_proj_per_row_file_types = pd.DataFrame()
+        else:
+            # DataFrame not empty (there is data today)
+            proj_level_file_type_df.rename(
+                columns={
+                    'project_id__name': 'Project',
+                    'file_state__file_type__file_type': 'File Type',
+                    'file_state__file_size_live': 'Live Size (GiB)',
+                    'file_state__file_size_archived': 'Archived Size (GiB)',
+                    'file_state__file_count_live': 'Live Count',
+                    'file_state__file_count_archived': 'Archived Count'
+                }, inplace=True
+            )
+
+            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
+                'File Type'
+            ].str.upper()
+
+            # Get one row per project rather than 3 (one for each file type)
+            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
+                index='Project',
+                columns='File Type',
+                values=[
+                    'Live Count', 'Archived Count',
+                    'Live Size (GiB)', 'Archived Size (GiB)'
+                ]
+            )
+
+            one_proj_per_row_file_types[
+                'Live Count'
+            ] = one_proj_per_row_file_types['Live Count'].astype(int)
+            one_proj_per_row_file_types[
+                'Archived Count'
+            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
+
+            # This gets rid of extra row and changes index name
+            # From 'File Type' above the projects to 'Project'
+            one_proj_per_row_file_types.index.name = None
+            one_proj_per_row_file_types.columns.names = (None, "Project")
+
+        return one_proj_per_row_file_types
+
 
     def file_types_size_all_projects(self, date_to_filter):
         """
@@ -220,48 +284,9 @@ class FilePlotFunctions():
             )
         )
 
-        # If the queryset was empty meaning the df is empty
-        # Because script hasn't run today, set final df to empty
-        if proj_level_file_type_df.empty:
-            one_proj_per_row_file_types = pd.DataFrame()
-        else:
-            # DataFrame not empty (there is data today)
-            proj_level_file_type_df.rename(
-                columns={
-                    'project_id__name': 'Project',
-                    'file_state__file_type__file_type': 'File Type',
-                    'file_state__file_size_live': 'Live Size (GiB)',
-                    'file_state__file_size_archived': 'Archived Size (GiB)',
-                    'file_state__file_count_live': 'Live Count',
-                    'file_state__file_count_archived': 'Archived Count'
-                }, inplace=True
-            )
-
-            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
-                'File Type'
-            ].str.upper()
-
-            # Get one row per project rather than 3 (one for each file type)
-            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
-                index='Project',
-                columns='File Type',
-                values=[
-                    'Live Count', 'Archived Count',
-                    'Live Size (GiB)', 'Archived Size (GiB)'
-                ]
-            )
-
-            one_proj_per_row_file_types[
-                'Live Count'
-            ] = one_proj_per_row_file_types['Live Count'].astype(int)
-            one_proj_per_row_file_types[
-                'Archived Count'
-            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
-
-            # This gets rid of extra row and changes index name
-            # From 'File Type' above the projects to 'Project'
-            one_proj_per_row_file_types.index.name = None
-            one_proj_per_row_file_types.columns.names = (None, "Project")
+        one_proj_per_row_file_types = self.format_proj_level_df(
+            proj_level_file_type_df
+        )
 
         # Convert to HTML to easily show with DataTables
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
@@ -401,9 +426,9 @@ class FilePlotFunctions():
                 project__name__startswith=proj_type,
             ).values(
                 'file_state__file_type__file_type',
-                ).annotate(
-                    Live_Count=Sum('file_state__file_count_live'),
-                    Archived_Count=Sum('file_state__file_count_archived')
+            ).annotate(
+                Live_Count=Sum('file_state__file_count_live'),
+                Archived_Count=Sum('file_state__file_count_archived')
             )
 
             # Get the file types values from the list of querysets
@@ -553,43 +578,9 @@ class FilePlotFunctions():
                 [proj_level_file_type_df, this_df]
             )
 
-        # If the queryset was empty meaning the df is empty
-        # Because script hasn't run today, set final df to empty
-        if proj_level_file_type_df.empty:
-            one_proj_per_row_file_types = pd.DataFrame()
-        else:
-            # DataFrame not empty (there is data today)
-            proj_level_file_type_df.rename(
-                columns={
-                    'project_id__name': 'Project',
-                    'file_state__file_type__file_type': 'File Type',
-                    'file_state__file_size_live': 'Live Size (GiB)',
-                    'file_state__file_size_archived': 'Archived Size (GiB)',
-                    'file_state__file_count_live': 'Live Count',
-                    'file_state__file_count_archived': 'Archived Count'
-                }, inplace=True
-            )
-
-            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
-                'File Type'
-            ].str.upper()
-
-            # Get one row per project rather than 3 (one for each file type)
-            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
-                index='Project',
-                columns='File Type',
-                values=[
-                    'Live Count', 'Archived Count',
-                    'Live Size (GiB)', 'Archived Size (GiB)'
-                ]
-            )
-
-            one_proj_per_row_file_types[
-                'Live Count'
-            ] = one_proj_per_row_file_types['Live Count'].astype(int)
-            one_proj_per_row_file_types[
-                'Archived Count'
-            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
+        one_proj_per_row_file_types = self.format_proj_level_df(
+            proj_level_file_type_df
+        )
 
         # Convert to HTML to easily show with DataTables
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
@@ -796,42 +787,9 @@ class FilePlotFunctions():
                 [proj_level_file_type_df, this_df]
             )
 
-        # If the queryset was empty meaning the df is empty
-        # Because script hasn't run today, set final df to empty
-        if proj_level_file_type_df.empty:
-            one_proj_per_row_file_types = pd.DataFrame()
-        else:
-            # DataFrame not empty (there is data today)
-            proj_level_file_type_df.rename(
-                columns={
-                    'project_id__name': 'Project',
-                    'file_state__file_type__file_type': 'File Type',
-                    'file_state__file_size_live': 'Live Size (GiB)',
-                    'file_state__file_size_archived': 'Archived Size (GiB)',
-                    'file_state__file_count_live': 'Live Count',
-                    'file_state__file_count_archived': 'Archived Count'
-                }, inplace=True
-            )
-            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
-                'File Type'
-            ].str.upper()
-
-            # Get one row per project rather than 3 (one for each file type)
-            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
-                index='Project',
-                columns='File Type',
-                values=[
-                    'Live Count', 'Archived Count',
-                    'Live Size (GiB)', 'Archived Size (GiB)'
-                ]
-            )
-
-            one_proj_per_row_file_types[
-                'Live Count'
-            ] = one_proj_per_row_file_types['Live Count'].astype(int)
-            one_proj_per_row_file_types[
-                'Archived Count'
-            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
+        one_proj_per_row_file_types = self.format_proj_level_df(
+            proj_level_file_type_df
+        )
 
         # Convert to HTML to easily show with DataTables
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
@@ -1033,43 +991,9 @@ class FilePlotFunctions():
             )
         )
 
-        # If the queryset was empty meaning the df is empty
-        # Because script hasn't run today, set final df to empty
-        if proj_level_file_type_df.empty:
-            one_proj_per_row_file_types = pd.DataFrame()
-        else:
-            # DataFrame not empty (there is data today)
-            proj_level_file_type_df.rename(
-                columns={
-                    'project_id__name': 'Project',
-                    'file_state__file_type__file_type': 'File Type',
-                    'file_state__file_size_live': 'Live Size (GiB)',
-                    'file_state__file_size_archived': 'Archived Size (GiB)',
-                    'file_state__file_count_live': 'Live Count',
-                    'file_state__file_count_archived': 'Archived Count'
-                }, inplace=True
-            )
-
-            proj_level_file_type_df['File Type'] = proj_level_file_type_df[
-                'File Type'
-            ].str.upper()
-
-            # Get one row per project rather than 3 (one for each file type)
-            one_proj_per_row_file_types = proj_level_file_type_df.pivot(
-                index='Project',
-                columns='File Type',
-                values=[
-                    'Live Count', 'Archived Count',
-                    'Live Size (GiB)', 'Archived Size (GiB)'
-                ]
-            )
-
-            one_proj_per_row_file_types[
-                'Live Count'
-            ] = one_proj_per_row_file_types['Live Count'].astype(int)
-            one_proj_per_row_file_types[
-                'Archived Count'
-            ] = one_proj_per_row_file_types['Archived Count'].astype(int)
+        one_proj_per_row_file_types = self.format_proj_level_df(
+            proj_level_file_type_df
+        )
 
         # Convert to HTML to easily show with DataTables
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(

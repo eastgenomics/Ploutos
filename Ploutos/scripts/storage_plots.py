@@ -198,7 +198,7 @@ class StoragePlotFunctions():
             Live=Sum('unique_size_live'),
             Archived=Sum('unique_size_archived')
         )
-        # If DNANexus has been queried, convert bytes to GiB
+        # If DNANexus has been queried today, convert bytes to GiB
         # Otherwise set both to zero
         if todays_total.get('Live'):
             live_total = round(
@@ -234,7 +234,7 @@ class StoragePlotFunctions():
         months = category_chart_data['xAxis']['categories'].copy()
 
         # As data column value contains a list, expand this over multiple rows
-        # Explode fills in the relevant data for those extra rows
+        # Explode to fill in the relevant data for those extra rows
         exploded = pd.json_normalize(data = series_data).explode('data')
 
         # If data exists, expand the months table according to the df length
@@ -278,6 +278,86 @@ class StoragePlotFunctions():
 
         return chart_data
 
+    def format_proj_level_table(self, proj_level_df):
+        """
+        Format the table containing project level data and return
+        As HTML table to be used by DataTables
+
+        Parameters
+        ----------
+        proj_level_df : pd.DataFrame
+            dataframe created directly from Django queryset
+
+        Returns
+        -------
+        formatted_html_proj_table : pd.DataFrame as HTML table
+            formatted dataframe
+
+        +---------------+-------------------+------------------+-----------+---------------+
+        | project__name | date__date__month | date__date__year | Live_Cost | Archived_Cost |
+        +---------------+-------------------+------------------+-----------+---------------+
+        | proj-X        |                 7 |             2022 |    2.5880 |        0.0000 |
+        | proj-Y        |                 6 |             2022 |    1.4752 |          0.00 |
+        +---------------+-------------------+------------------+-----------+---------------+
+                                |
+                                ▼
+        +---------+----------+---------------+-------------------+
+        | Project |  Month   | Live Cost ($) | Archived Cost ($) |
+        +---------+----------+---------------+-------------------+
+        | proj-X  | Jul 2022 |         2.588 |             0.000 |
+        | proj-Y  | Jun 2022 |         1.475 |              0.00 |
+        +---------+----------+---------------+-------------------+
+        """
+        if proj_level_df.empty:
+            proj_level_df = pd.DataFrame()
+
+            formatted_html_proj_table = proj_level_df.to_html(
+                index=False,
+                classes='table table-striped"',
+                justify='left',
+            )
+
+        else:
+            # Convert int month to str calendar month
+            proj_level_df['date__date__month'] = proj_level_df[
+                'date__date__month'
+            ].apply(lambda x: calendar.month_abbr[x])
+
+            # Change year to str so can concatenate
+            proj_level_df["date__date__year"] = proj_level_df[
+                'date__date__year'
+            ].astype(str)
+
+            # Merge the two month + year columns as new col
+            proj_level_df["Month"] = proj_level_df[
+                "date__date__month"
+            ] + " " + proj_level_df["date__date__year"]
+
+            # Subset df
+            proj_level_df = proj_level_df[
+                [
+                    'project__name', 'Month',
+                    'Live_Cost', 'Archived_Cost'
+                ]
+            ]
+
+            proj_level_df.rename(
+                columns={
+                    'project__name':'Project',
+                    'Live_Cost': 'Live Cost ($)',
+                    'Archived_Cost': 'Archived Cost ($)'
+                }, inplace=True
+            )
+
+            formatted_html_proj_table = proj_level_df.to_html(
+                index=False,
+                classes='table table-striped"',
+                justify='left',
+                float_format="%.3f"
+            )
+
+        return formatted_html_proj_table
+
 
     def month_range_assay_type_and_proj_type(
         self, project_type, assay_type, month_start, month_end, form
@@ -302,6 +382,7 @@ class StoragePlotFunctions():
         -------
         context : dict
             'storage_data': data to pass to Highcharts,
+            'storage_df' : pd.DataFrame of the data which makes up the chart
             'form': the form to pass to HTML
         """
 
@@ -317,10 +398,10 @@ class StoragePlotFunctions():
             ).order_by().values(
                 'date__date__month',
                 'date__date__year'
-                ).annotate(
+            ).annotate(
                     Live=Sum('unique_cost_live'),
                     Archived=Sum('unique_cost_archived')
-        )
+            )
 
         string_months = self.get_month_years_as_str(cost_list)
 
@@ -361,10 +442,23 @@ class StoragePlotFunctions():
         category_data_source.append(live_data)
         category_data_source.append(archived_data)
 
-        # Stacked grouped bar chart
-        # Set categories to the stringified months present in the db
-        # StackLabels format sets Live or Archived above bar
-        # noData sets what to display when data == []
+        proj_level_qs = pd.DataFrame.from_records(
+            StorageCosts.objects.filter(
+                date__date__range=[month_start, month_end],
+                project__name__startswith=project_type,
+                project__name__endswith=assay_type
+            ).order_by().values(
+                'project__name',
+                'date__date__month',
+                'date__date__year'
+            ).annotate(
+                Live_Cost=Sum('unique_cost_live'),
+                Archived_Cost=Sum('unique_cost_archived')
+            )
+        )
+
+        proj_level_df = self.format_proj_level_table(proj_level_qs)
+
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = string_months
         category_chart_data['series'] = category_data_source
@@ -374,7 +468,8 @@ class StoragePlotFunctions():
         context = {
             'storage_data': json.dumps(category_chart_data),
             'storage_df': chart_data,
-            'form': form
+            'form': form,
+            'proj_level_df': proj_level_df
         }
 
         return context
@@ -404,6 +499,7 @@ class StoragePlotFunctions():
         """
         # Filter by 'startswith' for each searched project type
         # For each proj add data to dict
+        proj_level_df = pd.DataFrame()
         category_data_source = []
         count = -1
         for proj_type in proj_types:
@@ -453,6 +549,25 @@ class StoragePlotFunctions():
             category_data_source.append(live_data)
             category_data_source.append(archived_data)
 
+            # Make project level df
+            cost_list = pd.DataFrame.from_records(
+                StorageCosts.objects.filter(
+                    date__date__range=[month_start, month_end],
+                    project__name__startswith=proj_type
+                ).order_by().values(
+                    'project__name',
+                    'date__date__month',
+                    'date__date__year'
+                ).annotate(
+                    Live_Cost=Sum('unique_cost_live'),
+                    Archived_Cost=Sum('unique_cost_archived')
+                )
+            )
+
+            proj_level_df = pd.concat([proj_level_df, cost_list])
+
+        proj_level_df = self.format_proj_level_table(proj_level_df)
+
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = string_months
         category_chart_data['series'] = category_data_source
@@ -462,7 +577,8 @@ class StoragePlotFunctions():
         context = {
             'storage_data': json.dumps(category_chart_data),
             'storage_df': chart_data,
-            'form': form
+            'form': form,
+            'proj_level_df': proj_level_df
         }
 
         return context
@@ -490,6 +606,7 @@ class StoragePlotFunctions():
             'storage_data': data to pass to Highcharts,
             'form': the form to pass to HTML
         """
+        proj_level_df = pd.DataFrame()
         category_data_source = []
         # Filter by 'endswith' for each searched assay type
         count = -1
@@ -539,6 +656,25 @@ class StoragePlotFunctions():
             category_data_source.append(live_data)
             category_data_source.append(archived_data)
 
+            # Make project level df
+            cost_list = pd.DataFrame.from_records(
+                StorageCosts.objects.filter(
+                    date__date__range=[month_start, month_end],
+                    project__name__endswith=assay_type
+                ).order_by().values(
+                    'project__name',
+                    'date__date__month',
+                    'date__date__year'
+                ).annotate(
+                    Live_Cost=Sum('unique_cost_live'),
+                    Archived_Cost=Sum('unique_cost_archived')
+                )
+            )
+
+            proj_level_df = pd.concat([proj_level_df, cost_list])
+
+        proj_level_df = self.format_proj_level_table(proj_level_df)
+
         category_chart_data = self.chart_data.copy()
         category_chart_data['xAxis']['categories'] = string_months
         category_chart_data['series'] = category_data_source
@@ -548,17 +684,20 @@ class StoragePlotFunctions():
         context = {
             'storage_data': json.dumps(category_chart_data),
             'storage_df': chart_data,
-            'form': form
+            'form': form,
+            'proj_level_df': proj_level_df
         }
 
         return context
 
-    def month_range_form_submitted_no_proj_or_assay(
+    def all_projects_between_months(
         self, month_start, month_end, form
     ):
         """
-        Sets context when 'All' months selected
-        But no project types or assay types (only year + month)
+        Sets context for all projects between certain months
+        This is either specified by user or by default this
+        Is set to last four months in views for the landing page
+        Or where no form is submitted or form invalid
 
         Parameters
         ----------
@@ -574,6 +713,8 @@ class StoragePlotFunctions():
         context : dict
             'storage_data': data to pass to Highcharts,
             'form': the form to pass to HTML
+            'storage_df': pd.DataFrame of the data that makes up the chart
+            'proj_level_df': pd.Dataframe the live + archived costs per project
         """
         storage_totals = self.storage_objects.filter(
             date__date__range=[month_start, month_end],
@@ -617,80 +758,27 @@ class StoragePlotFunctions():
 
         chart_data = self.convert_to_df(category_chart_data)
 
+        # Add project-level df
+        proj_level_qs = pd.DataFrame.from_records(
+                StorageCosts.objects.filter(
+                date__date__range=[month_start, month_end]
+            ).order_by().values(
+                'project__name',
+                'date__date__month',
+                'date__date__year'
+            ).annotate(
+                Live_Cost=Sum('unique_cost_live'),
+                Archived_Cost=Sum('unique_cost_archived')
+            )
+        )
+
+        proj_level_df = self.format_proj_level_table(proj_level_qs)
+
         context = {
             'storage_data': json.dumps(category_chart_data),
             'storage_df': chart_data,
-            'form': form
-        }
-
-        return context
-
-    def form_is_not_submitted_or_invalid(self, form):
-        """
-        Sets context for the landing page where no form is submitted
-        Or when the form is invalid
-        i.e. >1 project type and >1 assay type are entered
-        Sets graph to all projects for all months grouped by month
-
-        Parameters
-        ----------
-        form : Django form object
-            the related Django form in forms.py
-
-        Returns
-        -------
-        context : dict
-            'storage_data': data to pass to Highcharts,
-            'form': the form to pass to HTML
-        """
-        storage_totals = self.storage_objects.filter(
-            date__date__range=[
-                self.start_of_four_months_ago, self.start_of_next_month
-            ],
-        ).order_by().values(
-            'date__date__month',
-            'date__date__year'
-        ).annotate(
-            Live=Sum('unique_cost_live'),
-            Archived=Sum('unique_cost_archived')
-        )
-
-        string_months = self.get_month_years_as_str(storage_totals)
-
-        category_data_source = [
-            {
-                "name": "All projects",
-                "data": list(storage_totals.values_list(
-                    'Live', flat=True
-                        )
-                    ),
-                'stack': 'Live',
-                'color': 'rgb(27,158,119)'
-            },
-
-            {
-                "name": "All projects",
-                "data": list(storage_totals.values_list(
-                    'Archived', flat=True
-                    )
-                ),
-                'stack': 'Archived',
-                'linkedTo': ':previous',
-                'color': 'rgb(27,158,119)',
-                'opacity': 0.8
-            }
-        ]
-
-        category_chart_data = self.chart_data.copy()
-        category_chart_data['xAxis']['categories'] = string_months
-        category_chart_data['series'] = category_data_source
-
-        chart_data = self.convert_to_df(category_chart_data)
-
-        context = {
-                'storage_data': json.dumps(category_chart_data),
-                'storage_df': chart_data,
-                'form': form
+            'form': form,
+            'proj_level_df': proj_level_df
         }
 
         return context

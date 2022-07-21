@@ -229,6 +229,23 @@ def storage_chart(request):
     Each bar is stacked with either project type
     Or assay type depending on the filters entered
     """
+    # Get date of the first day of the month four months ago
+    # Get date of the last day of the current month
+    # These are used to filter for last 4 months by default
+    today_date = dx_queries.no_of_days_in_month()[0]
+    this_year, this_month, _ = today_date.split("-")
+    four_months_ago = date.today() + relativedelta(months=-4)
+    four_months_start = four_months_ago.replace(day=1)
+    last_day_of_this_month = str(
+        calendar.monthrange(
+            int(today_date.split("-")[0]),
+            int(today_date.split("-")[1])
+        )[1]
+    )
+    this_months_end = (
+        f"{this_year}-{this_month}"
+        f"-{last_day_of_this_month}"
+    )
     # If the user has submitted the form
     if 'submit' in request.GET:
         form = StorageForm(request.GET)
@@ -241,23 +258,6 @@ def storage_chart(request):
 
             # If no months are entered
             if start == "---" and end == "---":
-                # Get date of the first day of the month four months ago
-                # Get date of the last day of the current month
-                # These are used to filter for last 4 months by default
-                today_date = dx_queries.no_of_days_in_month()[0]
-                this_year, this_month, _ = today_date.split("-")
-                four_months_ago = date.today() + relativedelta(months=-4)
-                four_months_start = four_months_ago.replace(day=1)
-                last_day_of_this_month = str(
-                    calendar.monthrange(
-                        int(today_date.split("-")[0]),
-                        int(today_date.split("-")[1])
-                    )[1]
-                )
-                this_months_end = (
-                    f"{this_year}-{this_month}"
-                    f"-{last_day_of_this_month}"
-                )
 
                 # If no months entered but proj type and assay type searched
                 if (form.cleaned_data.get('project_type') and
@@ -319,7 +319,7 @@ def storage_chart(request):
                         # Display all projs last 4 months grouped by month
 
                         context = sp.StoragePlotFunctions(
-                            ).month_range_form_submitted_no_proj_or_assay(
+                            ).all_projects_between_months(
                                 four_months_start,
                                 this_months_end,
                                 form
@@ -402,7 +402,7 @@ def storage_chart(request):
                         # Display all the projects grouped by months
 
                         context =sp.StoragePlotFunctions(
-                        ).month_range_form_submitted_no_proj_or_assay(
+                        ).all_projects_between_months(
                             month_start,
                             month_end,
                             form
@@ -413,19 +413,31 @@ def storage_chart(request):
             # Grouped by last four months
             # For all projects
             context = sp.StoragePlotFunctions(
-            ).form_is_not_submitted_or_invalid(form)
+                ).all_projects_between_months(
+                    four_months_start,
+                    this_months_end,
+                    form
+                )
 
     elif 'clear' in request.GET:
         form = StorageForm()
         context = sp.StoragePlotFunctions(
-        ).form_is_not_submitted_or_invalid(form)
+            ).all_projects_between_months(
+                four_months_start,
+                this_months_end,
+                form
+            )
 
     else:
         # If nothing is submitted on the form (normal landing page)
         # Display the all projects graph grouped by last four months
         form = StorageForm()
         context = sp.StoragePlotFunctions(
-        ).form_is_not_submitted_or_invalid(form)
+            ).all_projects_between_months(
+                four_months_start,
+                this_months_end,
+                form
+            )
 
     return render(request, 'bar_chart.html', context)
 
