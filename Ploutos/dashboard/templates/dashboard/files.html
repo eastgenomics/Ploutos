@@ -1,0 +1,104 @@
+{% extends 'dashboard/base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+<div>
+<form method="GET" action="{% url 'files' %}" style="padding-top: 20px;">
+    
+    <div class="container">
+        <div class="row">
+            <div class="card-body bg-white">
+                <h2><i class="bi-file-earmark-bar-graph"></i> File Type Storage</h2>
+                <p>
+                    This page shows the size and counts of files by file type (BAM, FASTQ and VCF) on different levels; all projects aggregated (default), searching project type or assay type (or both) or a single project (by searching its full name in either box).
+                    <br>
+                    Note: VCF includes file extensions <i>.vcf</i> and <i>.vcf.gz</i> and FASTQ includes <i>.fastq</i> and .<i>fastq.gz</i>. 
+                    <br>
+                    If a file exists in multiple projects it is only attributed to the oldest project it is found in.
+                  </p>
+                <h5>Total size of unique files in DNAnexus today:</h5>
+                <p>
+                <ul>
+                    <li> Live: <b>{{ live_total }}</b></li>
+                    <li> Archived: <b>{{ archived_total }}</b></li>
+                </ul>
+                </p>
+            </div>
+        <div class="my-form">
+          {% crispy form1 %}
+        </div>
+        </div>
+    <!-- Submit button, 'submit' used to check if form is submitted -->
+    <input type="submit" name="submit" value="Filter"/>
+    <input type="submit" name="clear" value="Reset"/>
+    </div>
+
+</form>
+<div id="container_data" align="center" style="padding-top: 60px;padding-bottom: 40px;">
+    <script>
+        Highcharts.chart('container_data', {{ file_size_data|safe }});
+    </script>
+</div>
+<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
+        {{ size_df|safe }}
+</div>
+
+<div id="container_2" align="center" style="padding-top: 80px;padding-bottom: 40px;">
+    <script>
+        Highcharts.chart('container_2', {{ file_count_data|safe }});
+    </script>
+</div>
+
+<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
+    {{ count_df|safe }}
+</div>
+<div class="card-body bg-white" style="margin-left: 4.2%;">
+    <h4>Project-Level Detail - {{ date_to_display }}</h4>
+</div>
+
+<div style="width: 90%;margin-left: 5%;margin-right: 5%;margin-top: 5px;margin-bottom: 50px;">
+    {{ detailed_df|safe }}
+</div>
+</div>
+
+<!-- Highlights current page and removes highlighting from previous -->
+<script>
+    var jobs = document.getElementById("files");
+    jobs.classList.add('active');
+    jobs.setAttribute("aria-current", "page");
+
+    var home = document.getElementById("home");
+    home.classList.remove('active');
+    home.setAttribute("aria-current","none");
+    
+</script>
+
+<script>
+    // Sets up the DataTable
+    $(document).ready(function () {
+    $('.dataframe').DataTable( {
+        scrollY: '50vh',
+        scroller: true,
+        deferRender: true,
+        info: false,
+        scrollCollapse: true,
+        columnDefs: [
+        {"width": "20%",
+        "targets": 0},
+        {"width": "20%",
+        "targets": 1},
+        {"width": "20%",
+        "targets": 2},
+        {"width": "20%",
+        "targets": 3}
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+        'copyHtml5', 'csv'
+        ],
+        order: [[0, 'asc']],
+    });
+});
+
+</script>
+{% endblock content %}

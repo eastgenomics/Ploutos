@@ -2,6 +2,7 @@
     Script to add API data to MariaDB Database.
 """
 import datetime as dt
+import logging
 import pandas as pd
 import dxpy as dx
 
@@ -11,8 +12,16 @@ from time import time, localtime, strftime
 
 from django.apps import apps
 from django.conf import settings
-from dashboard.models import ComputeCosts, DailyOrgRunningTotal, Executables, Users, Dates, Projects, StorageCosts
+from dashboard.models import (
+    Users, Dates, Projects, DailyOrgRunningTotal,
+    StorageCosts, FileTypeDate, FileTypes, FileTypeState,
+    ComputeCosts, Executables
+)
+
 from scripts import DNAnexus_queries as queries
+
+
+logger = logging.getLogger("general")
 
 
 def populate_projects(all_projects) -> None:
@@ -21,7 +30,10 @@ def populate_projects(all_projects) -> None:
     Checks whether date exists or creates it to get ID
     Checks whether project exists already and updates name if needed
     Adds data into the Projects table
-
+    Parameters
+    ----------
+    all_projects : collections.defaultdict
+        dict with project as key and relevant file info
     """
     # In case project names have been changed in DX
     # Get all project objects in db to filter on later
@@ -71,8 +83,6 @@ def populate_projects(all_projects) -> None:
 
 def populate_running_totals() -> None:
     """
-    populate_running_totals():
-
     Populates the database with data
     from API query for organisation level costs.
     The organisation ID is set in config file (CREDENTIALS.json).
@@ -80,13 +90,6 @@ def populate_running_totals() -> None:
     Adds org running totals into the db,
     getting the date IDs or creating them first.
 
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None
     """
 
     # Get today's date in YYY-MM-DD format
@@ -117,10 +120,6 @@ def populate_database_files(all_projects_dict) -> None:
     ----------
     all_projects_dict : dict
         final dictionary from put_into_dict_write_to_file function
-
-    Returns
-    -------
-    none
     """
 
     today_date, _ = queries.no_of_days_in_month()
@@ -143,19 +142,93 @@ def populate_database_files(all_projects_dict) -> None:
         )
 
 
+def populate_file_types(file_type_df) -> None:
+    """
+    Puts the file type data into the db
+    Parameters
+    ----------
+    file_type_df : pd.DataFrame
+        dataframe with one row per project and all the file types
+        and their sizes + counts (live + archived)
+
+    """
+    # Convert to dict with projects as keys, counts + sizes as vals
+    file_types_dict = file_type_df.set_index("project").to_dict("index")
+    today_date = queries.no_of_days_in_month()[0]
+
+    for project, file_vals in file_types_dict.items():
+        # Add in or get the file type
+        vcf_file_type, created = FileTypes.objects.get_or_create(
+            file_type='vcf'
+        )
+
+        # If the state exists, get it, or create new state id
+        # Store counts and file sizes in GiB
+        vcf_state, created = FileTypeState.objects.get_or_create(
+            file_type=vcf_file_type,
+            file_count_live=file_vals['vcf_count_live'],
+            file_count_archived=file_vals['vcf_count_archived'],
+            file_size_live=(file_vals['vcf_size_live'] / (2**30)),
+            file_size_archived=(file_vals['vcf_size_archived'] / (2**30))
+        )
+
+        # Add the proj, date and state to the FileTypeDate table
+        vcf_object, created = FileTypeDate.objects.get_or_create(
+            project=Projects.objects.get(dx_id=project),
+            date=Dates.objects.get(date=today_date),
+            file_state=vcf_state
+        )
+
+        # Do same for BAMs
+        bam_file_type, created = FileTypes.objects.get_or_create(
+            file_type='bam'
+        )
+
+        bam_state, created = FileTypeState.objects.get_or_create(
+            file_type=bam_file_type,
+            file_count_live=file_vals['bam_count_live'],
+            file_count_archived=file_vals['bam_count_archived'],
+            file_size_live=(file_vals['bam_size_live'] / (2**30)),
+            file_size_archived=(file_vals['bam_size_archived'] / (2**30))
+        )
+
+        bam_object, created = FileTypeDate.objects.get_or_create(
+            project=Projects.objects.get(dx_id=project),
+            date=Dates.objects.get(date=today_date),
+            file_state=bam_state
+        )
+
+        # Do same for FASTQs
+        fastq_file_type, created = FileTypes.objects.get_or_create(
+            file_type='fastq'
+        )
+
+        fastq_state, created = FileTypeState.objects.get_or_create(
+            file_type=fastq_file_type,
+            file_count_live=file_vals['fastq_count_live'],
+            file_count_archived=file_vals['fastq_count_archived'],
+            file_size_live=(file_vals['fastq_size_live'] / (2**30)),
+            file_size_archived=(file_vals['fastq_size_archived'] / (2**30)),
+        )
+
+        fastq_object, created = FileTypeDate.objects.get_or_create(
+            project=Projects.objects.get(dx_id=project),
+            date=Dates.objects.get(date=today_date),
+            file_state=fastq_state
+        )
+
+
 def populate_executions(all_executions_df) -> None:
     """
     Populate database with data from API query.
     This function iterates over all projects and returns all parent executions
     that have finished in the last 24 hrs.
     It then populates the database with this data.
-
     --- This is still in development with the models.py ---
-
     Parameters
     ----------
-    all_executions_df:
-        dataframe with all parent executions run in timeperiod specified.
+    all_executions_df: pd.DataFrame
+      dataframe with all parent executions run in timeperiod specified.
     Returns
     -------
     None
@@ -202,18 +275,27 @@ def run():
     Main function to orchestrate population of the database with API data.
     """
     start = time()
-    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
+    start_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
+    print(start_time)
+    logger.log(f"populate_db started at {start_time}")
 
     queries.login()
     all_projects, proj_list, proj_df = queries.get_projects()
     populate_projects(all_projects)
-    # populate_running_totals()
-    # final_dict = queries.orchestrate_get_files(proj_list, proj_df)
-    # populate_database_files(final_dict)
+    populate_running_totals()
+    final_dict, file_type_df = queries.orchestrate_get_files(
+        proj_list, proj_df
+    )
+    populate_database_files(final_dict)
+    populate_file_types(file_type_df)
     executions_df = queries.orchestrate_get_executions(proj_list)
-    print(executions_df)
     populate_executions(executions_df)
+
     end = time()
     total = (end - start) / 60
+    end_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
     print(f"Total time was {total} minutes")
-    print(strftime("%Y-%m-%d %H:%M:%S", localtime()))
+    print(end_time)
+    logger.log(
+        f"populate_db ended at {start_time}. Total time was {total} minutes"
+    )

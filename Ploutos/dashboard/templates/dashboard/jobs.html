@@ -2,6 +2,19 @@
 
 {% block content %}
 
-    Jobs will be shown on this page
+<div class="card-body bg-white">
+    <h5>Jobs will be shown on this page</h5>
+</div>
+<!-- Highlights current page and removes highlighting from previous -->
+<script>
+    var jobs = document.getElementById("jobs");
+    jobs.classList.add('active');                  
+    jobs.setAttribute("aria-current", "page");
+
+    var home = document.getElementById("home");
+    home.classList.remove('active');
+    home.setAttribute("aria-current","none");
+
+</script>
 
 {% endblock content %}

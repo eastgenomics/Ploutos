@@ -1,46 +1,112 @@
 {% extends 'dashboard/base.html' %}
-
+{% load crispy_forms_tags %}
 {% block content %}
+<script>
+  // Sets up the DataTable
+  $(document).ready(function () {
+  $('#dailytable').DataTable( {
+      scrollY: '400px',
+      scroller: true,
+      deferRender:    true,
+      info:           false,
+      scrollCollapse: true,
+      columnDefs: [
+          { "width": "20%",
+          "targets": 0 
+      },
+      {"width": "20%",
+      "targets": 1},
+      {"width": "20%",
+      "targets": 2},
+      {"width": "20%",
+      "targets": 3}
+      ],
+      dom: 'Bfrtip',
+      buttons: [
+      'copyHtml5', 'csv'
+      ],
+      order: [[0, 'asc']],
+  });
+});
 
-<style>
-    form {
-        padding-top: 30px;
-        padding-bottom: 30px;
-    }
-</style>
+</script>
+<script>
+  // Sets up the DataTable
+  $(document).ready(function () {
+  $('#monthlytable').DataTable( {
+      scrollY: '400px',
+      scroller: true,
+      deferRender:    true,
+      info:           false,
+      scrollCollapse: true,
+      columnDefs: [
+          { "width": "20%",
+          "targets": 0 
+      },
+      {"width": "20%",
+      "targets": 1},
+      {"width": "20%",
+      "targets": 2},
+      {"width": "20%",
+      "targets": 3}
+      ],
+      dom: 'Bfrtip',
+      buttons: [
+      'copyHtml5', 'csv'
+      ],
+      order: [[0, 'desc']],
+  });
+});
 
-<style>
-    .col-sm-6 {
-        padding-top: 5px;
-        padding-bottom: 5px;
-    }
-</style>
-
-<form method="GET" action="{% url 'index' %}">
+</script>
+<div class="all" style='margin: 0 auto;'>
+<form method="GET" action="{% url 'index' %}" style="padding-top: 20px;">
     <div class="container">
         <div class="row">
-        <!-- If form errors, display each field's error with red banner -->
-        {% if form.errors %}
-            <div class="alert alert-danger">
-                {{ form.errors }}
-            </div>
-        {% endif %}
-        <!-- Display each field's label and the field itself -->
-        {% for field in form  %}
-          <div class="col-sm-6">
-            <b>{{ field.label_tag }}</b> {{ field }} 
-          </div>
-        {% endfor %}
-        </div>  
-
+          <div class="card-body bg-white">
+            <h2><i class="bi-piggy-bank"></i> Running Totals</h2>
+            <p>
+              This page shows charges derived from querying the DNAnexus API running total billing charges daily <i>(dxpy.api.org_describe)</i>.
+              <br>
+              Note: as the API queries aim to be run just after midnight, the charges for the day the query is run are attributed to the previous day. 
+            </p>
+        </div>
+        <div class="my-form">
+          {% crispy form %}
+        </div>
+      </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
-    <input type="submit" name="submit" value="Submit"/>
+    <input type="submit" name="submit" value="Filter"/>
+    <input type="reset" name="reset" value="Reset"/>
     </div>
 
 </form>
-<div id='chart_div' align='center' style='margin: 0 auto;'>
-    {{ chart|safe }}
+<div id='chart_div' align='center' style='margin: 0 auto; padding-bottom: 40px;'>
+    {{ daily_chart|safe }}
 </div>
+<div style="width: 63%; margin-left: 18.5%;margin-right: 0%;margin-top: 5px;margin-bottom: 40px;">
+  {{ daily_df|safe }}
+</div>
+
+<form method="GET" action="{% url 'index' %}">
+<div class="container">
+  <div class="row">
+    <div class="my-form">
+    {% crispy form2 %}
+    </div>
+  </div>
+  <input type="submit" name="monthly" value="Filter"/>
+  <input type="reset" name="reset2" value="Reset"/>
+</form>
+<div id="chart-two" align='center' style='margin: 0 auto;'>
+  {{ monthly_chart|safe }}
+</div>
+<div style="width: 90%;margin-left: 5%;margin-right: 0%;margin-top: 5px;margin-bottom: 40px;">
+  {{ monthly_df|safe }}
+</div>
+</div>
+
+
 {% endblock content %}
 
 

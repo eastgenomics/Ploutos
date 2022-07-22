@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 import json
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -54,7 +55,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'debug_toolbar',
     'django_extensions',
+    'bootstrap4',
+    'crispy_forms',
 ]
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -140,6 +145,62 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Settings for logging
+with open('ploutos-error.log', 'a'):
+    pass
+with open('ploutos-debug.log', 'a'):
+    pass
+# Set up execution tracker log
+with open('executions_log.log', 'a'):
+    pass
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': ('{levelname} {asctime} {module}'
+                        '{process:d} {thread:d} {message}'),
+            'style': '{',
+        },
+        'simple': {
+            'format': '{asctime} {levelname} {message}',
+            'style': '{',
+        },
+    },
+    # Handlers
+    'handlers': {
+        'error-log': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': f'ploutos-error.log',
+            'formatter': 'simple',
+            'maxBytes': 5242880,
+            'backupCount': 2
+        },
+        'debug-log': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': f'ploutos-debug.log',
+            'formatter': 'verbose',
+            'maxBytes': 5242880,
+            'backupCount': 2
+        },
+    },
+    # Loggers
+    'loggers': {
+        'general': {
+            'handlers': ['error-log'],
+            'level': 'ERROR',
+            'propagate': True
+        },
+        '': {
+            'handlers': ['debug-log'],
+            'level': 'DEBUG',
+            'propagate': True
+        }
+    },
+}
 
 # Settings for logging
 with open('ploutos-error.log', 'a'):
@@ -202,6 +263,10 @@ LOGGING = {
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, '/')
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, "dashboard/static/dashboard"),
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field

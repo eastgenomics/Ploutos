@@ -1,3 +1,4 @@
+from datetime import date
 from django.db import models
 
 # Create your models here.
@@ -50,12 +51,36 @@ class StorageCosts(models.Model):
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
 
+class FileTypes(models.Model):
+    """Model representing a file type"""
+    file_type = models.CharField(max_length=35, unique=True)
+
+
+class FileTypeState(models.Model):
+    """Model representing the size and count of file types"""
+    file_type = models.ForeignKey(FileTypes, on_delete=models.CASCADE)
+    file_count_live = models.IntegerField()
+    file_count_archived = models.IntegerField()
+    file_size_live = models.FloatField()
+    file_size_archived = models.FloatField()
+
+
+class FileTypeDate(models.Model):
+    """
+    Model representing the state of files for a project on a given date
+    """
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
+    file_state = models.ForeignKey(FileTypeState, on_delete=models.CASCADE)
+   
+
 class Executables(models.Model):
     executable_name = models.CharField(max_length=200)
     version = models.CharField(max_length=10)
 
     def __str__(self):
         return self.excutable_name
+
 
 class ComputeCosts(models.Model):
     dx_id = models.CharField(max_length=200)
@@ -70,14 +95,3 @@ class ComputeCosts(models.Model):
 
     def __str__(self):
         return self.dx_id
-
-
-# Models in progress
-
-# class Egress(models.Model):
-#     project = models.ForeignKey(Projects,on_delete=models.CASCADE)
-#     egress_cost = models.FloatField()
-#     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
-
-#     def __str__(self):
-#         return self.project

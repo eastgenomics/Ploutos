@@ -1,44 +1,96 @@
 {% extends 'dashboard/base.html' %}
-
+{% load crispy_forms_tags %}
 {% block content %}
-<style>
-    form {
-        padding-top: 30px;
-        padding-bottom: 30px;
-    }
-</style>
-<style>
-    .col-sm-6 {
-        padding-top: 5px;
-        padding-bottom: 5px;
-    }
-</style>
 
-<form method="GET" action="{% url 'storage' %}">
-   
+<form method="GET" action="{% url 'storage' %}" style="padding-top: 20px;">
     <div class="container">
         <div class="row">
-        <!-- If general form errors, display them with red banner -->
-        {% if form.non_field_errors %}
-            <div class="alert alert-danger">
-                {{ form.non_field_errors }}
+            <div class="card-body bg-white">
+                <h2><i class="bi-bank2"></i> Storage Cost</h2>
+                    <p>
+                    This page shows estimated monthly charges on different levels; all projects aggregated (default), searching project type or assay type (or both) or a single project (by searching its full name in either box). This is done through:
+                    <ul>
+                        <li>
+                            Querying files per project, removing duplicates found in multiple projects by attributing them only to the oldest project
+                        </li>
+                        <li>
+                            Summing the size of files in that project per state (live vs archived)
+                        </li>
+                        <li>
+                            Converting size to GiB and calculating the cost of storage per month according to the DNAnexus rates (live vs archived)
+                        </li>
+                        <li>
+                            Dividing by the number of days in the month to get a daily estimated storage cost per project
+                        </li>
+                        <li>
+                            Aggregating that daily cost over a month for a monthly total estimated cost
+                        </li>
+                    </ul>
+
+                </p>
             </div>
-        {% endif %}
-        <!-- Display each field's label and the field itself -->
-        {% for field in form  %}
-          <div class="col-sm-6">
-            <b>{{ field.label_tag }}</b> {{ field }} 
-          </div>
-        {% endfor %}
+            <div class="my-form">
+                {% crispy form %}
+            </div>
         </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
-    <input type="submit" name="submit" value="Submit"/>
+    <input type="submit" name="submit" value="Filter"/>
+    <input type="submit" name="clear" value="Reset"/>
     </div>
-&nbsp; 
 </form>
 
-<div id="container_data" align="center"></div>
+<div id="container_data" align="center" style="padding-top: 30px;padding-bottom: 40px;">
 <script>
-       Highcharts.chart('container_data', {{ storage_data|safe }});
+    Highcharts.chart('container_data', {{ storage_data|safe }});
 </script>
+</div>
+
+<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
+    {{ storage_df|safe }}
+</div>
+
+<div style="width: 90%;margin-left: 5%;margin-right: 5%;margin-top: 5px;margin-bottom: 50px;">
+    {{ proj_level_df|safe }}
+</div>
+
+<!-- Highlights current page and removes highlighting from previous -->
+<script>
+    var storage = document.getElementById("storage");
+    storage.classList.add('active');
+    storage.setAttribute("aria-current", "page");
+
+    var home = document.getElementById("home");
+    home.classList.remove('active');
+    home.setAttribute("aria-current","none");
+</script>
+
+<script>
+    // Sets up the DataTable
+    $(document).ready(function () {
+    $('.dataframe').DataTable( {
+        scrollY: '75vh',
+        scroller: true,
+        deferRender: true,
+        info: false,
+        scrollCollapse: true,
+        columnDefs: [
+        {"width": "20%",
+        "targets": 0},
+        {"width": "20%",
+        "targets": 1},
+        {"width": "20%",
+        "targets": 2},
+        {"width": "20%",
+        "targets": 3}
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+        'copyHtml5', 'csv'
+        ],
+        order: [[0, 'desc']],
+    });
+});
+
+</script>
+
 {% endblock content %}
