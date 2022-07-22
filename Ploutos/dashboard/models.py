@@ -73,12 +73,14 @@ class FileTypeDate(models.Model):
     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
     file_state = models.ForeignKey(FileTypeState, on_delete=models.CASCADE)
 
+
 class Executables(models.Model):
     executable_name = models.CharField(max_length=200)
     version = models.CharField(max_length=10)
 
     def __str__(self):
         return self.excutable_name
+
 
 class ComputeCosts(models.Model):
     dx_id = models.CharField(max_length=200)

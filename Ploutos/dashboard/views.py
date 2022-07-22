@@ -65,7 +65,7 @@ def index(request):
                 fig, daily_df = rtp.daily_plot(totals)
                 daily_chart = fig.to_html()
 
-                # Send filtered daily_chart and default monthly_chart to context
+                # Filtered daily_chart and default monthly_chart to context
                 # Send validated form and empty form2 to context
                 context = {
                     'daily_chart': daily_chart,

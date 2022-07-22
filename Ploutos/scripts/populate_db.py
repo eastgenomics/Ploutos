@@ -23,6 +23,7 @@ from scripts import DNAnexus_queries as queries
 
 logger = logging.getLogger("general")
 
+
 def populate_projects(all_projects) -> None:
     """
     Checks whether user exists or creates it to get ID
@@ -215,6 +216,7 @@ def populate_file_types(file_type_df) -> None:
             file_state=fastq_state
         )
 
+
 def populate_executions(all_executions_df) -> None:
     """
     Populate database with data from API query.
@@ -278,11 +280,13 @@ def run():
     all_projects, proj_list, proj_df = queries.get_projects()
     populate_projects(all_projects)
     populate_running_totals()
-    final_dict, file_type_df = queries.orchestrate_get_files(proj_list, proj_df)
+    final_dict, file_type_df = queries.orchestrate_get_files(
+        proj_list, proj_df
+    )
     populate_database_files(final_dict)
     populate_file_types(file_type_df)
-    #executions_df = queries.orchestrate_get_executions(proj_list)
-    #populate_executions(executions_df)
+    # executions_df = queries.orchestrate_get_executions(proj_list)
+    # populate_executions(executions_df)
 
     end = time()
     total = (end - start) / 60
