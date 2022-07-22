@@ -27,6 +27,7 @@ class Projects(models.Model):
     def __str__(self):
         return self.dx_id
 
+
 class DailyOrgRunningTotal(models.Model):
     """Model representing running totals for the org"""
     date = models.OneToOneField(Dates, on_delete=models.CASCADE)
@@ -72,25 +73,23 @@ class FileTypeDate(models.Model):
     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
     file_state = models.ForeignKey(FileTypeState, on_delete=models.CASCADE)
 
-# class Executables(models.Model):
-#     executable_name = models.CharField(max_length=200)
-#     version = models.CharField(max_length=10)
+class Executables(models.Model):
+    executable_name = models.CharField(max_length=200)
+    version = models.CharField(max_length=10)
 
-#     def __str__(self):
-#         return self.excutable_name
+    def __str__(self):
+        return self.excutable_name
 
-# class ComputeCosts(models.Model):
-#     dx_id = models.CharField(max_length=200)
-#     # job_name = models.CharField(max_length=200)
-#     executable_name = models.ForeignKey(
-#         Executables, on_delete=models.CASCADE
-#     )
-#     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
-#     runtime = models.DurationField()
-#     total_cost = models.FloatField()
-#     state = models.CharField(max_length=50)
-#     launched_by = models.ForeignKey(Users, on_delete=models.CASCADE)
-#     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
+class ComputeCosts(models.Model):
+    dx_id = models.CharField(max_length=200)
+    # job_name = models.CharField(max_length=200)
+    executable_name = models.ForeignKey(Executables, on_delete=models.CASCADE)
+    project = models.ForeignKey(Projects, on_delete=models.CASCADE)
+    runtime = models.DurationField()
+    total_cost = models.FloatField()
+    state = models.CharField(max_length=50)
+    launched_by = models.ForeignKey(Users, on_delete=models.CASCADE)
+    date = models.ForeignKey(Dates, on_delete=models.CASCADE)
 
-#     def __str__(self):
-#         return self.dx_id
+    def __str__(self):
+        return self.dx_id

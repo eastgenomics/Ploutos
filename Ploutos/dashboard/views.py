@@ -36,7 +36,7 @@ def index(request):
         # Get the form with info, set monthly form and monthly plot to default
         form = DateForm(request.GET)
         form2 = MonthlyForm()
-        chart2, monthly_df = rtp.monthly_between_dates(
+        monthly_chart, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
@@ -63,13 +63,13 @@ def index(request):
                 # If user wants to see all charge types, render whole graph
                 # if charge_type == 'All':
                 fig, daily_df = rtp.daily_plot(totals)
-                chart = fig.to_html()
+                daily_chart = fig.to_html()
 
-                # Send filtered chart1 and unfiltered chart 2 to context
+                # Send filtered daily_chart and default monthly_chart to context
                 # Send validated form and empty form2 to context
                 context = {
-                    'chart': chart,
-                    'chart2': chart2,
+                    'daily_chart': daily_chart,
+                    'monthly_chart': monthly_chart,
                     'form': form,
                     'form2': form2,
                     'monthly_df': monthly_df,
@@ -85,11 +85,11 @@ def index(request):
                 )
 
                 fig, daily_df = rtp.daily_plot(totals)
-                chart = fig.to_html()
+                daily_chart = fig.to_html()
 
                 context = {
-                    'chart': chart,
-                    'chart2': chart2,
+                    'daily_chart': daily_chart,
+                    'monthly_chart': monthly_chart,
                     'form': form,
                     'form2': form2,
                     'monthly_df': monthly_df,
@@ -106,11 +106,11 @@ def index(request):
             )
 
             fig, daily_df = rtp.daily_plot(totals)
-            chart = fig.to_html()
+            daily_chart = fig.to_html()
 
             context = {
-                'chart': chart,
-                'chart2': chart2,
+                'daily_chart': daily_chart,
+                'monthly_chart': monthly_chart,
                 'form': form,
                 'form2': form2,
                 'monthly_df': monthly_df,
@@ -135,16 +135,16 @@ def index(request):
             if start_month == "---" and end_month == "---":
 
                 # Display last four months on monthly plot
-                chart2, monthly_df = rtp.monthly_between_dates(
+                monthly_chart, monthly_df = rtp.monthly_between_dates(
                     start_of_four_months_ago, start_of_next_month
                 )
                 # And last four months on daily plot
                 fig, daily_df = rtp.daily_plot(totals)
-                chart = fig.to_html()
+                daily_chart = fig.to_html()
 
                 context = {
-                    'chart': chart,
-                    'chart2': chart2,
+                    'daily_chart': daily_chart,
+                    'monthly_chart': monthly_chart,
                     'form': form,
                     'form2': form2,
                     'monthly_df': monthly_df,
@@ -162,16 +162,16 @@ def index(request):
                 # Add one month to the end month
                 # So it is first of next month
                 month_end = date_month_end + relativedelta(months=+1)
-                chart2, monthly_df = rtp.monthly_between_dates(
+                monthly_chart, monthly_df = rtp.monthly_between_dates(
                     month_start, month_end
                 )
                 # Show last four months on daily plot
                 fig, daily_df = rtp.daily_plot(totals)
-                chart = fig.to_html()
+                daily_chart = fig.to_html()
 
                 context = {
-                    'chart': chart,
-                    'chart2': chart2,
+                    'daily_chart': daily_chart,
+                    'monthly_chart': monthly_chart,
                     'form': form,
                     'form2': form2,
                     'monthly_df': monthly_df,
@@ -181,16 +181,16 @@ def index(request):
         else:
             # If monthly form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
-            chart2, monthly_df = rtp.monthly_between_dates(
+            monthly_chart, monthly_df = rtp.monthly_between_dates(
                 start_of_four_months_ago, start_of_next_month
             )
             # Show last four months on daily plot
             fig, daily_df = rtp.daily_plot(totals)
-            chart = fig.to_html()
+            daily_chart = fig.to_html()
 
             context = {
-                'chart': chart,
-                'chart2': chart2,
+                'daily_chart': daily_chart,
+                'monthly_chart': monthly_chart,
                 'form': form,
                 'form2': form2,
                 'monthly_df': monthly_df,
@@ -201,16 +201,16 @@ def index(request):
     else:
         form = DateForm()
         form2 = MonthlyForm()
-        chart2, monthly_df = rtp.monthly_between_dates(
+        monthly_chart, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
         fig, daily_df = rtp.daily_plot(totals)
-        chart = fig.to_html()
+        daily_chart = fig.to_html()
 
         context = {
-            'chart': chart,
-            'chart2': chart2,
+            'daily_chart': daily_chart,
+            'monthly_chart': monthly_chart,
             'form': form,
             'form2': form2,
             'monthly_df': monthly_df,

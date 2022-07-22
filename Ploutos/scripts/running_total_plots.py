@@ -13,13 +13,6 @@ class RunningTotPlotFunctions():
     """Class for plotting functions for the running total graph"""
 
     def __init__(self) -> None:
-        self.today_date = dx_queries.no_of_days_in_month()[0]
-        self.four_months_ago = date.today() + relativedelta(months=-4)
-        self.start_of_four_months_ago = self.four_months_ago.replace(day=1)
-        self.start_of_next_month = (
-            date.today() + relativedelta(months=+1)
-        ).replace(day=1)
-
         # Get all DailyOrgRunningTotal objects as a queryset
         # So multiple db queries not needed
         self.totals = DailyOrgRunningTotal.objects.all()

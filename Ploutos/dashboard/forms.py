@@ -58,19 +58,17 @@ class DateForm(forms.Form):
         end = self.cleaned_data['end']
 
         # Check both dates are entered
-        if start:
-            if not end:
-                self.add_error(
-                    "end",
-                    "If entering a start date please include an end date"
-                )
+        if start and not end:
+            self.add_error(
+                "end",
+                "If entering a start date please include an end date"
+            )
 
-        if end:
-            if not start:
-                self.add_error(
-                    "start",
-                    "If entering an end date please include a start date"
-                )
+        if end and not start:
+            self.add_error(
+                "start",
+                "If entering an end date please include a start date"
+            )
 
         # Check end date isn't earlier than start date
         # Checking start against earliest db entry and end against today
@@ -180,24 +178,6 @@ class MonthlyForm(forms.Form):
 
 class StorageForm(forms.Form):
     """Proj type, assay type and monthyear to-from for the storage costs"""
-
-    TYPE_CHOICES = (
-        ('001', '001'),
-        ('002', '002'),
-        ('003', '003'),
-        ('004', '004'),
-    )
-
-    ASSAY_CHOICES = (
-        ('CEN', 'CEN'),
-        ('MYE', 'MYE'),
-        ('TWE', 'TWE'),
-        ('TSO500', 'TSO500'),
-        ('SNP', 'SNP'),
-        ('CP', 'CP'),
-        ('WES', 'WES'),
-        ('FH', 'FH'),
-    )
 
     # Find all the month and years present in db
     months_and_years = []

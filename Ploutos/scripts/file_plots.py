@@ -204,7 +204,7 @@ class FilePlotFunctions():
 
     def file_types_size_all_projects(self, date_to_filter):
         """
-        Returns the chart data and a df for today's file sizes in DNAnexus
+        Returns the chart data and a df for a date's file sizes in DNAnexus
         For all of the projects aggregated
 
         Parameters
@@ -314,7 +314,7 @@ class FilePlotFunctions():
 
     def file_types_count_all_projects(self, date_to_filter):
         """
-        Returns the chart data and a df for today's file counts in DNAnexus
+        Returns the chart data and a df for a date's file counts in DNAnexus
         For all of the projects aggregated
 
         Parameters
@@ -397,7 +397,7 @@ class FilePlotFunctions():
 
     def file_types_count_project_types(self, date_to_filter, proj_types):
         """
-        Returns the chart data and a df for today's file counts in DNAnexus
+        Returns the chart data and a df for a date's file counts in DNAnexus
         When only project types have been entered
 
         Parameters
@@ -487,7 +487,7 @@ class FilePlotFunctions():
 
     def file_types_size_project_types(self, date_to_filter, proj_types):
         """
-        Returns the chart data and a df for today's file sizes in DNAnexus
+        Returns the chart data and a df for a date's file sizes in DNAnexus
         When only project types have been entered
 
         Parameters
@@ -606,7 +606,7 @@ class FilePlotFunctions():
 
     def file_types_count_assay_types(self, date_to_filter, assay_types):
         """
-        Returns the chart data and a df for today's file counts in DNAnexus
+        Returns the chart data and a df for a date's file counts in DNAnexus
         When only assay types have been entered
 
         Parameters
@@ -694,7 +694,7 @@ class FilePlotFunctions():
 
     def file_types_size_assay_types(self, date_to_filter, assay_types):
         """
-        Returns the chart data and a df for today's file sizes in DNAnexus
+        Returns the chart data and a df for a date's file sizes in DNAnexus
         When only assay types have been entered
 
         Parameters
@@ -816,7 +816,7 @@ class FilePlotFunctions():
         self, date_to_filter, project_type, assay_type
     ):
         """
-        Returns the chart data and a df for today's file counts in DNAnexus
+        Returns the chart data and a df for a date's file counts in DNAnexus
         When a project type and an assay type has been entered
 
         Parameters
@@ -902,7 +902,7 @@ class FilePlotFunctions():
         self, date_to_filter, project_type, assay_type
     ):
         """
-        Returns the chart data and a df for today's file sizes in DNAnexus
+        Returns the chart data and a df for a date's file sizes in DNAnexus
         When a project type and an assay type has been entered
 
         Parameters

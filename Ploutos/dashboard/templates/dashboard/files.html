@@ -2,48 +2,6 @@
 {% load crispy_forms_tags %}
 {% block content %}
 
-<!-- Highlights current page and removes highlighting from previous -->
-<script>
-    var jobs = document.getElementById("files");
-    jobs.classList.add('active');                  
-    jobs.setAttribute("aria-current", "page");
-    
-    var home = document.getElementById("home");
-    home.classList.remove('active');
-    home.setAttribute("aria-current","none");
-    
-</script>
-
-<script>
-    // Sets up the DataTable
-    $(document).ready(function () {
-    $('.dataframe').DataTable( {
-        scrollY: '50vh',
-        scroller: true,
-        deferRender:    true,
-        info:           false,
-        scrollCollapse: true,
-        columnDefs: [
-        { "width": "20%",
-            "targets": 0 
-        },
-        {"width": "20%",
-        "targets": 1},
-        {"width": "20%",
-        "targets": 2},
-        {"width": "20%",
-        "targets": 3}
-        ],
-        dom: 'Bfrtip',
-        buttons: [
-        'copyHtml5', 'csv'
-        ],
-        order: [[0, 'asc']],
-    });
-});
-
-</script>
-
 <div>
 <form method="GET" action="{% url 'files' %}" style="padding-top: 20px;">
     
@@ -100,4 +58,45 @@
     {{ detailed_df|safe }}
 </div>
 </div>
+
+<!-- Highlights current page and removes highlighting from previous -->
+<script>
+    var jobs = document.getElementById("files");
+    jobs.classList.add('active');
+    jobs.setAttribute("aria-current", "page");
+
+    var home = document.getElementById("home");
+    home.classList.remove('active');
+    home.setAttribute("aria-current","none");
+    
+</script>
+
+<script>
+    // Sets up the DataTable
+    $(document).ready(function () {
+    $('.dataframe').DataTable( {
+        scrollY: '50vh',
+        scroller: true,
+        deferRender: true,
+        info: false,
+        scrollCollapse: true,
+        columnDefs: [
+        {"width": "20%",
+        "targets": 0},
+        {"width": "20%",
+        "targets": 1},
+        {"width": "20%",
+        "targets": 2},
+        {"width": "20%",
+        "targets": 3}
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+        'copyHtml5', 'csv'
+        ],
+        order: [[0, 'asc']],
+    });
+});
+
+</script>
 {% endblock content %}

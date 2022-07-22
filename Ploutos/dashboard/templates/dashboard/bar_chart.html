@@ -1,16 +1,6 @@
 {% extends 'dashboard/base.html' %}
 {% load crispy_forms_tags %}
 {% block content %}
-<!-- Highlights current page and removes highlighting from previous -->
-<script>
-    var storage = document.getElementById("storage");
-    storage.classList.add('active');                  
-    storage.setAttribute("aria-current", "page");
-    
-    var home = document.getElementById("home");
-    home.classList.remove('active');
-    home.setAttribute("aria-current","none");
-</script>
 
 <form method="GET" action="{% url 'storage' %}" style="padding-top: 20px;">
     <div class="container">
@@ -22,19 +12,19 @@
                     <ul>
                         <li>
                             Querying files per project, removing duplicates found in multiple projects by attributing them only to the oldest project
-                    </li>
-                    <li>
-                        Summing the size of files in that project per state (live vs archived)
-                    </li>
-                    <li>
-                        Converting size to GiB and calculating the cost of storage per month according to the DNAnexus rates (live vs archived)
-                    </li>
-                    <li>
-                        Dividing by the number of days in the month to get a daily estimated storage cost per project
-                    </li>
-                    <li>
-                        Aggregating that daily cost over a month for a monthly total estimated cost
-                    </li>
+                        </li>
+                        <li>
+                            Summing the size of files in that project per state (live vs archived)
+                        </li>
+                        <li>
+                            Converting size to GiB and calculating the cost of storage per month according to the DNAnexus rates (live vs archived)
+                        </li>
+                        <li>
+                            Dividing by the number of days in the month to get a daily estimated storage cost per project
+                        </li>
+                        <li>
+                            Aggregating that daily cost over a month for a monthly total estimated cost
+                        </li>
                     </ul>
 
                 </p>
@@ -54,19 +44,38 @@
     Highcharts.chart('container_data', {{ storage_data|safe }});
 </script>
 </div>
+
+<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
+    {{ storage_df|safe }}
+</div>
+
+<div style="width: 90%;margin-left: 5%;margin-right: 5%;margin-top: 5px;margin-bottom: 50px;">
+    {{ proj_level_df|safe }}
+</div>
+
+<!-- Highlights current page and removes highlighting from previous -->
+<script>
+    var storage = document.getElementById("storage");
+    storage.classList.add('active');
+    storage.setAttribute("aria-current", "page");
+
+    var home = document.getElementById("home");
+    home.classList.remove('active');
+    home.setAttribute("aria-current","none");
+</script>
+
 <script>
     // Sets up the DataTable
     $(document).ready(function () {
     $('.dataframe').DataTable( {
         scrollY: '75vh',
         scroller: true,
-        deferRender:    true,
-        info:           false,
+        deferRender: true,
+        info: false,
         scrollCollapse: true,
         columnDefs: [
-            { "width": "20%",
-            "targets": 0 
-        },
+        {"width": "20%",
+        "targets": 0},
         {"width": "20%",
         "targets": 1},
         {"width": "20%",
@@ -83,12 +92,5 @@
 });
 
 </script>
-<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
-    {{ storage_df|safe }}
-</div>
-
-<div style="width: 90%;margin-left: 5%;margin-right: 5%;margin-top: 5px;margin-bottom: 50px;">
-    {{ proj_level_df|safe }}
-</div>
 
 {% endblock content %}

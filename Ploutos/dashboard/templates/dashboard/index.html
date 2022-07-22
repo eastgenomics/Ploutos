@@ -82,7 +82,7 @@
 
 </form>
 <div id='chart_div' align='center' style='margin: 0 auto; padding-bottom: 40px;'>
-    {{ chart|safe }}
+    {{ daily_chart|safe }}
 </div>
 <div style="width: 63%; margin-left: 18.5%;margin-right: 0%;margin-top: 5px;margin-bottom: 40px;">
   {{ daily_df|safe }}
@@ -99,7 +99,7 @@
   <input type="reset" name="reset2" value="Reset"/>
 </form>
 <div id="chart-two" align='center' style='margin: 0 auto;'>
-  {{chart2|safe}}
+  {{ monthly_chart|safe }}
 </div>
 <div style="width: 90%;margin-left: 5%;margin-right: 0%;margin-top: 5px;margin-bottom: 40px;">
   {{ monthly_df|safe }}
