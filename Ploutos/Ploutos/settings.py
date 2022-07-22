@@ -32,6 +32,7 @@ LIVE_STORAGE_COST_MONTH = CREDENTIALS.get('LIVE_STORAGE_COST_MONTH')
 ARCHIVED_STORAGE_COST_MONTH = CREDENTIALS.get('ARCHIVED_STORAGE_COST_MONTH')
 PROJ_COLOUR_DICT = CREDENTIALS.get('PROJ_COLOUR_DICT')
 ASSAY_COLOUR_DICT = CREDENTIALS.get('ASSAY_COLOUR_DICT')
+USER_COLOUR_DICT = CREDENTIALS.get('USER_COLOUR_DICT')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -54,6 +55,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'debug_toolbar',
     'django_extensions',
+    'django_bootstrap5',
+    'crispy_forms',
+    'crispy_bootstrap5',
 ]
 
 MIDDLEWARE = [
@@ -140,6 +144,11 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Crispy Forms
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+
+CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Settings for logging
 with open('ploutos-error.log', 'a'):
