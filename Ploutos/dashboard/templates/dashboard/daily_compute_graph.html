@@ -1,5 +1,5 @@
 {% extends 'dashboard/base.html' %}
-
+{% load crispy_forms_tags %}
 {% block content %}
 
 <style>
@@ -15,11 +15,21 @@
     }
 </style>
 
+<div style="margin-left: 12.7%;margin-top: 10px;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-bar-chart-line-fill" viewBox="0 0 16 16">
+        <path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1V2z"/>
+    </svg>
+      <h2> Compute costs </h2>
+    <p>This page shows the compute costs which can be filtered project and assay type.
+       The costs are shown by daily or monthly format.
+    </p>
+</div>
+
 <form method="GET" action="{% url 'compute' %}">
     {% csrf_token %}
     <div class="container">
         <div class="row">
-        <!-- If general form errors, display them with red banner -->
+        {% comment %} <!-- If general form errors, display them with red banner -->
         {% if form.non_field_errors %}
             <div class="alert alert-danger">
                 {{ form.non_field_errors }}
@@ -29,12 +39,17 @@
         {% for field in form  %}
           <div class="col-sm-6">
             <b>{{ field.label_tag }}</b> {{ field }}
+
           </div>
-        {% endfor %}
+        {% endfor %} {% endcomment %}
+        <div class="my-form">
+            {% crispy form %}
+        </div>
         </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="Daily" value="Daily"/>
     <input type="submit" name="Monthly" value="Monthly"/>
+    <input type="submit" name="Reset" value="Reset"/>
     </div>
 &nbsp;
 </form>
@@ -43,10 +58,15 @@
 
 &nbsp;
 
-<div style="width: 65%;margin-left: 17%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
+<div style="width: 80%;margin-left: 10%;margin-right: 10%;margin-top: 5px;margin-bottom: 40px;">
     {{ chart_df|safe }}
 </div>
 
+<div style="left:0;bottom:0;width:100%;">
+    <p style="text-align:center;">
+        Datatable disclaimer: *Runtime is not exact, due to DNAnexus not returning all the relevant fields.
+        It varies by a small percentage of the actual runtime so a useful approximation.</p>
+</div>
 
 <script>
        Highcharts.chart('container_data', {{ compute_data|safe }});
