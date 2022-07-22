@@ -181,20 +181,65 @@ def populate_executions(all_executions_df) -> None:
             executable_name=row['executable_name'],
             version=row['version']
         )
+        if row['id'].startswith("job-"):
+            # Add data to DB - ComputeCosts Table
+            if row['state'] == "terminated":
+                new_analysis_costs, created = ComputeCosts.objects.get_or_create(
+                    # Get the project ID from the projects table by project dx id
+                    dx_id=row['id'],
+                    # job_name=row['job_name'],
+                    executable_name=new_executable,
+                    project=Projects.objects.get(dx_id=row['project']),
+                    runtime=row['Result_td'],
+                    total_cost=row['cost'],
+                    state=row['state'],
+                    launched_by=user,
+                    date=a_new_date,
+                )
+            else:
+                new_analysis_costs, created = ComputeCosts.objects.get_or_create(
+                        # Get the project ID from the projects table by project dx id
+                        dx_id=row['id'],
+                        # job_name=row['job_name'],
+                        executable_name=new_executable,
+                        project=Projects.objects.get(dx_id=row['project']),
+                        runtime=row['Result_td'],
+                        total_cost=row['cost'],
+                        state=row['state'],
+                        launched_by=user,
+                        date=a_new_date,
+                    )
+        elif row['id'].startswith("analysis-"):
+            # Add data to DB - ComputeCosts Table
+            if row['state'] == "terminated":
+                new_analysis_costs, created = ComputeCosts.objects.get_or_create(
+                    # Get the project ID from the projects table by project dx id
+                    dx_id=row['id'],
+                    # job_name=row['job_name'],
+                    executable_name=new_executable,
+                    project=Projects.objects.get(dx_id=row['project']),
+                    runtime=row['Result_td'],
+                    total_cost=row['cost'],
+                    state=row['state'],
+                    launched_by=user,
+                    date=a_new_date,
+                )
+            else:
+                new_analysis_costs, created = ComputeCosts.objects.get_or_create(
+                    # Get the project ID from the projects table by project dx id
+                    dx_id=row['id'],
+                    # job_name=row['job_name'],
+                    executable_name=new_executable,
+                    project=Projects.objects.get(dx_id=row['project']),
+                    runtime=row['Start_to_finish_td'],
+                    total_cost=row['cost'],
+                    state=row['state'],
+                    launched_by=user,
+                    date=a_new_date,
+                )
 
-        # Add data to DB - ComputeCosts Table
-        new_analysis_costs, created = ComputeCosts.objects.get_or_create(
-            # Get the project ID from the projects table by project dx id
-            dx_id=row['id'],
-            # job_name=row['job_name'],
-            executable_name=new_executable,
-            project=Projects.objects.get(dx_id=row['project']),
-            runtime=row['Result_td'],
-            total_cost=row['cost'],
-            state=row['state'],
-            launched_by=user,
-            date=a_new_date,
-        )
+        else:
+            print("Error - new job type found or matching failed.")
 
 
 def run():
