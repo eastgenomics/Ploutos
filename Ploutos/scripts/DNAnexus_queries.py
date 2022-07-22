@@ -46,8 +46,6 @@ def login() -> None:
         ----------
         token : str
             authorisation token for DNAnexus, from settings.py
-
-
         Raises
         ------
         Error
@@ -438,6 +436,7 @@ def remove_duplicates(merged_df, unique_without_empty_projs):
     unique_projects_after_dups_removed = len(unique_df.project.unique())
 
     total_removed = unique_without_empty_projs - unique_projects_after_dups_removed
+
     print(
         f"{total_removed} projects are no longer in "
         "the table as they only contained duplicate files"
@@ -892,7 +891,6 @@ def get_executions(proj):
     Get all executions for the project in DNAnexus,
     Each top-level job is stored with it's attributes,
     mainly cost and who launched it.
-
     Used with ThreadExecutorPool
     Parameters
     ----------
@@ -1024,8 +1022,6 @@ def get_executions(proj):
 def threadify_executions(project_list):
     """
     Use pool of threads to asynchronously get_executions() on multiple projects
-
-
     Parameters
     ----------
     project_list : list
@@ -1109,8 +1105,6 @@ def get_subjobs_make_job_executions_df(list_project_executions):
     """
     Get all executions for the project in DNAnexus,
         storing each executions and its attributes.
-
-
     Parameters
     ----------
     list_project_executions : list of dictionaries
@@ -1427,8 +1421,6 @@ def make_executions_subjobs_df(list_project_executions_dictionary):
     ----------
     list_project_executions_dictionary:
         list of all executions for each project.
-
-
     Returns
     -------
     list_of_project_executions_dicts: list
@@ -1457,9 +1449,7 @@ def orchestrate_get_executions(proj_list):
     """
     Orchestates all the functions for getting
     API data for executions and returning this in a pandas dataframe.
-
-
-    paramaters
+    Parameters
     ----------
     proj_list: list
         all the project IDs in a list

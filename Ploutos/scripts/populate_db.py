@@ -89,6 +89,7 @@ def populate_running_totals() -> None:
 
     Adds org running totals into the db,
     getting the date IDs or creating them first.
+
     """
 
     # Get today's date in YYY-MM-DD format
@@ -227,10 +228,11 @@ def populate_executions(all_executions_df) -> None:
     Parameters
     ----------
     all_executions_df: pd.DataFrame
-        dataframe with all parent executions run in timeperiod specified.
+      dataframe with all parent executions run in timeperiod specified.
     Returns
     -------
     None
+
     """
 
     for _, row in all_executions_df.iterrows():
@@ -267,6 +269,7 @@ def populate_executions(all_executions_df) -> None:
             date=a_new_date,
         )
 
+
 def run():
     """
     Main function to orchestrate population of the database with API data.
@@ -285,8 +288,8 @@ def run():
     )
     populate_database_files(final_dict)
     populate_file_types(file_type_df)
-    # executions_df = queries.orchestrate_get_executions(proj_list)
-    # populate_executions(executions_df)
+    executions_df = queries.orchestrate_get_executions(proj_list)
+    populate_executions(executions_df)
 
     end = time()
     total = (end - start) / 60

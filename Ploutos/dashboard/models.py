@@ -72,7 +72,7 @@ class FileTypeDate(models.Model):
     date = models.ForeignKey(Dates, on_delete=models.CASCADE)
     project = models.ForeignKey(Projects, on_delete=models.CASCADE)
     file_state = models.ForeignKey(FileTypeState, on_delete=models.CASCADE)
-
+   
 
 class Executables(models.Model):
     executable_name = models.CharField(max_length=200)

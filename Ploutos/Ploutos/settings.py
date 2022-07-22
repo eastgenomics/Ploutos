@@ -202,6 +202,63 @@ LOGGING = {
     },
 }
 
+# Settings for logging
+with open('ploutos-error.log', 'a'):
+    pass
+with open('ploutos-debug.log', 'a'):
+    pass
+# Set up execution tracker log
+with open('executions_log.log', 'a'):
+    pass
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{asctime} {levelname} {message}',
+            'style': '{',
+        },
+    },
+    # Handlers
+    'handlers': {
+        'error-log': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': f'ploutos-error.log',
+            'formatter': 'simple',
+            'maxBytes': 5242880,
+            'backupCount': 2
+        },
+        'debug-log': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': f'ploutos-debug.log',
+            'formatter': 'verbose',
+            'maxBytes': 5242880,
+            'backupCount': 2
+        },
+    },
+    # Loggers
+    'loggers': {
+        'general': {
+            'handlers': ['error-log'],
+            'level': 'ERROR',
+            'propagate': True
+        },
+        '': {
+            'handlers': ['debug-log'],
+            'level': 'DEBUG',
+            'propagate': True
+        }
+    },
+}
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
