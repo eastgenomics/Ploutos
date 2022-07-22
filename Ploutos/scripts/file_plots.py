@@ -222,11 +222,10 @@ class FilePlotFunctions():
         """
         file_type_names = ['bam', 'fastq', 'vcf']
         category_data_source = []
-        # Count is -2 and adding 2 because I liked those colours
-        count = -2
+        # Increment count by 2 because I liked those colours
 
-        for file_type in file_type_names:
-            count += 2
+        for count, file_type in enumerate(file_type_names):
+            count = count * 2
             file_type_size = FileTypeDate.objects.filter(
                 date__date=date_to_filter,
                 file_state__file_type__file_type=file_type
@@ -331,11 +330,10 @@ class FilePlotFunctions():
             dataframe of the series count values to show under chart
         """
         file_type_names = ['bam', 'fastq', 'vcf']
-
         category_data_source = []
-        count = -2
-        for file_type in file_type_names:
-            count += 2
+
+        for count, file_type in enumerate(file_type_names):
+            count = count * 2
             file_type_size = FileTypeDate.objects.filter(
                 date__date=date_to_filter,
                 file_state__file_type__file_type=file_type
@@ -417,9 +415,8 @@ class FilePlotFunctions():
         """
         file_type_categories_dups = []
         category_data_source = []
-        count = -1
-        for proj_type in proj_types:
-            count += 1
+
+        for count, proj_type in enumerate(proj_types):
             file_count_list = FileTypeDate.objects.filter(
                 date__date=date_to_filter,
                 project__name__startswith=proj_type,
@@ -508,9 +505,8 @@ class FilePlotFunctions():
         proj_level_file_type_df = pd.DataFrame()
         file_type_categories_dups = []
         category_data_source = []
-        count = -1
-        for proj_type in proj_types:
-            count += 1
+
+        for count, proj_type in enumerate(proj_types):
             file_size_list = FileTypeDate.objects.filter(
                 date__date=date_to_filter,
                 project__name__startswith=proj_type,
@@ -526,10 +522,11 @@ class FilePlotFunctions():
                 for entry in file_size_list
             ]
 
+            # Convert GiB data from db to TiB
             live_data = {
                 'name': f"{proj_type}*",
                 'data': [
-                    (entry.get('Live_Size')/1024)
+                    (entry.get('Live_Size') / 1024)
                     for entry in file_size_list
                 ],
                 'stack': 'Live',
@@ -538,10 +535,11 @@ class FilePlotFunctions():
                 )
             }
 
+            # Convert GiB data from db to TiB
             archived_data = {
                 'name': f"{proj_type}*",
                 'data': [
-                    (entry.get('Archived_Size')/1024)
+                    (entry.get('Archived_Size') / 1024)
                     for entry in file_size_list
                 ],
                 'stack': 'Archived',
@@ -626,9 +624,8 @@ class FilePlotFunctions():
         """
         file_type_categories_dups = []
         category_data_source = []
-        count = -1
-        for assay_type in assay_types:
-            count += 1
+
+        for count, assay_type in enumerate(assay_types):
             file_count_list = FileTypeDate.objects.filter(
                 date__date=date_to_filter,
                 project__name__endswith=assay_type,
@@ -715,9 +712,8 @@ class FilePlotFunctions():
         proj_level_file_type_df = pd.DataFrame()
         file_type_categories_dups = []
         category_data_source = []
-        count = -1
-        for assay_type in assay_types:
-            count += 1
+
+        for count, assay_type in enumerate(assay_types):
             file_size_list = FileTypeDate.objects.filter(
                 date__date=date_to_filter,
                 project__name__endswith=assay_type,
@@ -733,10 +729,11 @@ class FilePlotFunctions():
                 for entry in file_size_list
             ]
 
+            # Convert GiB data from db to TiB
             live_data = {
                 'name': f"*{assay_type}",
                 'data': [
-                    (entry.get('Live_Size')/1024)
+                    (entry.get('Live_Size') / 1024)
                     for entry in file_size_list
                 ],
                 'stack': 'Live',
@@ -745,10 +742,11 @@ class FilePlotFunctions():
                 )
             }
 
+            # Convert GiB data in db to TiB
             archived_data = {
                 'name': f"*{assay_type}",
                 'data': [
-                    (entry.get('Archived_Size')/1024)
+                    (entry.get('Archived_Size') / 1024)
                     for entry in file_size_list
                 ],
                 'stack': 'Archived',

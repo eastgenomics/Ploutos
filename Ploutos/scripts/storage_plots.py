@@ -115,7 +115,7 @@ class StoragePlotFunctions():
 
     def str_to_list(self, string):
         """
-        Converts the entered to string to a list of proj or assay types
+        Converts the entered string to a list of proj or assay types
 
         Parameters
         ----------
@@ -125,8 +125,8 @@ class StoragePlotFunctions():
         Returns
         -------
         string.strip(',').replace(' ', '').split(',') : list
-            list stripped of whitespace + trailing commas
-            split on internal commas
+            list where the str is stripped of whitespace + trailing commas
+            then split on internal commas
         e.g.
         strip_list(',001, 002, 003,')
             >> ['001', '002', '003']
@@ -199,8 +199,8 @@ class StoragePlotFunctions():
             Live=Sum('unique_size_live'),
             Archived=Sum('unique_size_archived')
         )
-        # If DNANexus has been queried today, convert bytes to GiB
-        # Otherwise set both to zero
+        # If DNANexus has been queried today, convert bytes to TiB
+        # Otherwise set both to "not yet calculated"
         if todays_total.get('Live'):
             live_total = round(
                 ((todays_total.get('Live') / (2**30))/1024), 2
@@ -501,9 +501,8 @@ class StoragePlotFunctions():
         # For each proj add data to dict
         proj_level_df = pd.DataFrame()
         category_data_source = []
-        count = -1
-        for proj_type in proj_types:
-            count += 1
+
+        for count, proj_type in enumerate(proj_types):
             cost_list = self.storage_objects.filter(
                 date__date__range=[month_start, month_end],
                 project__name__startswith=proj_type,
@@ -609,9 +608,7 @@ class StoragePlotFunctions():
         proj_level_df = pd.DataFrame()
         category_data_source = []
         # Filter by 'endswith' for each searched assay type
-        count = -1
-        for assay_type in assay_types:
-            count += 1
+        for count, assay_type in enumerate(assay_types):
             cost_list = self.storage_objects.filter(
                 date__date__range=[month_start, month_end],
                 project__name__endswith=assay_type,

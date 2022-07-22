@@ -42,7 +42,7 @@ class RunningTotPlotFunctions():
         Set bar chart context for daily running charges plot
         Parameters
         ----------
-        totals :  queryset
+        totals : queryset
             queryset already filtered by default or specified daterange
 
         Returns
@@ -151,9 +151,9 @@ class RunningTotPlotFunctions():
         Set context for the monthly graph between start_month and end_month
         Parameters
         ----------
-        start_month :  str or datetime.date object
+        start_month :  datetime.date object
             date in YYY-MM-DD format e.g. "2022-05-01" as first date in range
-        end_month : str or datetime.date object
+        end_month : datetime.date object
             date in YYY-MM-DD format e.g. "2022-06-01" as last date in range
 
         Returns
@@ -161,7 +161,7 @@ class RunningTotPlotFunctions():
         chart : Plotly figure object converted to HTML
         """
         # Filter between start of start_month
-        # And 1st of the montht hat comes after end_month
+        # And 1st of the month that comes after end_month
         monthly_charges = self.totals.filter(
             date__date__range=[
                 start_month, end_month
@@ -199,20 +199,22 @@ class RunningTotPlotFunctions():
             key=lambda x: datetime.strptime(x, '%m-%Y')
         )
 
+        current_month = datetime.strftime(date.today(), "%m-%Y")
         # If the end month is for the 1st of next month
         # The month won't exist as a key in the dict
         # Instead take the last entry of the current month
         # To act as the 1st of the next month in its place
         if check_end_month not in key_list:
-            storage_dic.update({
-                check_end_month: [storage_dic[key_list[-1]][-1]]
-            })
-            compute_dic.update({
-                check_end_month: [compute_dic[key_list[-1]][-1]]
-            })
-            egress_dic.update({
-                check_end_month: [egress_dic[key_list[-1]][-1]]
-            })
+            if current_month in key_list:
+                storage_dic.update({
+                    check_end_month: [storage_dic[key_list[-1]][-1]]
+                })
+                compute_dic.update({
+                    check_end_month: [compute_dic[key_list[-1]][-1]]
+                })
+                egress_dic.update({
+                    check_end_month: [egress_dic[key_list[-1]][-1]]
+                })
 
         # Get the keys (months as e.g. '05-2022') again as list
         # As may include next month now
@@ -222,21 +224,24 @@ class RunningTotPlotFunctions():
         )
 
         # Append the first charge of each month to lists
-        for idx, month in enumerate(key_list):
-            if idx+1 <= len(key_list):
-                months.append(month)
-                storage_charges.append(storage_dic[month][0])
-                compute_charges.append(compute_dic[month][0])
-                egress_charges.append(egress_dic[month][0])
+        for month in key_list:
+            months.append(month)
+            storage_charges.append(storage_dic[month][0])
+            compute_charges.append(compute_dic[month][0])
+            egress_charges.append(egress_dic[month][0])
 
         # Calculate the charge differences between months
-        storage_charges = self.calculate_diffs(storage_charges)
-        compute_charges = self.calculate_diffs(compute_charges)
-        egress_charges = self.calculate_diffs(egress_charges)
+        if storage_charges:
+            storage_charges = self.calculate_diffs(storage_charges)
+        if compute_charges:
+            compute_charges = self.calculate_diffs(compute_charges)
+        if egress_charges:
+            egress_charges = self.calculate_diffs(egress_charges)
 
         # Remove the last month from the month categories
         # That we are taking the 1st date from but not using
-        months = months[:-1]
+        if months:
+            months = months[:-1]
 
         # Convert months to strings e.g. "May 2022" for plotting
         converted_months = [
@@ -254,12 +259,19 @@ class RunningTotPlotFunctions():
             }
         )
 
-        monthly_df = monthly_charge_df.to_html(
-            index=False,
-            classes='table table-striped" id = "monthlytable',
-            justify='left',
-            float_format="%.2f"
-        )
+        if monthly_charge_df:
+            monthly_df = monthly_charge_df.to_html(
+                index=False,
+                classes='table table-striped" id = "monthlytable',
+                justify='left',
+                float_format="%.2f"
+            )
+        else:
+            monthly_df = monthly_charge_df.to_html(
+                index=False,
+                classes='table table-striped" id = "monthlytable',
+                justify='left'
+            )
 
         fig = go.Figure()
 

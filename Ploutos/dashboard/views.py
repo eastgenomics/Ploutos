@@ -420,11 +420,11 @@ def storage_chart(request):
     elif 'clear' in request.GET:
         form = StorageForm()
         context = sp.StoragePlotFunctions(
-            ).all_projects_between_months(
-                four_months_start,
-                this_months_end,
-                form
-            )
+        ).all_projects_between_months(
+            four_months_start,
+            this_months_end,
+            form
+        )
 
     else:
         # If nothing is submitted on the form (normal landing page)
@@ -532,6 +532,14 @@ def files(request):
 
             count_chart_data, count_df = fp.FilePlotFunctions(
             ).file_types_count_all_projects(date_to_filter)
+
+    elif 'clear' in request.GET:
+        form = FileForm()
+        size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
+        ).file_types_size_all_projects(date_to_filter)
+
+        count_chart_data, count_df = fp.FilePlotFunctions(
+        ).file_types_count_all_projects(date_to_filter)
 
     else:
         # Nothing is submitted

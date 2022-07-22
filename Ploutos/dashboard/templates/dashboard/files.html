@@ -12,7 +12,9 @@
                 <p>
                     This page shows the size and counts of files by file type (BAM, FASTQ and VCF) on different levels; all projects aggregated (default), searching project type or assay type (or both) or a single project (by searching its full name in either box).
                     <br>
-                    Note: VCF includes file extensions <i>.vcf</i> and <i>.vcf.gz</i> and FASTQ includes <i>.fastq</i> and .<i>fastq.gz</i>.
+                    Note: VCF includes file extensions <i>.vcf</i> and <i>.vcf.gz</i> and FASTQ includes <i>.fastq</i> and .<i>fastq.gz</i>. 
+                    <br>
+                    If a file exists in multiple projects it is only attributed to the oldest project it is found in.
                   </p>
                 <h5>Total size of unique files in DNAnexus today:</h5>
                 <p>
@@ -28,7 +30,7 @@
         </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Filter"/>
-    <input type="button" value="Reset" value="Reset"/>
+    <input type="submit" name="clear" value="Reset"/>
     </div>
 
 </form>

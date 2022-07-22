@@ -567,9 +567,9 @@ def add_missing_states_projects_file_types(
     # Which might only contain duplicates or not that file type
     how_many_unique_projects = list(file_df.project.unique())
     projects_left_in_this_df = list(states_filled_in.project.unique())
-    empty_projs = [
-        list(set(how_many_unique_projects) - set(projects_left_in_this_df))
-    ]
+    empty_projs = list(
+        set(how_many_unique_projects) - set(projects_left_in_this_df)
+    )
 
     # Append two dicts for live and archived rows
     # For the projects without that file type
