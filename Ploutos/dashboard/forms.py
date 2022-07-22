@@ -8,103 +8,103 @@ from django.db.models.functions import ExtractMonth, ExtractYear
 from django.core.exceptions import ValidationError
 from dashboard.models import DailyOrgRunningTotal, StorageCosts, ComputeCosts
 
-class DateForm(forms.Form):
-    """Date and charge type picker for the running totals"""
+# class DateForm(forms.Form):
+#     """Date and charge type picker for the running totals"""
 
-    # Find earliest object in runningtotals by date + get date
-    # This is to set initial date for datepicker + validate
-    first_date = str(
-        DailyOrgRunningTotal.objects.order_by(
-            'date__date'
-        ).first().date
-    )
+#     # Find earliest object in runningtotals by date + get date
+#     # This is to set initial date for datepicker + validate
+#     first_date = str(
+#         DailyOrgRunningTotal.objects.order_by(
+#             'date__date'
+#             ).first().date
+#     )
 
-    # Get this as date object so datepicker can use as initial
-    dateified_earliest_date = dt.datetime.strptime(
-        first_date, '%Y-%m-%d'
-    ).date()
+#     # Get this as date object so datepicker can use as initial
+#     dateified_earliest_date = dt.datetime.strptime(
+#         first_date, '%Y-%m-%d'
+#     ).date()
 
-    # Convert YYY-MM-DD to DD-MM-YYYY for validation message
-    # So this fits with what is displayed by the datepicker
-    earliest_date = dt.datetime.strptime(
-        first_date, "%Y-%m-%d"
-    ).strftime("%d/%m/%Y")
+#     # Convert YYY-MM-DD to DD-MM-YYYY for validation message
+#     # So this fits with what is displayed by the datepicker
+#     earliest_date = dt.datetime.strptime(
+#         first_date, "%Y-%m-%d"
+#     ).strftime("%d/%m/%Y")
 
-    CHARGE_CHOICES = (
-        ('All', 'All'),
-        ('Storage', 'Storage'),
-        ('Compute', 'Compute'),
-        ('Egress', 'Egress'),
-    )
+#     CHARGE_CHOICES = (
+#         ('All', 'All'),
+#         ('Storage', 'Storage'),
+#         ('Compute', 'Compute'),
+#         ('Egress', 'Egress'),
+#     )
 
-    start = forms.DateField(
-        widget=forms.DateInput(
-            attrs={
-                'class': 'datepicker',
-                'type': 'date',
-                'min': f'{first_date}', 'max': dt.date.today()
-            }
-        ),
-        required=False
-    )
+#     start = forms.DateField(
+#         widget=forms.DateInput(
+#             attrs={
+#                 'class': 'datepicker',
+#                 'type': 'date',
+#                 'min': f'{first_date}', 'max': dt.date.today()
+#             }
+#         ),
+#         required=False
+#     )
 
-    end = forms.DateField(
-        widget=forms.DateInput(
-            attrs={
-                'class': 'datepicker',
-                'type': 'date',
-                'min': f'{first_date}', 'max': dt.date.today()
-            }
-        ),
-        required=False
-    )
+#     end = forms.DateField(
+#         widget=forms.DateInput(
+#             attrs={
+#                 'class': 'datepicker',
+#                 'type': 'date',
+#                 'min': f'{first_date}', 'max': dt.date.today()
+#             }
+#         ),
+#         required=False
+#     )
 
-    charge_type = forms.ChoiceField(
-        choices=CHARGE_CHOICES,
-        required=True
-    )
+#     charge_type = forms.ChoiceField(
+#         choices=CHARGE_CHOICES,
+#         required=True
+#     )
 
-    def clean(self):
-        start = self.cleaned_data['start']
-        end = self.cleaned_data['end']
-        charge_type = self.cleaned_data['charge_type']
+#     def clean(self):
+#         start = self.cleaned_data['start']
+#         end = self.cleaned_data['end']
+#         charge_type = self.cleaned_data['charge_type']
 
-        # Check both dates are entered
-        if start:
-            if not end:
-                self.add_error(
-                    "end",
-                    "If entering a start date please include an end date"
-                )
+#         # Check both dates are entered
+#         if start:
+#             if not end:
+#                 self.add_error(
+#                     "end",
+#                     "If entering a start date please include an end date"
+#                 )
 
-        if end:
-            if not start:
-                self.add_error(
-                    "start",
-                    "If entering an end date please include a start date"
-                )
+#         if end:
+#             if not start:
+#                 self.add_error(
+#                     "start",
+#                     "If entering an end date please include a start date"
+#                 )
 
-        # Check end date isn't earlier than start date
-        # Checking start against earliest db entry and end against today
-        # No longer needed as min and max set on date picker itself
-        if str(end) < str(start):
-            self.add_error("end", "End date is before start date")
+#         # Check end date isn't earlier than start date
+#         # Checking start against earliest db entry and end against today
+#         # No longer needed as min and max set on date picker itself
+#         if str(end) < str(start):
+#             self.add_error("end", "End date is before start date")
 
-        return self.cleaned_data
+#         return self.cleaned_data
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            self.fields['start'].widget.attrs.update(style='max-width: 10em'),
-            self.fields['end'].widget.attrs.update(style='max-width: 10em'),
-            Row(
-                Column('start', css_class='form-group col-md-6 mb-0'),
-                Column('end', css_class='form-group col-md-6 mb-0'),
-                css_class='row'
-            ),
-            'charge_type',
-        )
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.helper = FormHelper()
+#         self.helper.layout = Layout(
+#             self.fields['start'].widget.attrs.update(style='max-width: 10em'),
+#             self.fields['end'].widget.attrs.update(style='max-width: 10em'),
+#             Row(
+#                 Column('start', css_class='form-group col-md-6 mb-0'),
+#                 Column('end', css_class='form-group col-md-6 mb-0'),
+#                 css_class='row'
+#             ),
+#             'charge_type',
+#         )
 
 
 class MonthlyForm(forms.Form):
@@ -424,7 +424,7 @@ class ComputeForm(forms.Form):
         widget=forms.TextInput(
             attrs={
                 'placeholder': 'Enter project types, separated by commas',
-                'style': 'width: 340px',
+                'style': 'width: 350px',
                 'class': 'form-control'
             }
         )
@@ -436,7 +436,7 @@ class ComputeForm(forms.Form):
         widget=forms.TextInput(
             attrs={
                 'placeholder': 'Enter assay types, separated by commas',
-                'style': 'width: 340px',
+                'style': 'width: 350px',
                 'class': 'form-control'
             }
         )
@@ -460,13 +460,6 @@ class ComputeForm(forms.Form):
         start = self.cleaned_data["start"]
         end = self.cleaned_data["end"]
 
-        # Check whether >1 entries are in both proj and assay type by comma
-        # if project_type and assay_type:
-        #     if (project_type.find(",") != -1) or (assay_type.find(",") != -1):
-        #         raise ValidationError(
-        #             """If using both project type and assay type filters,
-        #                please only enter one of each"""
-        #         )
 
         # Check both start and end included
         if start == "---" and end != "---":
@@ -506,8 +499,8 @@ class ComputeForm(forms.Form):
                 css_class='row'
             ),
             Row(
-                Column('start', css_class='form-group col-md-6 mb-0'),
-                Column('end', css_class='form-group col-md-6 mb-0'),
+                Column('start', css_class='form-group col-md-2 mb-0'),
+                Column('end', css_class='form-group col-md-2 mb-0'),
                 css_class='row'
             ),
         )
@@ -582,19 +575,19 @@ class LeaderboardForm(forms.Form):
         widget=forms.TextInput(
             attrs={
                 'placeholder': 'Enter project types, separated by commas',
-                'style': 'width: 340px',
+                'style': 'width: 350px',
                 'class': 'form-control'
             }
         )
     )
 
-    assay_type = forms.CharField(
+    user_type = forms.CharField(
         required=False,
-        label='Assay type',
+        label='User type',
         widget=forms.TextInput(
             attrs={
-                'placeholder': 'Enter assay types, separated by commas',
-                'style': 'width: 340px',
+                'placeholder': 'Enter usernames, separated by commas',
+                'style': 'width: 350px',
                 'class': 'form-control'
             }
         )
@@ -614,13 +607,13 @@ class LeaderboardForm(forms.Form):
 
     def clean(self):
         project_type = self.cleaned_data["project_type"]
-        assay_type = self.cleaned_data["assay_type"]
+        user_type = self.cleaned_data["user_type"]
         start = self.cleaned_data["start"]
         end = self.cleaned_data["end"]
 
         # Check whether >1 entries are in both proj and assay type by comma
-        # if project_type and assay_type:
-        #     if (project_type.find(",") != -1) or (assay_type.find(",") != -1):
+        # if project_type and user_type:
+        #     if (project_type.find(",") != -1) or (user_type.find(",") != -1):
         #         raise ValidationError(
         #             """If using both project type and assay type filters,
         #                please only enter one of each"""
@@ -653,19 +646,19 @@ class LeaderboardForm(forms.Form):
             'project_type'
         ].help_text = "Filters project names using 'startswith'"
         self.fields[
-            'assay_type'
-        ].help_text = "Filters project names using 'endswith'"
+            'user_type'
+        ].help_text = "Filters usernames using 'endswith'"
 
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Row(
                 Column('project_type', css_class='form-group col-md-6 mb-0'),
-                Column('assay_type', css_class='form-group col-md-6 mb-0'),
+                Column('user_type', css_class='form-group col-md-6 mb-0'),
                 css_class='row'
             ),
             Row(
-                Column('start', css_class='form-group col-md-6 mb-0'),
-                Column('end', css_class='form-group col-md-6 mb-0'),
+                Column('start', css_class='form-group col-md-2 mb-0'),
+                Column('end', css_class='form-group col-md-2 mb-0'),
                 css_class='row'
             ),
         )

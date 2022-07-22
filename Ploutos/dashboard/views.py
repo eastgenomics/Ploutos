@@ -6,7 +6,7 @@ import plotly.graph_objects as pgo
 
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from dashboard.forms import DateForm, StorageForm, ComputeForm
+from dashboard.forms import StorageForm, ComputeForm, LeaderboardForm
 from dashboard.models import ComputeCosts, Dates, DailyOrgRunningTotal
 from django.db.models import Sum
 from django.shortcuts import render
@@ -14,6 +14,7 @@ from scripts import DNAnexus_queries as dx_queries
 from scripts import storage_plots as sp
 from scripts import executions_plots as exec_plots
 from scripts import date_conversion as dc
+from scripts import leaderboard_plots as lb_plots
 
 
 def index(request):
@@ -234,13 +235,6 @@ def storage_chart(request):
             # For all projects
             context = sp.StoragePlotFunctions().form_is_not_submitted_or_invalid(form)
 
-    else:
-        # If nothing is submitted on the form (normal landing page)
-        # Display the all projects graph grouped by available months
-        form = StorageForm()
-        context = sp.StoragePlotFunctions().form_is_not_submitted_or_invalid(
-            form
-        )
 
     return render(request, 'bar_chart.html', context)
 
@@ -255,15 +249,22 @@ def compute_graph(request):
         'compute_data': "",
         'form': ""
     }
+    if 'Reset' in request.GET:
+        # If nothing is submitted on the form (normal landing page)
+        # Display the all projects graph grouped by available months
+        form = ComputeForm()
+        context = exec_plots.ExecutionPlotFunctions(
+            ).default_daily_all_project(
+                form
+                )
 
+        return render(request, 'daily_compute_graph.html', context)
     # If the user has submitted the form
-    if 'Daily' in request.GET:
+    elif 'Daily' in request.GET:
         # submit = Daily graphs.
         form = ComputeForm(request.GET)
         # If form is valid
         if form.is_valid():
-            year = form.cleaned_data.get('year')
-            month = form.cleaned_data.get('month')
             # Get the start + end year-months from form to filter range
             start = form.cleaned_data.get("start")
             end = form.cleaned_data.get("end")
@@ -293,7 +294,9 @@ def compute_graph(request):
                     assay_types = form.cleaned_data.get('assay_type')
 
                     json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
-                    ).daily_last_4_months_all_byproject_and_assay(
+                    ).daily_month_range_all_byproject_and_assay(
+                        four_months_start,
+                        this_months_end,
                         project_types,
                         assay_types,
                         form
@@ -311,7 +314,9 @@ def compute_graph(request):
                 elif form.cleaned_data.get('project_type'):
                     project_types = form.cleaned_data.get('project_type')
                     json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
-                    ).daily_last_4_months_all_byproject_types(
+                    ).daily_month_range_all_byproject_types(
+                        four_months_start,
+                        this_months_end,
                         project_types,
                         form
                     )
@@ -329,7 +334,9 @@ def compute_graph(request):
                 elif form.cleaned_data.get('assay_type'):
                     assay_types = form.cleaned_data.get('assay_type')
                     json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
-                    ).daily_last_4_months_all_byassay_types(
+                    ).daily_month_range_all_byassay_types(
+                        four_months_start,
+                        this_months_end,
                         assay_types,
                         form
                     )
@@ -343,53 +350,95 @@ def compute_graph(request):
 
                 else:
                     context = exec_plots.ExecutionPlotFunctions(
-                    ).default_daily_all_project(
+                    ).default_daily_all_project(  # CHANGE TO DEFAULT MONTH RANGE
                         form
                     )
 
                     return render(request, 'daily_compute_graph.html', context)
 
+            # If start and end months are selected
             else:
-                # If no time period selected and
-                # There are only projects searched for
-                if form.cleaned_data.get('project_type'):
-                    # Remove all whitespace + start + end commas
-                    # Split by commas and add each to new list
-                    proj_string = form.cleaned_data.get('project_type')
-                    proj_types = exec_plots.ExecutionPlotFunctions(
-                    ).str_to_list(proj_string)
-                    context = exec_plots.ExecutionPlotFunctions(
-                    ).all_months_only_project_types(
-                        proj_types,
-                        form
-                    )
-                    return render(request, 'daily_compute_graph.html', context)
+                # Start and end months are entered
+                # Convert start month-year to 1st date of start month
+                # e.g. "2022-05" to "2022-05-01"
+                # Find last day of the end month
+                # Convert end month-year to last day of that month
+                # e.g. "2022-05-14" to "2022-05-31"
+                month_start = f"{start}-01"
+                last_day_of_end_month = calendar.monthrange(
+                    int(end.split("-")[0]),int(end.split("-")[1])
+                )[1]
+                month_end = f"{end}-{last_day_of_end_month}"
+                if (form.cleaned_data.get('project_type') and
+                        form.cleaned_data.get('assay_type')):
+                    project_types = form.cleaned_data.get('project_type')
+                    assay_types = form.cleaned_data.get('assay_type')
 
-                # If all months only assay(s) searched for
-                # Strip start and end commas, remove whitespace
-                # Split on commas and add to list
-                elif form.cleaned_data.get('assay_type'):
-                    assay_string = form.cleaned_data.get('assay_type')
-                    assay_types = exec_plots.ExecutionPlotFunctions(
-                    ).str_to_list(assay_string)
-                    context = exec_plots.ExecutionPlotFunctions(
-                    ).all_months_only_assay_types(
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+                    ).daily_month_range_all_byproject_and_assay(
+                        month_start,
+                        month_end,
+                        project_types,
                         assay_types,
-                        year,
                         form
                     )
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
+
                     return render(request, 'daily_compute_graph.html', context)
+
+                # If there is a project type entered
+                # Get the single string from each
+                elif form.cleaned_data.get('project_type'):
+                    project_types = form.cleaned_data.get('project_type')
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+                    ).daily_month_range_all_byproject_types(
+                        month_start,
+                        month_end,
+                        project_types,
+                        form
+                    )
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
+                    print("testing")
+
+                    return render(request, 'daily_compute_graph.html', context)
+
+                # If there is an assay type entered
+                # Get the single string from each
+                elif form.cleaned_data.get('assay_type'):
+                    assay_types = form.cleaned_data.get('assay_type')
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+                    ).daily_month_range_all_byassay_types(
+                        month_start,
+                        month_end,
+                        assay_types,
+                        form
+                    )
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'daily_compute_graph.html', context)
+
                 else:
-                    # If form is submitted
-                    # But no assay type or project type is searched for
-                    # And want to see default months
                     context = exec_plots.ExecutionPlotFunctions(
-                    ).daily_last_4_months_all_project_types(
-                        proj_types,
+                    ).default_month_range_daily_all_project(
+                        month_start,
+                        month_end,
                         form
                     )
 
                     return render(request, 'daily_compute_graph.html', context)
+
 
         else:
             # If nothing is submitted on the form (normal landing page)
@@ -404,105 +453,200 @@ def compute_graph(request):
 
     elif 'Monthly' in request.GET:
         form = ComputeForm(request.GET)
+        # Get date of the first day of the month four months ago
+        # Get date of the last day of the current month
+        # These are used to filter for last 4 months by default
+        today_date = dx_queries.no_of_days_in_month()[0]
+        this_year, this_month, _ = today_date.split("-")
+        four_months_ago = date.today() + relativedelta(months=-4)
+        four_months_start = four_months_ago.replace(day=1)
+        last_day_of_this_month = str(
+            calendar.monthrange(
+                int(today_date.split("-")[0]),
+                int(today_date.split("-")[1])
+            )[1]
+        )
+        this_months_end = (
+            f"{this_year}-{this_month}"
+            f"-{last_day_of_this_month}"
+        )
         if form.is_valid():
             year = form.cleaned_data.get('year')
             month = form.cleaned_data.get('month')
             # Get the start + end year-months from form to filter range
-            # start = form.cleaned_data.get("start")
-            # end = form.cleaned_data.get("end")
-            # if start == "---" and end == "---":
-            #     # Get date of the first day of the month four months ago
-            #     # Get date of the last day of the current month
-            #     # These are used to filter for last 4 months by default
-            #     today_date = dx_queries.no_of_days_in_month()[0]
-            #     this_year, this_month, _ = today_date.split("-")
-            #     four_months_ago = date.today() + relativedelta(months=-4)
-            #     four_months_start = four_months_ago.replace(day=1)
-            #     last_day_of_this_month = str(
-            #         calendar.monthrange(
-            #             int(today_date.split("-")[0]),
-            #             int(today_date.split("-")[1])
-            #         )[1]
-            #     )
-            #     this_months_end = (
-            #         f"{this_year}-{this_month}"
-            #         f"-{last_day_of_this_month}"
-            #     )
+            start = form.cleaned_data.get("start")
+            end = form.cleaned_data.get("end")
 
-            # If there are both a project type and assay type entered
-            # Get the single string from each
-            if (form.cleaned_data.get('project_type') and
-                    form.cleaned_data.get('assay_type')):
-                print("YES")
-                print(form.cleaned_data.get('project_type'))
-                project_types = form.cleaned_data.get('project_type')
-                assay_types = form.cleaned_data.get('assay_type')
-                json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions().monthly_byproject_assays_stacked(
-                    project_types,
-                    assay_types,
-                    form
-                )
-                context = {
-                    "compute_data": json_chart_data,
-                    "form": form,
-                    "chart_df": chart_df
-                }
+            if start == "---" and end == "---":
+                # If there are both a project type and assay type entered
+                # Get the single string from each
+                if (form.cleaned_data.get('project_type') and
+                        form.cleaned_data.get('assay_type')):
+                    print("YES")
+                    print(form.cleaned_data.get('project_type'))
+                    project_types = form.cleaned_data.get('project_type')
+                    assay_types = form.cleaned_data.get('assay_type')
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+                        ).monthly_byproject_assays_stacked(
+                        four_months_start,
+                        this_months_end,
+                        project_types,
+                        assay_types,
+                        form
+                    )
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
 
-                return render(request, 'monthly_compute_graph.html', context)
+                    return render(request, 'monthly_compute_graph.html', context)
 
-            elif form.cleaned_data.get('project_type'):
-                project_types = form.cleaned_data.get('project_type')
-                json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
-                ).monthly_byproject(
-                    project_types,
-                    form
-                )
-                context = {
-                    "compute_data": json_chart_data,
-                    "form": form,
-                    "chart_df": chart_df
-                }
+                elif form.cleaned_data.get('project_type'):
+                    project_types = form.cleaned_data.get('project_type')
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+                    ).monthly_byproject(
+                        four_months_start,
+                        this_months_end,
+                        project_types,
+                        form
+                    )
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
 
-                return render(request, 'monthly_compute_graph.html', context)
+                    return render(request, 'monthly_compute_graph.html', context)
 
-            elif form.cleaned_data.get('assay_type'):
-                assay_types = form.cleaned_data.get('assay_type')
-                json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
-                ).monthly_byassay(
-                    assay_types,
-                    form
-                )
-                context = {
-                    "compute_data": json_chart_data,
-                    "form": form,
-                    "chart_df": chart_df
-                }
+                elif form.cleaned_data.get('assay_type'):
+                    assay_types = form.cleaned_data.get('assay_type')
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+                    ).monthly_byassay(
+                        four_months_start,
+                        this_months_end,
+                        assay_types,
+                        form
+                    )
 
-                return render(request, 'monthly_compute_graph.html', context)
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
 
+                    return render(request, 'monthly_compute_graph.html', context)
+
+                else:
+                    # months selected but display default currently.
+                    form = ComputeForm()
+                    json_chart_data = exec_plots.ExecutionPlotFunctions().All_projects_by_months(
+                            four_months_start,
+                            this_months_end,
+                            form)
+
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form
+                    }
+
+                    return render(request, 'monthly_compute_graph.html', context)
+            # If start and end months are selected
             else:
-                # months selected but display default currently.
-                form = ComputeForm()
-                json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions().All_projects_by_months(form)
-                context = {
-                    "compute_data": json_chart_data,
-                    "form": form,
-                    "chart_df": chart_df
-                }
+                # Start and end months are entered
+                # Convert start month-year to 1st date of start month
+                # e.g. "2022-05" to "2022-05-01"
+                # Find last day of the end month
+                # Convert end month-year to last day of that month
+                # e.g. "2022-05-14" to "2022-05-31"
+                month_start = f"{start}-01"
+                last_day_of_end_month = calendar.monthrange(
+                    int(end.split("-")[0]),int(end.split("-")[1])
+                )[1]
+                month_end = f"{end}-{last_day_of_end_month}"
+                # If there are both a project type and assay type entered
+                # Get the single string from each
+                if (form.cleaned_data.get('project_type') and
+                        form.cleaned_data.get('assay_type')):
+                    print("YES")
+                    print(form.cleaned_data.get('project_type'))
+                    project_types = form.cleaned_data.get('project_type')
+                    assay_types = form.cleaned_data.get('assay_type')
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions().monthly_byproject_assays_stacked(
+                        month_start,
+                        month_end,
+                        project_types,
+                        assay_types,
+                        form
+                    )
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
 
-                return render(request, 'monthly_compute_graph.html', context)
+                    return render(request, 'monthly_compute_graph.html', context)
 
+                elif form.cleaned_data.get('project_type'):
+                    project_types = form.cleaned_data.get('project_type')
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+                    ).monthly_byproject(
+                        month_start,
+                        month_end,
+                        project_types,
+                        form
+                    )
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'monthly_compute_graph.html', context)
+
+                elif form.cleaned_data.get('assay_type'):
+                    assay_types = form.cleaned_data.get('assay_type')
+                    json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+                    ).monthly_byassay(
+                        month_start,
+                        month_end,
+                        assay_types,
+                        form
+                    )
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'monthly_compute_graph.html', context)
+
+                else:
+                    # months selected but display default currently.
+                    # form = ComputeForm()
+                    json_chart_data = exec_plots.ExecutionPlotFunctions().All_projects_by_months(
+                        month_start,
+                        month_end,
+                        form)
+
+                    context = {
+                        "compute_data": json_chart_data,
+                        "form": form
+                    }
+
+                    return render(request, 'monthly_compute_graph.html', context)
         else:
             # Display default months_filtered graph
             form = ComputeForm()
-            json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
+            json_chart_data = exec_plots.ExecutionPlotFunctions(
             ).All_projects_by_months(
+                four_months_start,
+                this_months_end,
                 form
             )
             context = {
                 "compute_data": json_chart_data,
-                "form": form,
-                "chart_df": chart_df
+                "form": form
             }
 
             return render(request, 'monthly_compute_graph.html', context)
@@ -516,73 +660,543 @@ def compute_graph(request):
         return render(request, 'daily_compute_graph.html', context)
 
 
-# def leaderboard(request):
-#     context = {
-#         'compute_data': "",
-#         'form': ""
-#     }
 
-#     # If the user has submitted the form
-#     if 'Daily' in request.GET:
-#         if (form.cleaned_data.get('project_type') and
-#                 form.cleaned_data.get('assay_type')):
-#             project_types = form.cleaned_data.get('project_type')
-#             assay_types = form.cleaned_data.get('assay_type')
-#             json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
-#             ).daily_last_4_months_all_byproject_and_assay(
-#                 project_types,
-#                 assay_types,
-#                 form
-#             )
-#             context = {
-#                 "compute_data": json_chart_data,
-#                 "form": form,
-#                 "chart_df": chart_df
+def leaderboard(request):
+    """
+    Creates a bar chart grouped by month with each month having two bars
+    Each bar is stacked with either project type
+    Or user type depending on the filters entered.
+    """
+    context = {
+        'leaderboard_data': "",
+        'form': ""
+    }
+    # Get date of the first day of the month four months ago
+    # Get date of the last day of the current month
+    # These are used to filter for last 4 months by default
+    today_date = dx_queries.no_of_days_in_month()[0]
+    this_year, this_month, _ = today_date.split("-")
+    four_months_ago = date.today() + relativedelta(months=-4)
+    four_months_start = four_months_ago.replace(day=1)
+    last_day_of_this_month = str(
+        calendar.monthrange(
+            int(today_date.split("-")[0]),
+            int(today_date.split("-")[1])
+        )[1]
+    )
+    this_months_end = (
+        f"{this_year}-{this_month}"
+        f"-{last_day_of_this_month}"
+    )
+    if 'Reset' in request.GET:
+        # If nothing is submitted on the form (normal landing page)
+        # Display the all projects graph grouped by daily results.
+        form = LeaderboardForm()
+        top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+        json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+            ).All_projects_by_users(
+                four_months_start,
+                this_months_end,
+                form
+            )
 
-#             return render(request, 'daily_compute_graph.html', context
-#         # If there is a project type entered
-#         # Get the single string from each
-#         elif form.cleaned_data.get('project_type'):
-#             project_types = form.cleaned_data.get('project_type')
-#             json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
-#             ).daily_last_4_months_all_byproject_types(
-#                 project_types,
-#                 form
-#             )
-#             context = {
-#                 "compute_data": json_chart_data,
-#                 "form": form,
-#                 "chart_df": chart_df
-#             }
-#             print("testing"
-#             return render(request, 'daily_compute_graph.html', context
-#         # If there is an assay type entered
-#         # Get the single string from each
-#         elif form.cleaned_data.get('assay_type'):
-#             assay_types = form.cleaned_data.get('assay_type')
-#             json_chart_data, chart_df = exec_plots.ExecutionPlotFunctions(
-#             ).daily_last_4_months_all_byassay_types(
-#                 assay_types,
-#                 form
-#             )
-#             context = {
-#                 "compute_data": json_chart_data,
-#                 "form": form,
-#                 "chart_df": chart_df
+        context = {
+                "leaderboard_data": json_chart_data,
+                "form": form,
+                "top_user_name": top_user_name,
+                "top_user_cost": top_user_cost,
+                "chart_df": chart_df
+            }
+        return render(request, 'leaderboard.html', context)
 
-#             return render(request, 'daily_compute_graph.html', context
-#         else:
-#             context = exec_plots.ExecutionPlotFunctions(
-#             ).default_daily_all_project(
-#                 form
+    elif 'Daily' in request.GET:
+        form = LeaderboardForm(request.GET)
+        if form.is_valid():
+            year = form.cleaned_data.get('year')
+            month = form.cleaned_data.get('month')
+            # Get the start + end year-months from form to filter range
+            start = form.cleaned_data.get("start")
+            end = form.cleaned_data.get("end")
 
-#             return render(request, 'daily_compute_graph.html', context)
-#     elif 'Monthly' in request.GET:
-        
-        
-#     else:
-#         print("Invalid")
+            if start == "---" and end == "---":
+                # If there are both a project type and user type entered
+                # Get the single string from each
+                if (form.cleaned_data.get('project_type') and
+                        form.cleaned_data.get('user_type')):
+                    print("YES")
+                    print(form.cleaned_data.get('project_type'))
+                    project_types = form.cleaned_data.get('project_type')
+                    user_types = form.cleaned_data.get('user_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                        ).daily_month_range_byusers_projects(
+                            four_months_start,
+                            this_months_end,
+                            project_types,
+                            user_types,
+                            form
+                        )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
 
-#     return render(request, 'leaderboard.html', context)
+                    return render(request, 'leaderboard.html', context)
 
+                elif form.cleaned_data.get('project_type'):
+                    project_types = form.cleaned_data.get('project_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                    ).daily_month_range_byproject(
+                           four_months_start,
+                           this_months_end,
+                           project_types,
+                           form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                elif form.cleaned_data.get('user_type'):
+                    print("THIS ONE")
+                    user_types = form.cleaned_data.get('user_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                    ).daily_month_range_byuser(
+                        four_months_start,
+                        this_months_end,
+                        user_types,
+                        form
+                    )
+
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                else:
+                    # months selected but display default currently.
+                    form = LeaderboardForm()
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data = lb_plots.UserPlotFunctions(
+                        ).daily_month_range_allproject_home(
+                            four_months_start,
+                            this_months_end,
+                            form)
+
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+            # If start and end months are selected
+            else:
+                # Start and end months are entered
+                # Convert start month-year to 1st date of start month
+                # e.g. "2022-05" to "2022-05-01"
+                # Find last day of the end month
+                # Convert end month-year to last day of that month
+                # e.g. "2022-05-14" to "2022-05-31"
+                month_start = f"{start}-01"
+                last_day_of_end_month = calendar.monthrange(
+                    int(end.split("-")[0]),int(end.split("-")[1])
+                )[1]
+                month_end = f"{end}-{last_day_of_end_month}"
+                # If there are both a project type and user type entered
+                # Get the single string from each
+                if (form.cleaned_data.get('project_type') and
+                        form.cleaned_data.get('user_type')):
+                    print(form.cleaned_data.get('project_type'))
+                    project_types = form.cleaned_data.get('project_type')
+                    user_types = form.cleaned_data.get('user_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                        ).daily_month_range_byusers_projects(
+                        month_start,
+                        month_end,
+                        project_types,
+                        user_types,
+                        form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                elif form.cleaned_data.get('project_type'):
+                    project_types = form.cleaned_data.get('project_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                    ).daily_month_range_byproject(
+                        month_start,
+                        month_end,
+                        project_types,
+                        form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                elif form.cleaned_data.get('user_type'):
+                    user_types = form.cleaned_data.get('user_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                    ).daily_month_range_byuser(
+                        month_start,
+                        month_end,
+                        user_types,
+                        form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                else:
+                    # months selected but display default currently.
+                    # form = LeaderboardForm()
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data = lb_plots.UserPlotFunctions(
+                        ).daily_month_range_allproject_home(
+                        month_start,
+                        month_end,
+                        form)
+
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+        else:
+            # Display default months_filtered graph
+            form = LeaderboardForm()
+            top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+            json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+            ).All_projects_by_users(
+                four_months_start,
+                this_months_end,
+                form
+            )
+            context = {
+                "leaderboard_data": json_chart_data,
+                "form": form,
+                "top_user_name": top_user_name,
+                "top_user_cost": top_user_cost,
+                "chart_df": chart_df
+            }
+
+            return render(request, 'leaderboard.html', context)
+    elif 'Monthly' in request.GET:
+        form = LeaderboardForm(request.GET)
+        if form.is_valid():
+            year = form.cleaned_data.get('year')
+            month = form.cleaned_data.get('month')
+            # Get the start + end year-months from form to filter range
+            start = form.cleaned_data.get("start")
+            end = form.cleaned_data.get("end")
+
+            if start == "---" and end == "---":
+                # If there are both a project type and user type entered
+                # Get the single string from each
+                if (form.cleaned_data.get('project_type') and
+                        form.cleaned_data.get('user_type')):
+                    print("YES")
+                    print(form.cleaned_data.get('project_type'))
+                    project_types = form.cleaned_data.get('project_type')
+                    user_types = form.cleaned_data.get('user_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                        ).Monthly_by_project_and_users(
+                        four_months_start,
+                        this_months_end,
+                        project_types,
+                        user_types,
+                        form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                elif form.cleaned_data.get('project_type'):
+                    project_types = form.cleaned_data.get('project_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                    ).Monthly_by_project(
+                        four_months_start,
+                        this_months_end,
+                        project_types,
+                        form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                elif form.cleaned_data.get('user_type'):
+                    user_types = form.cleaned_data.get('user_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                    ).Monthly_byUsers(
+                        four_months_start,
+                        this_months_end,
+                        user_types,
+                        form
+                    )
+
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                else:
+                    # months selected but display default currently.
+                    form = LeaderboardForm()
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions().Monthly_allprojects(  # All_projects_by_users(
+                            four_months_start,
+                            this_months_end,
+                            form)
+
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+            # If start and end months are selected
+            else:
+                # Start and end months are entered
+                # Convert start month-year to 1st date of start month
+                # e.g. "2022-05" to "2022-05-01"
+                # Find last day of the end month
+                # Convert end month-year to last day of that month
+                # e.g. "2022-05-14" to "2022-05-31"
+                month_start = f"{start}-01"
+                last_day_of_end_month = calendar.monthrange(
+                    int(end.split("-")[0]),int(end.split("-")[1])
+                )[1]
+                month_end = f"{end}-{last_day_of_end_month}"
+                # If there are both a project type and user type entered
+                # Get the single string from each
+                if (form.cleaned_data.get('project_type') and
+                        form.cleaned_data.get('user_type')):
+                    print("YES")
+                    print(form.cleaned_data.get('project_type'))
+                    project_types = form.cleaned_data.get('project_type')
+                    user_types = form.cleaned_data.get('user_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                        ).Monthly_by_project_and_users(
+                        month_start,
+                        month_end,
+                        project_types,
+                        user_types,
+                        form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                elif form.cleaned_data.get('project_type'):
+                    project_types = form.cleaned_data.get('project_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                    ).Monthly_by_project(
+                        month_start,
+                        month_end,
+                        project_types,
+                        form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                elif form.cleaned_data.get('user_type'):
+                    user_types = form.cleaned_data.get('user_type')
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+
+                    json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+                    ).Monthly_byUsers(
+                        month_start,
+                        month_end,
+                        user_types,
+                        form
+                    )
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost,
+                        "chart_df": chart_df
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+
+                else:
+                    # months selected but display default currently.
+                    # form = LeaderboardForm()
+                    top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+
+                    json_chart_data = lb_plots.UserPlotFunctions().Monthly_allprojects(  # All_projects_by_users(
+                        month_start,
+                        month_end,
+                        form)
+
+                    context = {
+                        "leaderboard_data": json_chart_data,
+                        "form": form,
+                        "top_user_name": top_user_name,
+                        "top_user_cost": top_user_cost
+                    }
+
+                    return render(request, 'leaderboard.html', context)
+        else:
+            # Display default months_filtered graph
+            form = LeaderboardForm()
+            top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+            json_chart_data = lb_plots.UserPlotFunctions(
+            ).Monthly_allprojects(  # All_projects_by_users(
+                four_months_start,
+                this_months_end,
+                form
+            )
+            context = {
+                "leaderboard_data": json_chart_data,
+                "form": form,
+                "top_user_name": top_user_name,
+                "top_user_cost": top_user_cost
+            }
+
+            return render(request, 'leaderboard.html', context)
+    else:
+        # If nothing is submitted on the form (normal landing page)
+        # Display the all projects graph grouped by daily results.
+        form = LeaderboardForm()
+        top_user_name, top_user_cost = lb_plots.UserPlotFunctions(
+                        ).top_most_costly_job(four_months_start,
+                                              this_months_end, form)
+
+        json_chart_data, chart_df = lb_plots.UserPlotFunctions(
+            ).All_projects_by_users(  # All_projects_by_users(
+                four_months_start,
+                this_months_end,
+                form
+            )
+        # json_chart_data = lb_plots.UserPlotFunctions().default_daily_all_project(
+        #     form
+        # )
+        context = {
+                "leaderboard_data": json_chart_data,
+                "form": form,
+                "top_user_name": top_user_name,
+                "top_user_cost": top_user_cost,
+                "chart_df": chart_df
+            }
+        return render(request, 'leaderboard.html', context)
 
