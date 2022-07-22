@@ -48,6 +48,10 @@ class ExecutionPlotFunctions():
             else dc.date_conversion_dict[month] for month
             in self.month_categories
         ]
+        self.month_lookup = list(calendar.month_name)
+        self.better_string_months = sorted(self.string_months, key=self.month_lookup.index)
+
+        # reversed_string_months = self.string_months.reverse()  # fix order
 
         # Chart data which is shared by all plots with days on x-axis
         self.time_chart_data = {
@@ -570,7 +574,7 @@ class ExecutionPlotFunctions():
 
             category_data_source.append(data)
         category_chart_data = self.bar_chart_nostack_data.copy()
-        category_chart_data['xAxis']['categories'] = string_months
+        category_chart_data['xAxis']['categories'] = self.better_string_months
         category_chart_data['series'] = category_data_source
 
         json_chart_data = json.dumps(category_chart_data)
@@ -885,9 +889,8 @@ class ExecutionPlotFunctions():
                 'color': 'rgb(217,95,2)'
             }
         ]
-
         category_chart_data = self.bar_chart_data.copy()
-        category_chart_data['xAxis']['categories'] = self.string_months
+        category_chart_data['xAxis']['categories'] = self.better_string_months
         category_chart_data['series'] = category_data_source
 
         json_chart_data = json.dumps(category_chart_data)
@@ -949,228 +952,6 @@ class ExecutionPlotFunctions():
         )
 
         return chart_data
-
-
-    # def convert_to_df_monthly_by_proj_assay(self, category_chart_data):
-    #     """
-    #     Convert chart data to a pandas df then convert it to HTML
-    #     So it can be shown below the graph and be easily exported
-    #     Parameters
-    #     ----------
-    #     category_chart_data : dict
-    #         dictionary which has all the chart attributes and data
-    #     Returns
-    #     -------
-    #     chart_data : pd.DataFrame as HTML table
-    #         the dataframe with Date, Type, State and Total Size
-    #     """
-    #     series_data = category_chart_data['series'].copy()
-    #     dates = category_chart_data['xAxis']['categories'].copy()
-
-    #     # As data column value contains a list, expand this over multiple rows
-    #     # Explode fills in the relevant data for those extra rows
-    #     exploded = pd.json_normalize(data = series_data).explode('data')
-
-    #     # If data exists, expand the months table according to the df length
-    #     # So the correct month can be added to the right row
-    #     if dates:
-    #         dates = dates * (int(len(exploded) / len(dates)))
-    #         exploded['Date'] = dates
-    #     # If no months exist (no data), keep months as empty list
-    #     else:
-    #         dates = []
-
-    #     # Re-order columns
-    #     exploded = exploded.reindex(
-    #         columns=[
-    #             'Date', 'name', 'stack', 'data'
-    #         ]
-    #     )
-    #     exploded.rename(
-    #         columns={
-    #             "name": "Project Type",
-    #             "stack": "Assay Type",
-    #             'data': 'Total Cost ($)'
-    #         },
-    #         inplace = True
-    #     )
-    #     # Convert to HTML to easily show with DataTables
-    #     chart_data = exploded.to_html(
-    #         index=False,
-    #         classes='table table-striped"',
-    #         justify='left'
-    #     )
-
-    #     return chart_data
-
-
-    # def convert_to_df_nostack(self, category_chart_data):
-    #     """
-    #     Convert chart data to a pandas df then convert it to HTML
-    #     So it can be shown below the graph and be easily exported
-    #     Parameters
-    #     ----------
-    #     category_chart_data : dict
-    #         dictionary which has all the chart attributes and data
-    #     Returns
-    #     -------
-    #     chart_data : pd.DataFrame as HTML table
-    #         the dataframe with Date, Type, State and Total Size
-    #     """
-    #     series_data = category_chart_data['series'].copy()
-    #     dates = category_chart_data['xAxis']['categories'].copy()
-
-    #     # As data column value contains a list, expand this over multiple rows
-    #     # Explode fills in the relevant data for those extra rows
-    #     exploded = pd.json_normalize(data = series_data).explode('data')
-
-    #     # If data exists, expand the months table according to the df length
-    #     # So the correct month can be added to the right row
-    #     if dates:
-    #         if len(dates) > 2:
-    #             dates = dates * (int(len(exploded) / len(dates)))
-    #             exploded['Date'] = dates
-    #         else:
-    #             print(dates)
-    #             exploded['Date'] = dates
-    #     # If no months exist (no data), keep months as empty list
-    #     else:
-    #         dates = []
-
-    #     # Re-order columns
-    #     exploded = exploded.reindex(
-    #         columns=[
-    #             'Date', 'name', 'data'
-    #         ]
-    #     )
-    #     exploded.rename(
-    #         columns={
-    #             'Date': "Month",
-    #             'name': "Project Type",
-    #             'data': "Total Cost ($)"
-    #         },
-    #         inplace = True
-    #     )
-    #     # Convert to HTML to easily show with DataTables
-    #     chart_data = exploded.to_html(
-    #         index=False,
-    #         classes='table table-striped"',
-    #         justify='left'
-    #     )
-
-    #     return chart_data
-
-
-    # def convert_to_df_assayonly(self, category_chart_data):
-    #     """
-    #     Convert chart data to a pandas df then convert it to HTML
-    #     So it can be shown below the graph and be easily exported
-    #     Parameters
-    #     ----------
-    #     category_chart_data : dict
-    #         dictionary which has all the chart attributes and data
-    #     Returns
-    #     -------
-    #     chart_data : pd.DataFrame as HTML table
-    #         the dataframe with Date, Type, State and Total Size
-    #     """
-    #     series_data = category_chart_data['series'].copy()
-    #     dates = category_chart_data['xAxis']['categories'].copy()
-
-    #     # As data column value contains a list, expand this over multiple rows
-    #     # Explode fills in the relevant data for those extra rows
-    #     exploded = pd.json_normalize(data = series_data).explode('data')
-
-    #     # If data exists, expand the months table according to the df length
-    #     # So the correct month can be added to the right row
-    #     if dates:
-    #         dates = dates * (int(len(exploded) / len(dates)))
-    #         exploded['Date'] = dates
-    #     # If no months exist (no data), keep months as empty list
-    #     else:
-    #         dates = []
-
-    #     # Re-order columns
-    #     exploded = exploded.reindex(
-    #         columns=[
-    #             'Date', 'name', 'data'
-    #         ]
-    #     )
-    #     exploded.rename(
-    #         columns={
-    #             "name": "Assay Type",
-    #             'data': 'Total Cost ($)'
-    #         },
-    #         inplace = True
-    #     )
-    #     # Convert to HTML to easily show with DataTables
-    #     chart_data = exploded.to_html(
-    #         index=False,
-    #         classes='table table-striped"',
-    #         justify='left'
-    #     )
-
-    #     return chart_data
-
-
-    # def convert_to_df_timeseries(self, month_start, month_end, project_types):
-    #     """
-    #     Convert chart data to a pandas df then convert it to HTML
-    #     So it can be shown below the graph and be easily exported
-    #     Parameters
-    #     ----------
-    #     category_chart_data : dict
-    #         dictionary which has all the chart attributes and data
-    #     Returns
-    #     -------
-    #     chart_data : pd.DataFrame as HTML table
-    #         the dataframe with Date, Type, State and Total Size
-    #     """
-
-    #     dfObj = pd.DataFrame()
-
-    #     for project in project_types:
-    #         cost_list = ComputeCosts.objects.all().filter(
-    #             project__name__startswith=project,
-    #             date__date__range=[month_start, month_end]
-    #             ).values('dx_id',
-    #                      'date__date',
-    #                      'project__name',
-    #                      'total_cost',
-    #                      'launched_by__user_name',
-    #                      'executable_name__executable_name',
-    #                      'runtime', )
-    #         cost_df = pd.DataFrame(cost_list)
-    #         if not cost_df.empty:
-    #             cost_df['launched_by__user_name'] = cost_df['launched_by__user_name'].apply(
-    #                 lambda x: x.split('-')[1])
-    #             cost_df['total_cost'] = cost_df['total_cost'].apply(
-    #                     lambda x: round(x, 2))
-    #             cost_df.rename(
-    #                 columns={
-    #                     'dx_id': 'DNAnexus ID',
-    #                     'date__date': 'Date',
-    #                     'project__name': 'Project',
-    #                     'total_cost': 'Total Cost ($)',
-    #                     'launched_by__user_name': 'User',
-    #                     'executable_name__executable_name': 'Executable',
-    #                     'runtime': 'Runtime'
-    #                 },
-    #                 inplace = True
-    #             )
-    #             print(cost_df)
-    #         dfObj.append(cost_df)
-
-    #     # Convert to HTML to easily show with DataTables
-
-    #     chart_data = dfObj.to_html(
-    #         index=False,
-    #         classes='table table-striped"',
-    #         justify='left'
-    #     )
-
-    #     return chart_data
-
 
 
     def convert_to_df_alldata_byproject_assay(self, month_start, month_end, project_types, assay_types):
