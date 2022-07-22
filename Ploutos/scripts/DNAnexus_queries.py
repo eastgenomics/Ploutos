@@ -671,12 +671,12 @@ def get_executions(proj):
     # Set-up the time-period to check using epoch times
     # Find last midnight from time of running
 
+    # last_midnight = dt.datetime.combine(dt.datetime.today(), dt.time.min)
     last_midnight = dt.datetime.combine(dt.datetime.today(), dt.time.min)
-
     # Find the epoch time for 1 days ago.
-    midnight_1day_ago = last_midnight - dt.timedelta(days=1)
+    midnight_1day_ago = last_midnight - dt.timedelta(days=14)  # 1
     # Find the epoch time for 2 days ago.
-    midnight_2_days_ago = last_midnight - dt.timedelta(days=2)
+    midnight_2_days_ago = last_midnight - dt.timedelta(days=15)  # 2
 
     # Convert to epoch_milliseconds
     midnight_1day_ago_epoch = int(midnight_1day_ago.timestamp())*1000
@@ -685,12 +685,12 @@ def get_executions(proj):
     # Query API for executions in timeperiod
 
     executions = dx.bindings.search.find_executions(
-            project=proj,
-            no_parent_analysis=True,
-            no_parent_job=True,
-            created_after=midnight_2day_ago_epoch,
-            created_before=midnight_1day_ago_epoch,
-            describe=True)
+        project=proj,
+        no_parent_analysis=True,
+        no_parent_job=True,
+        created_after=midnight_2day_ago_epoch,
+        created_before=midnight_1day_ago_epoch,
+        describe=True)
 
     check = peek(executions)
 
@@ -701,16 +701,16 @@ def get_executions(proj):
         print("data found")
         project_executions_dict = defaultdict(lambda: {"executions": []})
         for job in executions:
-            print(job)
+            # print(job)
             if job['describe']['state'] == "in_progress"\
                     or job['describe']['state'] == "terminating":
                 logger.log(f"{job['describe']['id']}")
-                print(f"{job['describe']['id']}")
+                # print(f"{job['describe']['id']}")
             else:
                 if job['id'].startswith('job-'):
                     # it's a single job
                     proj = job['describe']['project']
-                    print(f"{job['describe']}")
+                    # print(f"{job['describe']}")
                     if job['describe']['executable'].startswith('applet-'):
                         executable_Name = job['describe']['executableName']
                         try:
@@ -940,7 +940,7 @@ def get_subjobs_make_job_executions_df(list_project_executions):
     project_executions_dict = defaultdict(lambda: {"executions": []})
 
     # Create empty dataframe for collecting all executions from all projects.
-    # dfObj = pd.DataFrame()
+    dfObj = pd.DataFrame()
     appended_data = []
     for project in list_project_executions:
         keys = [key for key in project.keys()]
@@ -1002,7 +1002,7 @@ def get_subjobs_make_job_executions_df(list_project_executions):
                         include_subjobs=True)
                     # Loop over subjobs to calculate runtime.
                     for subjob in subjobs_info:
-                        print(subjob['describe'])
+                        # print(subjob['describe'])
                         if "totalPrice" in subjob['describe']:
                             if subjob['describe']["totalPrice"] == 0:
                                 print("no cost - skipped")
@@ -1037,7 +1037,7 @@ def get_subjobs_make_job_executions_df(list_project_executions):
                                 "modified": entry['modified'],
                                 "launchedBy": entry['launchedBy'],
                                 "Executions": subjobs_list})
-                            print(subjobs_list)
+                            # print(subjobs_list)
                         else:
                             print("TotalPrice not present - not charged")
                             continue
@@ -1045,30 +1045,38 @@ def get_subjobs_make_job_executions_df(list_project_executions):
                     print(f"""Error - other execution class found.
                           See: {entry["class"]}""")
 
-        # Convert dictionaries into dataframe (df)
-        df = make_executions_subjobs_df(project_executions_dict)
-        # Find runtime for each execution.
-        df["Result"] = df['Executions'].apply(
-            lambda x: sum([int(value['describe']['runtime']) for value in x])
-        )
+            # Convert dictionaries into dataframe (df)
+            df = pd.DataFrame()
+            df = make_executions_subjobs_df(project_executions_dict)
+            # print(df)
+            # print(df['Executions'])
+            # Check if empty don't append
+            if not df.empty:
+                # Find runtime for each execution.
+                df["Result"] = df['Executions'].apply(
+                    lambda x: sum([int(value['describe']['runtime']) for value in x])
+                )
 
-        # df["Runtime_epoch"] = df['Executions'].apply(
-        #     lambda x: sum([int(value['describe']['runtime']) for value in x])
-        # )
+                # df["Runtime_epoch"] = df['Executions'].apply(
+                #     lambda x: sum([int(value['describe']['runtime']) for value in x])
+                # ) # old method
 
-        df["Runtime_min_epoch"] = df['Executions'].apply(
-            lambda x: min([int(value['describe']['start_epoch']) for value in x])
-        )
-        df["Runtime_max_epoch"] = df['Executions'].apply(
-            lambda x: max([int(value['describe']['finish_epoch']) for value in x])
-        )
-        df["Runtime_epoch"] = df["Runtime_max_epoch"] - df["created"]
+                df["Runtime_min_epoch"] = df['Executions'].apply(
+                    lambda x: min([int(value['describe']['start_epoch']) for value in x], default=0)
+                )
+                df["Runtime_max_epoch"] = df['Executions'].apply(
+                    lambda x: max([int(value['describe']['finish_epoch']) for value in x], default=0)
+                )
+                df["Runtime_epoch"] = df["Runtime_max_epoch"] - df["created"]
 
-        # convert to timedelta for storing as DurationField
-        df["Result_td"] = pd.to_timedelta(df["Result"], 'ms')
-        df["Start_to_finish_td"] = pd.to_timedelta(df["Runtime_epoch"], 'ms')
-        appended_data.append(df)
-    dfObj = pd.concat(appended_data, ignore_index=True)
+                # convert to timedelta for storing as DurationField
+                df["Result_td"] = pd.to_timedelta(df["Result"], 'ms')
+                df["Start_to_finish_td"] = pd.to_timedelta(df["Runtime_epoch"], 'ms')
+                appended_data.append(df)
+
+    # check if there is data in the appended_data list
+    if appended_data:
+        dfObj = pd.concat(appended_data, ignore_index=True)
 
     return dfObj
 
