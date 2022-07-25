@@ -31,8 +31,8 @@ DX_TOKEN = CREDENTIALS.get('DNANEXUS_TOKEN')
 ORG = CREDENTIALS.get('ORG')
 LIVE_STORAGE_COST_MONTH = CREDENTIALS.get('LIVE_STORAGE_COST_MONTH')
 ARCHIVED_STORAGE_COST_MONTH = CREDENTIALS.get('ARCHIVED_STORAGE_COST_MONTH')
-PROJ_COLOUR_DICT = CREDENTIALS.get('PROJ_COLOUR_DICT')
-ASSAY_COLOUR_DICT = CREDENTIALS.get('ASSAY_COLOUR_DICT')
+PROJ_COLOUR_DICT = CREDENTIALS.get('PROJ_COLOUR_DICT', {})
+ASSAY_COLOUR_DICT = CREDENTIALS.get('ASSAY_COLOUR_DICT', {})
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -77,7 +77,10 @@ ROOT_URLCONF = 'Ploutos.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [f'{BASE_DIR}/dashboard/templates/dashboard/'],
+        'DIRS': [
+            os.path.join(BASE_DIR, "dashboard/templates/dashboard/"),
+            os.path.join(BASE_DIR, "templates")
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -202,63 +205,6 @@ LOGGING = {
     },
 }
 
-# Settings for logging
-with open('ploutos-error.log', 'a'):
-    pass
-with open('ploutos-debug.log', 'a'):
-    pass
-# Set up execution tracker log
-with open('executions_log.log', 'a'):
-    pass
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{asctime} {levelname} {message}',
-            'style': '{',
-        },
-    },
-    # Handlers
-    'handlers': {
-        'error-log': {
-            'level': 'ERROR',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': f'ploutos-error.log',
-            'formatter': 'simple',
-            'maxBytes': 5242880,
-            'backupCount': 2
-        },
-        'debug-log': {
-            'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': f'ploutos-debug.log',
-            'formatter': 'verbose',
-            'maxBytes': 5242880,
-            'backupCount': 2
-        },
-    },
-    # Loggers
-    'loggers': {
-        'general': {
-            'handlers': ['error-log'],
-            'level': 'ERROR',
-            'propagate': True
-        },
-        '': {
-            'handlers': ['debug-log'],
-            'level': 'DEBUG',
-            'propagate': True
-        }
-    },
-}
-
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
@@ -278,3 +224,12 @@ INTERNAL_IPS = [
     "127.0.0.1",
     # ...
 ]
+
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
+
+# Log out when the browser is closed
+# Also log user out after half an hour of inactivity
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 1800
+SESSION_SAVE_EVERY_REQUEST = True

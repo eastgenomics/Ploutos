@@ -254,14 +254,14 @@ class StoragePlotFunctions():
             ]
         )
 
-        exploded.rename(
+        exploded = exploded.rename(
             columns={
                 "name": "Scope",
                 "stack": "State",
                 'data': 'Monthly storage cost ($)'
             },
-            inplace=True
         )
+
         if exploded['Monthly storage cost ($)'].isnull().values.any():
             pass
         else:
@@ -274,7 +274,7 @@ class StoragePlotFunctions():
             index=False,
             classes='table table-striped"',
             justify='left',
-            float_format="%.2f"
+            float_format="%.3f"
         )
 
         return chart_data
@@ -342,12 +342,12 @@ class StoragePlotFunctions():
                 ]
             ]
 
-            proj_level_df.rename(
+            proj_level_df = proj_level_df.rename(
                 columns={
                     'project__name': 'Project',
-                    'Live_Cost': 'Live Cost ($)',
-                    'Archived_Cost': 'Archived Cost ($)'
-                }, inplace=True
+                    'Live_Cost': 'Live Storage Cost ($)',
+                    'Archived_Cost': 'Archived Storage Cost ($)'
+                }
             )
 
             formatted_html_proj_table = proj_level_df.to_html(

@@ -3,7 +3,8 @@
 {% block content %}
 
 <div>
-<form method="GET" action="{% url 'files' %}" style="padding-top: 20px;">
+<form method="POST" action="{% url 'files' %}" style="padding-top: 20px;">
+    {% csrf_token %}
     
     <div class="container">
         <div class="row">
@@ -82,16 +83,6 @@
         deferRender: true,
         info: false,
         scrollCollapse: true,
-        columnDefs: [
-        {"width": "20%",
-        "targets": 0},
-        {"width": "20%",
-        "targets": 1},
-        {"width": "20%",
-        "targets": 2},
-        {"width": "20%",
-        "targets": 3}
-        ],
         dom: 'Bfrtip',
         buttons: [
         'copyHtml5', 'csv'

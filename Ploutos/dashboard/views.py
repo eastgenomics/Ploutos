@@ -10,20 +10,23 @@ from dashboard.forms import (
     DateForm, MonthlyForm, StorageForm, FileForm
 )
 from dashboard.models import DailyOrgRunningTotal
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from scripts import DNAnexus_queries as dx_queries
 from scripts import file_plots as fp
 from scripts.running_total_plots import RunningTotPlotFunctions
 from scripts import storage_plots as sp
 
+
 rtp = RunningTotPlotFunctions()
 
 
+@login_required
 def index(request):
     """View to display running total charges via Plotly"""
     # Get all running total objects from db
     # Get first date of month four months ago + first date of next month
-    # To be used for all default filtering
+    # To be used for default filtering
     totals = DailyOrgRunningTotal.objects.all()
     four_months_ago = date.today() + relativedelta(months=-4)
     start_of_four_months_ago = four_months_ago.replace(day=1)
@@ -31,22 +34,23 @@ def index(request):
         date.today() + relativedelta(months=+1)
     ).replace(day=1)
 
+    daily_form = DateForm()
+    monthly_form = MonthlyForm()
     # If the form is submitted
-    if 'submit' in request.GET:
-        # Get the form with info, set monthly form and monthly plot to default
-        form = DateForm(request.GET)
-        form2 = MonthlyForm()
+    if 'submit' in request.POST:
+        # Get the daily_form with info
+        # Set monthly form and monthly plot to default
+        daily_form = DateForm(request.POST)
         monthly_chart, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
         # If the dates entered are validated
-        if form.is_valid():
-
+        if daily_form.is_valid():
             # If there's a date entered get dates
-            if form.cleaned_data.get("start"):
-                start = form.cleaned_data.get("start")
-                end = form.cleaned_data.get("end")
+            if daily_form.cleaned_data.get("start"):
+                start = daily_form.cleaned_data.get("start")
+                end = daily_form.cleaned_data.get("end")
                 # Add one day to the end as total for a day
                 # Is relative to the next day minus that day
                 end_obj = datetime.strptime(str(end), "%Y-%m-%d")
@@ -60,18 +64,16 @@ def index(request):
                     date__date__range=[start, end_plus_one_str]
                 )
 
-                # If user wants to see all charge types, render whole graph
-                # if charge_type == 'All':
                 fig, daily_df = rtp.daily_plot(totals)
                 daily_chart = fig.to_html()
 
                 # Filtered daily_chart and default monthly_chart to context
-                # Send validated form and empty form2 to context
+                # Send validated form and empty monthly_form to context
                 context = {
                     'daily_chart': daily_chart,
                     'monthly_chart': monthly_chart,
-                    'form': form,
-                    'form2': form2,
+                    'daily_form': daily_form,
+                    'monthly_form': monthly_form,
                     'monthly_df': monthly_df,
                     'daily_df': daily_df
                 }
@@ -90,14 +92,14 @@ def index(request):
                 context = {
                     'daily_chart': daily_chart,
                     'monthly_chart': monthly_chart,
-                    'form': form,
-                    'form2': form2,
+                    'daily_form': daily_form,
+                    'monthly_form': monthly_form,
                     'monthly_df': monthly_df,
                     'daily_df': daily_df
                 }
 
         else:
-            # If form not valid or unsubmitted
+            # If daily_form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
             totals = totals.filter(
                 date__date__range=[
@@ -111,25 +113,51 @@ def index(request):
             context = {
                 'daily_chart': daily_chart,
                 'monthly_chart': monthly_chart,
-                'form': form,
-                'form2': form2,
+                'daily_form': daily_form,
+                'monthly_form': monthly_form,
                 'monthly_df': monthly_df,
                 'daily_df': daily_df
             }
 
-    # If instead form for monthly chart is submitted
-    elif 'monthly' in request.GET:
+    elif 'reset_daily' in request.POST:
+        daily_form = DateForm()
+        # Display unfiltered graph
         totals = totals.filter(
             date__date__range=[
                 start_of_four_months_ago, date.today()
             ]
         )
-        form = DateForm()
-        form2 = MonthlyForm(request.GET)
 
-        if form2.is_valid():
-            start_month = form2.cleaned_data.get("start_month")
-            end_month = form2.cleaned_data.get("end_month")
+        fig, daily_df = rtp.daily_plot(totals)
+        daily_chart = fig.to_html()
+
+        monthly_chart, monthly_df = rtp.monthly_between_dates(
+            start_of_four_months_ago, start_of_next_month
+        )
+
+        context = {
+            'daily_chart': daily_chart,
+            'monthly_chart': monthly_chart,
+            'daily_form': daily_form,
+            'monthly_form': monthly_form,
+            'monthly_df': monthly_df,
+            'daily_df': daily_df
+        }
+
+    # If instead form for monthly chart is submitted
+    elif 'monthly' in request.POST:
+        # Filter daily totals to last four months
+        # To be used as daily chart always when monthly chart filtered
+        totals = totals.filter(
+            date__date__range=[
+                start_of_four_months_ago, date.today()
+            ]
+        )
+        monthly_form = MonthlyForm(request.POST)
+
+        if monthly_form.is_valid():
+            start_month = monthly_form.cleaned_data.get("start_month")
+            end_month = monthly_form.cleaned_data.get("end_month")
 
             # If no months entered
             if start_month == "---" and end_month == "---":
@@ -145,8 +173,8 @@ def index(request):
                 context = {
                     'daily_chart': daily_chart,
                     'monthly_chart': monthly_chart,
-                    'form': form,
-                    'form2': form2,
+                    'daily_form': daily_form,
+                    'monthly_form': monthly_form,
                     'monthly_df': monthly_df,
                     'daily_df': daily_df
                 }
@@ -172,8 +200,8 @@ def index(request):
                 context = {
                     'daily_chart': daily_chart,
                     'monthly_chart': monthly_chart,
-                    'form': form,
-                    'form2': form2,
+                    'daily_form': daily_form,
+                    'monthly_form': monthly_form,
                     'monthly_df': monthly_df,
                     'daily_df': daily_df
                 }
@@ -191,16 +219,35 @@ def index(request):
             context = {
                 'daily_chart': daily_chart,
                 'monthly_chart': monthly_chart,
-                'form': form,
-                'form2': form2,
+                'daily_form': daily_form,
+                'monthly_form': monthly_form,
                 'monthly_df': monthly_df,
                 'daily_df': daily_df
             }
 
+    elif 'reset_monthly' in request.POST:
+        daily_form = DateForm()
+        monthly_form = MonthlyForm()
+        # Display unfiltered graph
+        fig, daily_df = rtp.daily_plot(totals)
+        daily_chart = fig.to_html()
+        monthly_chart, monthly_df = rtp.monthly_between_dates(
+            start_of_four_months_ago, start_of_next_month
+        )
+
+        context = {
+            'daily_chart': daily_chart,
+            'monthly_chart': monthly_chart,
+            'daily_form': daily_form,
+            'monthly_form': monthly_form,
+            'monthly_df': monthly_df,
+            'daily_df': daily_df
+        }
+
     # If no forms submitted display last four months for daily + monthly
     else:
-        form = DateForm()
-        form2 = MonthlyForm()
+        daily_form = DateForm()
+        monthly_form = MonthlyForm()
         monthly_chart, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
@@ -211,8 +258,8 @@ def index(request):
         context = {
             'daily_chart': daily_chart,
             'monthly_chart': monthly_chart,
-            'form': form,
-            'form2': form2,
+            'daily_form': daily_form,
+            'monthly_form': monthly_form,
             'monthly_df': monthly_df,
             'daily_df': daily_df
         }
@@ -220,6 +267,7 @@ def index(request):
     return render(request, 'index.html', context)
 
 
+@login_required
 def storage_chart(request):
     """
     Creates a bar chart grouped by month with each month having two bars
@@ -245,8 +293,8 @@ def storage_chart(request):
         f"-{last_day_of_this_month}"
     )
     # If the user has submitted the form
-    if 'submit' in request.GET:
-        form = StorageForm(request.GET)
+    if 'submit' in request.POST:
+        form = StorageForm(request.POST)
         # If form is valid
         # i.e. not >1 entry in project_types and assay_types at same time
         if form.is_valid():
@@ -417,7 +465,7 @@ def storage_chart(request):
                     form
                 )
 
-    elif 'clear' in request.GET:
+    elif 'clear' in request.POST:
         form = StorageForm()
         context = sp.StoragePlotFunctions(
         ).all_projects_between_months(
@@ -440,6 +488,7 @@ def storage_chart(request):
     return render(request, 'bar_chart.html', context)
 
 
+@login_required
 def files(request):
     """View for displaying the file type data"""
     date_to_filter = date.today()
@@ -448,8 +497,8 @@ def files(request):
     proj_level_df = pd.DataFrame()
 
     # If the user has submitted the form
-    if 'submit' in request.GET:
-        form = FileForm(request.GET)
+    if 'submit' in request.POST:
+        form = FileForm(request.POST)
         # If form is valid
         # i.e. not >1 entry in project_types and assay_types at same time
         if form.is_valid():
@@ -533,7 +582,7 @@ def files(request):
             count_chart_data, count_df = fp.FilePlotFunctions(
             ).file_types_count_all_projects(date_to_filter)
 
-    elif 'clear' in request.GET:
+    elif 'clear' in request.POST:
         form = FileForm()
         size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
         ).file_types_size_all_projects(date_to_filter)
@@ -566,6 +615,8 @@ def files(request):
 
     return render(request, 'files.html', context)
 
+
+@login_required
 def jobs(request):
     """View to display the jobs data"""
     return render(request, 'jobs.html')
