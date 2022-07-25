@@ -273,7 +273,7 @@ def run():
     start = time()
     start_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
     print(start_time)
-    #logger.log(f"populate_db started at {start_time}")
+    logger.log(f"populate_db started at {start_time}")
 
     queries.login()
     all_projects, proj_list, proj_df = queries.get_projects()

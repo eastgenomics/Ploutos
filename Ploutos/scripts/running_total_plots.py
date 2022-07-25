@@ -289,10 +289,10 @@ class RunningTotPlotFunctions():
 
         if monthly_charge_df.empty:
             monthly_df = monthly_charge_df.to_html(
-            index=False,
-            classes='table table-striped" id = "monthlytable',
-            justify='left'
-        )
+                index=False,
+                classes='table table-striped" id = "monthlytable',
+                justify='left'
+            )
 
         else:
             monthly_df = monthly_charge_df.to_html(
@@ -374,7 +374,7 @@ class RunningTotPlotFunctions():
                 yaxis={"visible": False},
                 width=1200,
                 height=600,
-                annotations = [
+                annotations=[
                     {
                         "text": "No data to display",
                         "xref": "paper",
