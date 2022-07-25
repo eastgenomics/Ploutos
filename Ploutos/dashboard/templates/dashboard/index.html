@@ -61,6 +61,7 @@
 </script>
 <div class="all" style='margin: 0 auto;'>
 <form method="POST" action="{% url 'index' %}" style="padding-top: 20px;">
+  {% csrf_token %}
     <div class="container">
         <div class="row">
           <div class="card-body bg-white">
@@ -72,12 +73,12 @@
             </p>
         </div>
         <div class="my-form">
-          {% crispy form %}
+          {% crispy daily_form %}
         </div>
       </div>
     <!-- Submit button, 'submit' used to check if form is submitted -->
     <input type="submit" name="submit" value="Filter"/>
-    <input type="reset" name="reset" value="Reset"/>
+    <input type="submit" name="reset" value="Reset"/>
     </div>
 
 </form>
@@ -89,14 +90,15 @@
 </div>
 
 <form method="POST" action="{% url 'index' %}">
+  {% csrf_token %}
 <div class="container">
   <div class="row">
     <div class="my-form">
-    {% crispy form2 %}
+    {% crispy monthly_form %}
     </div>
   </div>
   <input type="submit" name="monthly" value="Filter"/>
-  <input type="reset" name="reset2" value="Reset"/>
+  <input type="submit" name="reset2" value="Reset"/>
 </form>
 <div id="chart-two" align='center' style='margin: 0 auto;'>
   {{ monthly_chart|safe }}

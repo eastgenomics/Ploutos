@@ -4,6 +4,7 @@
 
 <div>
 <form method="POST" action="{% url 'files' %}" style="padding-top: 20px;">
+    {% csrf_token %}
     
     <div class="container">
         <div class="row">

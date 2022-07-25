@@ -34,22 +34,23 @@ def index(request):
         date.today() + relativedelta(months=+1)
     ).replace(day=1)
 
+    daily_form = DateForm()
+    monthly_form = MonthlyForm()
     # If the form is submitted
     if 'submit' in request.POST:
-        # Get the form with info, set monthly form and monthly plot to default
-        form = DateForm(request.POST)
-        form2 = MonthlyForm()
+        # Get the daily_form with info
+        # Set monthly form and monthly plot to default
+        daily_form = DateForm(request.POST)
         monthly_chart, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
 
         # If the dates entered are validated
-        if form.is_valid():
-
+        if daily_form.is_valid():
             # If there's a date entered get dates
-            if form.cleaned_data.get("start"):
-                start = form.cleaned_data.get("start")
-                end = form.cleaned_data.get("end")
+            if daily_form.cleaned_data.get("start"):
+                start = daily_form.cleaned_data.get("start")
+                end = daily_form.cleaned_data.get("end")
                 # Add one day to the end as total for a day
                 # Is relative to the next day minus that day
                 end_obj = datetime.strptime(str(end), "%Y-%m-%d")
@@ -67,12 +68,12 @@ def index(request):
                 daily_chart = fig.to_html()
 
                 # Filtered daily_chart and default monthly_chart to context
-                # Send validated form and empty form2 to context
+                # Send validated form and empty monthly_form to context
                 context = {
                     'daily_chart': daily_chart,
                     'monthly_chart': monthly_chart,
-                    'form': form,
-                    'form2': form2,
+                    'daily_form': daily_form,
+                    'monthly_form': monthly_form,
                     'monthly_df': monthly_df,
                     'daily_df': daily_df
                 }
@@ -91,14 +92,14 @@ def index(request):
                 context = {
                     'daily_chart': daily_chart,
                     'monthly_chart': monthly_chart,
-                    'form': form,
-                    'form2': form2,
+                    'daily_form': daily_form,
+                    'monthly_form': monthly_form,
                     'monthly_df': monthly_df,
                     'daily_df': daily_df
                 }
 
         else:
-            # If form not valid or unsubmitted
+            # If daily_form not valid or unsubmitted
             # Display unfiltered graph for all dates and show errors
             totals = totals.filter(
                 date__date__range=[
@@ -112,8 +113,8 @@ def index(request):
             context = {
                 'daily_chart': daily_chart,
                 'monthly_chart': monthly_chart,
-                'form': form,
-                'form2': form2,
+                'daily_form': daily_form,
+                'monthly_form': monthly_form,
                 'monthly_df': monthly_df,
                 'daily_df': daily_df
             }
@@ -127,12 +128,11 @@ def index(request):
                 start_of_four_months_ago, date.today()
             ]
         )
-        form = DateForm()
-        form2 = MonthlyForm(request.POST)
+        monthly_form = MonthlyForm(request.POST)
 
-        if form2.is_valid():
-            start_month = form2.cleaned_data.get("start_month")
-            end_month = form2.cleaned_data.get("end_month")
+        if monthly_form.is_valid():
+            start_month = monthly_form.cleaned_data.get("start_month")
+            end_month = monthly_form.cleaned_data.get("end_month")
 
             # If no months entered
             if start_month == "---" and end_month == "---":
@@ -148,8 +148,8 @@ def index(request):
                 context = {
                     'daily_chart': daily_chart,
                     'monthly_chart': monthly_chart,
-                    'form': form,
-                    'form2': form2,
+                    'daily_form': daily_form,
+                    'monthly_form': monthly_form,
                     'monthly_df': monthly_df,
                     'daily_df': daily_df
                 }
@@ -175,8 +175,8 @@ def index(request):
                 context = {
                     'daily_chart': daily_chart,
                     'monthly_chart': monthly_chart,
-                    'form': form,
-                    'form2': form2,
+                    'daily_form': daily_form,
+                    'monthly_form': monthly_form,
                     'monthly_df': monthly_df,
                     'daily_df': daily_df
                 }
@@ -194,16 +194,16 @@ def index(request):
             context = {
                 'daily_chart': daily_chart,
                 'monthly_chart': monthly_chart,
-                'form': form,
-                'form2': form2,
+                'daily_form': daily_form,
+                'monthly_form': monthly_form,
                 'monthly_df': monthly_df,
                 'daily_df': daily_df
             }
 
     # If no forms submitted display last four months for daily + monthly
     else:
-        form = DateForm()
-        form2 = MonthlyForm()
+        daily_form = DateForm()
+        monthly_form = MonthlyForm()
         monthly_chart, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
         )
@@ -214,8 +214,8 @@ def index(request):
         context = {
             'daily_chart': daily_chart,
             'monthly_chart': monthly_chart,
-            'form': form,
-            'form2': form2,
+            'daily_form': daily_form,
+            'monthly_form': monthly_form,
             'monthly_df': monthly_df,
             'daily_df': daily_df
         }
