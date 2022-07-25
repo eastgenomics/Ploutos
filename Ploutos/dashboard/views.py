@@ -570,6 +570,7 @@ def files(request):
 
     return render(request, 'files.html', context)
 
+@login_required
 def jobs(request):
     """View to display the jobs data"""
     return render(request, 'jobs.html')
