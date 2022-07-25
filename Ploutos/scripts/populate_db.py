@@ -273,7 +273,7 @@ def run():
     start = time()
     start_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
     print(start_time)
-    # logger.log(f"populate_db started at {start_time}")
+    logger.log(f"populate_db started at {start_time}")
 
     queries.login()
     all_projects, proj_list, proj_df = queries.get_projects()
@@ -284,14 +284,14 @@ def run():
     )
     populate_database_files(final_dict)
     populate_file_types(file_type_df)
-    # executions_df = queries.orchestrate_get_executions(proj_list)
-    # populate_executions(executions_df)
+    executions_df = queries.orchestrate_get_executions(proj_list)
+    populate_executions(executions_df)
 
     end = time()
     total = (end - start) / 60
     end_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
     print(f"Total time was {total} minutes")
     print(end_time)
-    # logger.log(
-    #     f"populate_db ended at {start_time}. Total time was {total} minutes"
-    # )
+    logger.log(
+        f"populate_db ended at {start_time}. Total time was {total} minutes"
+    )
