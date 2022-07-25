@@ -2,13 +2,13 @@
 
 {% block content %}
 {% load crispy_forms_tags %}
-<div style="width: 20%; margin:0 auto; padding-top: 20px;">
+<div style="width: 25%; margin:0 auto; padding-top: 20px;">
 <h2>Log In</h2>
 <form method="post">
   {% csrf_token %}
   {{ form | crispy }}
-  <div style="padding-top: 10px;">
-  <button type="submit">Log In</button>
+  <div style="padding-top: 15px;">
+  <button class="btn btn-success" type="submit">Log In</button>
     </div>
 </form>
 </div>

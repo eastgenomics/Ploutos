@@ -281,9 +281,9 @@ class RunningTotPlotFunctions():
         monthly_charge_df = pd.DataFrame(
             {
                 'Month': converted_months,
-                'Storage charges': storage_charges,
-                'Compute charges': compute_charges,
-                'Egress charges': egress_charges
+                'Storage charges ($)': storage_charges,
+                'Compute charges ($)': compute_charges,
+                'Egress charges ($)': egress_charges
             }
         )
 

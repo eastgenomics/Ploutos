@@ -345,8 +345,8 @@ class StoragePlotFunctions():
             proj_level_df = proj_level_df.rename(
                 columns={
                     'project__name': 'Project',
-                    'Live_Cost': 'Live Cost ($)',
-                    'Archived_Cost': 'Archived Cost ($)'
+                    'Live_Cost': 'Live Storage Cost ($)',
+                    'Archived_Cost': 'Archived Storage Cost ($)'
                 }
             )
 
