@@ -119,6 +119,31 @@ def index(request):
                 'daily_df': daily_df
             }
 
+    elif 'reset_daily' in request.POST:
+        daily_form = DateForm()
+        # Display unfiltered graph
+        totals = totals.filter(
+            date__date__range=[
+                start_of_four_months_ago, date.today()
+            ]
+        )
+
+        fig, daily_df = rtp.daily_plot(totals)
+        daily_chart = fig.to_html()
+
+        monthly_chart, monthly_df = rtp.monthly_between_dates(
+            start_of_four_months_ago, start_of_next_month
+        )
+
+        context = {
+            'daily_chart': daily_chart,
+            'monthly_chart': monthly_chart,
+            'daily_form': daily_form,
+            'monthly_form': monthly_form,
+            'monthly_df': monthly_df,
+            'daily_df': daily_df
+        }
+
     # If instead form for monthly chart is submitted
     elif 'monthly' in request.POST:
         # Filter daily totals to last four months
@@ -199,6 +224,25 @@ def index(request):
                 'monthly_df': monthly_df,
                 'daily_df': daily_df
             }
+
+    elif 'reset_monthly' in request.POST:
+        daily_form = DateForm()
+        monthly_form = MonthlyForm()
+        # Display unfiltered graph
+        fig, daily_df = rtp.daily_plot(totals)
+        daily_chart = fig.to_html()
+        monthly_chart, monthly_df = rtp.monthly_between_dates(
+            start_of_four_months_ago, start_of_next_month
+        )
+
+        context = {
+            'daily_chart': daily_chart,
+            'monthly_chart': monthly_chart,
+            'daily_form': daily_form,
+            'monthly_form': monthly_form,
+            'monthly_df': monthly_df,
+            'daily_df': daily_df
+        }
 
     # If no forms submitted display last four months for daily + monthly
     else:

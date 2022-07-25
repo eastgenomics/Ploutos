@@ -1,6 +1,56 @@
 {% extends 'dashboard/base.html' %}
 {% load crispy_forms_tags %}
 {% block content %}
+
+<div class="all" style='margin: 0 auto;'>
+<form method="POST" action="{% url 'index' %}" style="padding-top: 20px;">
+  {% csrf_token %}
+    <div class="container">
+        <div class="row">
+          <div class="card-body bg-white">
+            <h2><i class="bi-piggy-bank"></i> Running Totals</h2>
+            <p>
+              This page shows charges derived from querying the DNAnexus API running total billing charges daily <i>(dxpy.api.org_describe)</i>.
+              <br>
+              Note: as the API queries will be run just after midnight, the charge difference between the day the query is run and the previous day are classed as the daily charge and attributed to the previous day. 
+            </p>
+        </div>
+        <div class="my-form">
+          {% crispy daily_form %}
+        </div>
+      </div>
+    <!-- Submit button, 'submit' used to check if form is submitted -->
+    <input type="submit" name="submit" value="Filter"/>
+    <input type="submit" name="reset_daily" value="Reset"/>
+    </div>
+
+</form>
+<div id='chart_div' align='center' style='margin: 0 auto; padding-bottom: 40px;'>
+    {{ daily_chart|safe }}
+</div>
+<div style="width: 62%; margin-left: 18.5%;margin-right: 0%;margin-top: 5px;margin-bottom: 40px;">
+  {{ daily_df|safe }}
+</div>
+
+<form method="POST" action="{% url 'index' %}">
+  {% csrf_token %}
+<div class="container">
+  <div class="row">
+    <div class="my-form">
+    {% crispy monthly_form %}
+    </div>
+  </div>
+  <input type="submit" name="monthly" value="Filter"/>
+  <input type="submit" name="reset_monthly" value="Reset"/>
+</form>
+<div id="chart-two" align='center' style='margin: 0 auto;'>
+  {{ monthly_chart|safe }}
+</div>
+<div style="margin-bottom: 60px;">
+  {{ monthly_df|safe }}
+</div>
+</div>
+
 <script>
   // Sets up the DataTable
   $(document).ready(function () {
@@ -59,56 +109,6 @@
 });
 
 </script>
-<div class="all" style='margin: 0 auto;'>
-<form method="POST" action="{% url 'index' %}" style="padding-top: 20px;">
-  {% csrf_token %}
-    <div class="container">
-        <div class="row">
-          <div class="card-body bg-white">
-            <h2><i class="bi-piggy-bank"></i> Running Totals</h2>
-            <p>
-              This page shows charges derived from querying the DNAnexus API running total billing charges daily <i>(dxpy.api.org_describe)</i>.
-              <br>
-              Note: as the API queries will be run just after midnight, the charge difference between the day the query is run and the previous day are classed as the daily charge and attributed to the previous day. 
-            </p>
-        </div>
-        <div class="my-form">
-          {% crispy daily_form %}
-        </div>
-      </div>
-    <!-- Submit button, 'submit' used to check if form is submitted -->
-    <input type="submit" name="submit" value="Filter"/>
-    <input type="submit" name="reset" value="Reset"/>
-    </div>
-
-</form>
-<div id='chart_div' align='center' style='margin: 0 auto; padding-bottom: 40px;'>
-    {{ daily_chart|safe }}
-</div>
-<div style="width: 62%; margin-left: 18.5%;margin-right: 0%;margin-top: 5px;margin-bottom: 40px;">
-  {{ daily_df|safe }}
-</div>
-
-<form method="POST" action="{% url 'index' %}">
-  {% csrf_token %}
-<div class="container">
-  <div class="row">
-    <div class="my-form">
-    {% crispy monthly_form %}
-    </div>
-  </div>
-  <input type="submit" name="monthly" value="Filter"/>
-  <input type="submit" name="reset2" value="Reset"/>
-</form>
-<div id="chart-two" align='center' style='margin: 0 auto;'>
-  {{ monthly_chart|safe }}
-</div>
-<div style="margin-bottom: 60px;">
-  {{ monthly_df|safe }}
-</div>
-</div>
-
-
 {% endblock content %}
 
 

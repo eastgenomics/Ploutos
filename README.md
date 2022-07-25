@@ -1,5 +1,5 @@
 # Ploutos
-Webapp for tracking DNAnexus billing project.
+Django webapp for tracking an organisation's billing on DNAnexus.
 
 ## Configuration
 Config variables should be passed in a `CREDENTIALS.json` file.
