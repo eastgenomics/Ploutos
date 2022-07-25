@@ -129,7 +129,7 @@ class FilePlotFunctions():
                 index=False,
                 classes='table table-striped"',
                 justify='left',
-                float_format="%.2f"
+                float_format="%.3f"
             )
         else:
             # Convert to HTML to easily show with DataTables
@@ -292,7 +292,7 @@ class FilePlotFunctions():
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
             classes='table table-striped"',
             justify='left',
-            float_format="%.2f"
+            float_format="%.3f"
         )
 
         category_chart_data = self.my_chart_data.copy()
@@ -582,7 +582,7 @@ class FilePlotFunctions():
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
             classes='table table-striped"',
             justify='left',
-            float_format="%.2f"
+            float_format="%.3f"
         )
 
         file_type_categories = file_type_categories_dups[0]
@@ -789,7 +789,7 @@ class FilePlotFunctions():
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
             classes='table table-striped"',
             justify='left',
-            float_format="%.2f"
+            float_format="%.3f"
         )
 
         file_type_categories = file_type_categories_dups[0]
@@ -991,7 +991,7 @@ class FilePlotFunctions():
         one_proj_per_row_file_types = one_proj_per_row_file_types.to_html(
             classes='table table-striped"',
             justify='left',
-            float_format="%.2f"
+            float_format="%.3f"
         )
 
         category_chart_data = self.my_chart_data.copy()

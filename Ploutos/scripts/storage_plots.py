@@ -274,7 +274,7 @@ class StoragePlotFunctions():
             index=False,
             classes='table table-striped"',
             justify='left',
-            float_format="%.2f"
+            float_format="%.3f"
         )
 
         return chart_data

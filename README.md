@@ -29,6 +29,10 @@ This should be placed within Ploutos/Ploutos, within the same directory level as
     }
 }
 ```
+
+## Database schema
+![Alt text](/Ploutos_db_schema.png "Ploutos db schema")
+
 ## Usage notes
 The script populate_db.py is run daily to grab data from the DNAnexus API and populate the database.
 This can be run via the command line:

@@ -64,14 +64,19 @@ class RunningTotPlotFunctions():
 
         # Turn date objects into strings
         stringified_dates = [str(date) for date in dates][:-1]
+        # If there are charges in the db for those dates
+        if charges:
+            # Get the relevant info for each charge type as a list
+            storage_charges, compute_charges, egress_charges = zip(*charges)
 
-        # Get the relevant info for each charge type as a list
-        storage_charges, compute_charges, egress_charges = zip(*charges)
-
-        # Calculate a date's charges minus previous date
-        storage_charge_diff = self.calculate_diffs(storage_charges)
-        compute_charge_diff = self.calculate_diffs(compute_charges)
-        egress_charge_diff = self.calculate_diffs(egress_charges)
+            # Calculate a date's charges minus previous date
+            storage_charge_diff = self.calculate_diffs(storage_charges)
+            compute_charge_diff = self.calculate_diffs(compute_charges)
+            egress_charge_diff = self.calculate_diffs(egress_charges)
+        else:
+            storage_charge_diff = []
+            compute_charge_diff = []
+            egress_charge_diff = []
 
         # Turn this into df to use for DataTables
         daily_charge_df = pd.DataFrame(
@@ -87,7 +92,7 @@ class RunningTotPlotFunctions():
             index=False,
             classes='table table-striped" id = "dailytable',
             justify='left',
-            float_format="%.2f"
+            float_format="%.3f"
         )
 
         # Add unified hover label so all charges shown
@@ -259,18 +264,18 @@ class RunningTotPlotFunctions():
             }
         )
 
-        if monthly_charge_df:
-            monthly_df = monthly_charge_df.to_html(
+        if monthly_charge_df.empty:
+                monthly_df = monthly_charge_df.to_html(
                 index=False,
                 classes='table table-striped" id = "monthlytable',
-                justify='left',
-                float_format="%.2f"
+                justify='left'
             )
         else:
             monthly_df = monthly_charge_df.to_html(
                 index=False,
                 classes='table table-striped" id = "monthlytable',
-                justify='left'
+                justify='left',
+                float_format="%.3f"
             )
 
         fig = go.Figure()

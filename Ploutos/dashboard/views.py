@@ -60,8 +60,6 @@ def index(request):
                     date__date__range=[start, end_plus_one_str]
                 )
 
-                # If user wants to see all charge types, render whole graph
-                # if charge_type == 'All':
                 fig, daily_df = rtp.daily_plot(totals)
                 daily_chart = fig.to_html()
 
@@ -119,6 +117,8 @@ def index(request):
 
     # If instead form for monthly chart is submitted
     elif 'monthly' in request.GET:
+        # Filter daily totals to last four months
+        # To be used as daily chart always when monthly chart filtered
         totals = totals.filter(
             date__date__range=[
                 start_of_four_months_ago, date.today()
