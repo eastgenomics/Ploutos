@@ -266,6 +266,7 @@ def index(request):
 
     return render(request, 'index.html', context)
 
+
 @login_required
 def storage_chart(request):
     """
@@ -486,6 +487,7 @@ def storage_chart(request):
 
     return render(request, 'bar_chart.html', context)
 
+
 @login_required
 def files(request):
     """View for displaying the file type data"""
@@ -612,6 +614,7 @@ def files(request):
     }
 
     return render(request, 'files.html', context)
+
 
 @login_required
 def jobs(request):

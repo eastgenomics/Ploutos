@@ -150,16 +150,16 @@ class RunningTotPlotFunctions():
                 marker_line_width=1
             )
 
-            fig.update_yaxes(rangemode = "nonnegative")
+            fig.update_yaxes(rangemode="nonnegative")
 
         else:
             fig = go.Figure()
             fig.update_layout(
-                xaxis =  { "visible": False },
-                yaxis = { "visible": False },
+                xaxis={"visible": False},
+                yaxis={"visible": False},
                 width=1200,
                 height=600,
-                annotations = [
+                annotations=[
                     {
                         "text": "No data to display",
                         "xref": "paper",
@@ -288,11 +288,12 @@ class RunningTotPlotFunctions():
         )
 
         if monthly_charge_df.empty:
-                monthly_df = monthly_charge_df.to_html(
-                index=False,
-                classes='table table-striped" id = "monthlytable',
-                justify='left'
-            )
+            monthly_df = monthly_charge_df.to_html(
+            index=False,
+            classes='table table-striped" id = "monthlytable',
+            justify='left'
+        )
+
         else:
             monthly_df = monthly_charge_df.to_html(
                 index=False,
@@ -358,7 +359,7 @@ class RunningTotPlotFunctions():
                 font_family='Helvetica'
             )
 
-            fig.update_yaxes(rangemode = "nonnegative")
+            fig.update_yaxes(rangemode="nonnegative")
 
             # Add black border to bars
             fig.update_traces(
@@ -369,8 +370,8 @@ class RunningTotPlotFunctions():
         else:
             fig = go.Figure()
             fig.update_layout(
-                xaxis =  { "visible": False },
-                yaxis = { "visible": False },
+                xaxis={"visible": False},
+                yaxis={"visible": False},
                 width=1200,
                 height=600,
                 annotations = [
