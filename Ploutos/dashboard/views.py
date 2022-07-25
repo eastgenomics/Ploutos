@@ -10,8 +10,6 @@ from dashboard.forms import (
     DateForm, MonthlyForm, StorageForm, FileForm
 )
 from dashboard.models import DailyOrgRunningTotal
-from django.contrib.auth import login as auth_login
-from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from scripts import DNAnexus_queries as dx_queries
@@ -22,12 +20,13 @@ from scripts import storage_plots as sp
 
 rtp = RunningTotPlotFunctions()
 
+
 @login_required
 def index(request):
     """View to display running total charges via Plotly"""
     # Get all running total objects from db
     # Get first date of month four months ago + first date of next month
-    # To be used for all default filtering
+    # To be used for default filtering
     totals = DailyOrgRunningTotal.objects.all()
     four_months_ago = date.today() + relativedelta(months=-4)
     start_of_four_months_ago = four_months_ago.replace(day=1)
@@ -36,9 +35,9 @@ def index(request):
     ).replace(day=1)
 
     # If the form is submitted
-    if 'submit' in request.GET:
+    if 'submit' in request.POST:
         # Get the form with info, set monthly form and monthly plot to default
-        form = DateForm(request.GET)
+        form = DateForm(request.POST)
         form2 = MonthlyForm()
         monthly_chart, monthly_df = rtp.monthly_between_dates(
             start_of_four_months_ago, start_of_next_month
@@ -120,7 +119,7 @@ def index(request):
             }
 
     # If instead form for monthly chart is submitted
-    elif 'monthly' in request.GET:
+    elif 'monthly' in request.POST:
         # Filter daily totals to last four months
         # To be used as daily chart always when monthly chart filtered
         totals = totals.filter(
@@ -129,7 +128,7 @@ def index(request):
             ]
         )
         form = DateForm()
-        form2 = MonthlyForm(request.GET)
+        form2 = MonthlyForm(request.POST)
 
         if form2.is_valid():
             start_month = form2.cleaned_data.get("start_month")
@@ -249,8 +248,8 @@ def storage_chart(request):
         f"-{last_day_of_this_month}"
     )
     # If the user has submitted the form
-    if 'submit' in request.GET:
-        form = StorageForm(request.GET)
+    if 'submit' in request.POST:
+        form = StorageForm(request.POST)
         # If form is valid
         # i.e. not >1 entry in project_types and assay_types at same time
         if form.is_valid():
@@ -421,7 +420,7 @@ def storage_chart(request):
                     form
                 )
 
-    elif 'clear' in request.GET:
+    elif 'clear' in request.POST:
         form = StorageForm()
         context = sp.StoragePlotFunctions(
         ).all_projects_between_months(
@@ -452,8 +451,8 @@ def files(request):
     proj_level_df = pd.DataFrame()
 
     # If the user has submitted the form
-    if 'submit' in request.GET:
-        form = FileForm(request.GET)
+    if 'submit' in request.POST:
+        form = FileForm(request.POST)
         # If form is valid
         # i.e. not >1 entry in project_types and assay_types at same time
         if form.is_valid():
@@ -537,7 +536,7 @@ def files(request):
             count_chart_data, count_df = fp.FilePlotFunctions(
             ).file_types_count_all_projects(date_to_filter)
 
-    elif 'clear' in request.GET:
+    elif 'clear' in request.POST:
         form = FileForm()
         size_chart_data, size_df, proj_level_df = fp.FilePlotFunctions(
         ).file_types_size_all_projects(date_to_filter)

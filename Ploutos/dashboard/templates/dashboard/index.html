@@ -60,7 +60,7 @@
 
 </script>
 <div class="all" style='margin: 0 auto;'>
-<form method="GET" action="{% url 'index' %}" style="padding-top: 20px;">
+<form method="POST" action="{% url 'index' %}" style="padding-top: 20px;">
     <div class="container">
         <div class="row">
           <div class="card-body bg-white">
@@ -88,7 +88,7 @@
   {{ daily_df|safe }}
 </div>
 
-<form method="GET" action="{% url 'index' %}">
+<form method="POST" action="{% url 'index' %}">
 <div class="container">
   <div class="row">
     <div class="my-form">
