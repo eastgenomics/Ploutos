@@ -31,8 +31,8 @@ DX_TOKEN = CREDENTIALS.get('DNANEXUS_TOKEN')
 ORG = CREDENTIALS.get('ORG')
 LIVE_STORAGE_COST_MONTH = CREDENTIALS.get('LIVE_STORAGE_COST_MONTH')
 ARCHIVED_STORAGE_COST_MONTH = CREDENTIALS.get('ARCHIVED_STORAGE_COST_MONTH')
-PROJ_COLOUR_DICT = CREDENTIALS.get('PROJ_COLOUR_DICT')
-ASSAY_COLOUR_DICT = CREDENTIALS.get('ASSAY_COLOUR_DICT')
+PROJ_COLOUR_DICT = CREDENTIALS.get('PROJ_COLOUR_DICT', {})
+ASSAY_COLOUR_DICT = CREDENTIALS.get('ASSAY_COLOUR_DICT', {})
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -77,7 +77,7 @@ ROOT_URLCONF = 'Ploutos.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [f'{BASE_DIR}/dashboard/templates/dashboard/'],
+        'DIRS': [f'{BASE_DIR}/dashboard/templates/dashboard/', BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -278,3 +278,6 @@ INTERNAL_IPS = [
     "127.0.0.1",
     # ...
 ]
+
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"

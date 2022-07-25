@@ -10,15 +10,19 @@ from dashboard.forms import (
     DateForm, MonthlyForm, StorageForm, FileForm
 )
 from dashboard.models import DailyOrgRunningTotal
+from django.contrib.auth import login as auth_login
+from django.contrib.auth import logout as auth_logout
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from scripts import DNAnexus_queries as dx_queries
 from scripts import file_plots as fp
 from scripts.running_total_plots import RunningTotPlotFunctions
 from scripts import storage_plots as sp
 
+
 rtp = RunningTotPlotFunctions()
 
-
+@login_required
 def index(request):
     """View to display running total charges via Plotly"""
     # Get all running total objects from db
@@ -219,7 +223,7 @@ def index(request):
 
     return render(request, 'index.html', context)
 
-
+@login_required
 def storage_chart(request):
     """
     Creates a bar chart grouped by month with each month having two bars
@@ -439,7 +443,7 @@ def storage_chart(request):
 
     return render(request, 'bar_chart.html', context)
 
-
+@login_required
 def files(request):
     """View for displaying the file type data"""
     date_to_filter = date.today()

@@ -3,14 +3,10 @@
 """
 import datetime as dt
 import logging
-import pandas as pd
 import dxpy as dx
 
-from calendar import monthrange
-from collections import defaultdict
 from time import time, localtime, strftime
 
-from django.apps import apps
 from django.conf import settings
 from dashboard.models import (
     Users, Dates, Projects, DailyOrgRunningTotal,

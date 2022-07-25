@@ -95,59 +95,82 @@ class RunningTotPlotFunctions():
             float_format="%.3f"
         )
 
-        # Add unified hover label so all charges shown
-        fig = go.Figure(
-            layout={
-                'hovermode': 'x unified'
-            }
-        )
-
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=compute_charge_diff,
-            name='Compute',
-            hovertemplate='%{y:.2f}'
+        if storage_charge_diff:
+            # Add unified hover label so all charges shown
+            fig = go.Figure(
+                layout={
+                    'hovermode': 'x unified'
+                }
             )
-        )
 
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=storage_charge_diff,
-            name='Storage',
-            hovertemplate='%{y:.2f}'
+            fig.add_trace(go.Bar(
+                x=stringified_dates,
+                y=compute_charge_diff,
+                name='Compute',
+                hovertemplate='%{y:.2f}'
+                )
             )
-        )
 
-        fig.add_trace(go.Bar(
-            x=stringified_dates,
-            y=egress_charge_diff,
-            name='Egress',
-            hovertemplate='%{y:.2f}'
+            fig.add_trace(go.Bar(
+                x=stringified_dates,
+                y=storage_charge_diff,
+                name='Storage',
+                hovertemplate='%{y:.2f}'
+                )
             )
-        )
 
-        fig.update_layout(
-            title={
-                'text': "Daily Running Charges",
-                'xanchor': 'center',
-                'x': 0.5,
-                'font_size': 20
-            },
-            xaxis_title="Date",
-            xaxis_tickformat='%d %b %y',
-            yaxis_title="Daily estimated charge ($)",
-            yaxis_tickformat=",d",
-            barmode='stack',
-            width=1200,
-            height=600,
-            font_family='Helvetica',
-        )
+            fig.add_trace(go.Bar(
+                x=stringified_dates,
+                y=egress_charge_diff,
+                name='Egress',
+                hovertemplate='%{y:.2f}'
+                )
+            )
 
-        # Add black border to bars
-        fig.update_traces(
-            marker_line_color='rgb(0,0,0)',
-            marker_line_width=1
-        )
+            fig.update_layout(
+                title={
+                    'text': "Daily Running Charges",
+                    'xanchor': 'center',
+                    'x': 0.5,
+                    'font_size': 20
+                },
+                xaxis_title="Date",
+                xaxis_tickformat='%d %b %y',
+                yaxis_title="Daily estimated charge ($)",
+                yaxis_tickformat=",d",
+                barmode='stack',
+                width=1200,
+                height=600,
+                font_family='Helvetica',
+            )
+
+            # Add black border to bars
+            fig.update_traces(
+                marker_line_color='rgb(0,0,0)',
+                marker_line_width=1
+            )
+
+            fig.update_yaxes(rangemode = "nonnegative")
+
+        else:
+            fig = go.Figure()
+            fig.update_layout(
+                xaxis =  { "visible": False },
+                yaxis = { "visible": False },
+                width=1200,
+                height=600,
+                annotations = [
+                    {
+                        "text": "No data to display",
+                        "xref": "paper",
+                        "yref": "paper",
+                        "showarrow": False,
+                        "font": {
+                            "size": 20
+                        }
+                    }
+                ]
+            )
 
         return fig, daily_df
 
@@ -278,67 +301,90 @@ class RunningTotPlotFunctions():
                 float_format="%.3f"
             )
 
-        fig = go.Figure()
+        if storage_charges:
+            fig = go.Figure()
 
-        fig.add_trace(go.Bar(
-            x=converted_months,
-            y=compute_charges,
-            name='Compute',
-            hovertemplate=(
-                '<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                '<extra></extra>'
-            ),
-            marker=dict(color='#636EFA')
-            )
-        )
-
-        fig.add_trace(
-            go.Bar(
+            fig.add_trace(go.Bar(
                 x=converted_months,
-                y=storage_charges,
-                name='Storage',
+                y=compute_charges,
+                name='Compute',
                 hovertemplate=(
                     '<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
                     '<extra></extra>'
                 ),
-                marker=dict(color='#EF553B')
+                marker=dict(color='#636EFA')
+                )
             )
-        )
 
-        fig.add_trace(
-            go.Bar(
-                x=converted_months,
-                y=egress_charges,
-                name='Egress',
-                hovertemplate=(
-                    '<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
-                    '<extra></extra>'
-                ),
-                marker=dict(color="#00CC96")
+            fig.add_trace(
+                go.Bar(
+                    x=converted_months,
+                    y=storage_charges,
+                    name='Storage',
+                    hovertemplate=(
+                        '<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
+                        '<extra></extra>'
+                    ),
+                    marker=dict(color='#EF553B')
+                )
             )
-        )
 
-        fig.update_layout(
-            title={
-                'text': "Monthly Running Charges",
-                'xanchor': 'center',
-                'x': 0.5,
-                'font_size': 20
-            },
-            xaxis_title="Month",
-            xaxis_tickformat='%d %b %y',
-            yaxis_title="Monthly estimated charge ($)",
-            yaxis_tickformat=",d",
-            width=1200,
-            height=600,
-            font_family='Helvetica',
-        )
+            fig.add_trace(
+                go.Bar(
+                    x=converted_months,
+                    y=egress_charges,
+                    name='Egress',
+                    hovertemplate=(
+                        '<br>Month: %{x}<br>Charge: $%{y:.2f}<br>'
+                        '<extra></extra>'
+                    ),
+                    marker=dict(color="#00CC96")
+                )
+            )
 
-        # Add black border to bars
-        fig.update_traces(
-            marker_line_color='rgb(0,0,0)',
-            marker_line_width=1,
-        )
+            fig.update_layout(
+                title={
+                    'text': "Monthly Running Charges",
+                    'xanchor': 'center',
+                    'x': 0.5,
+                    'font_size': 20
+                },
+                xaxis_title="Month",
+                xaxis_tickformat='%d %b %y',
+                yaxis_title="Monthly estimated charge ($)",
+                yaxis_tickformat=",d",
+                width=1200,
+                height=600,
+                font_family='Helvetica'
+            )
+
+            fig.update_yaxes(rangemode = "nonnegative")
+
+            # Add black border to bars
+            fig.update_traces(
+                marker_line_color='rgb(0,0,0)',
+                marker_line_width=1,
+            )
+
+        else:
+            fig = go.Figure()
+            fig.update_layout(
+                xaxis =  { "visible": False },
+                yaxis = { "visible": False },
+                width=1200,
+                height=600,
+                annotations = [
+                    {
+                        "text": "No data to display",
+                        "xref": "paper",
+                        "yref": "paper",
+                        "showarrow": False,
+                        "font": {
+                            "size": 20
+                        }
+                    }
+                ]
+            )
 
         chart = fig.to_html()
 

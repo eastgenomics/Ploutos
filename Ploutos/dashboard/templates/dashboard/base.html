@@ -61,6 +61,18 @@
             <li id ="link-jobs" class="nav-item">
               <a id='jobs' class="nav-link" href="{% url 'jobs' %}">Jobs</a>
             </li>
+            </ul>
+            <ul class="navbar-nav ml-auto">
+            {% if user.is_authenticated %}
+            <a class="text-light m-2">{{user.username}}</a>
+            <li id ="link-logout" class="nav-item"></li>
+            <a id="logout" class='nav-link' href="/accounts/logout"><i class="bi-box-arrow-in-right"></i> Log out</a>
+            </li>
+           {% else %}
+          <li id ="link-login" class="nav-item">
+            <a id="login" class='nav-link' href="/accounts/login"><i class="bi-box-arrow-in-left"></i> Login</a>
+          </li>
+           {% endif %}
           </ul>
         </div>
       </div>
