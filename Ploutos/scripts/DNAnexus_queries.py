@@ -17,8 +17,6 @@ Parent:Jobs and analyses can spawn other instances of analyses and jobs.
 
 import concurrent.futures
 import datetime as dt
-import itertools
-import json
 import logging
 import numpy as np
 import pandas as pd
@@ -29,10 +27,7 @@ import dxpy as dx
 from calendar import monthrange
 from collections import defaultdict
 from functools import reduce
-from time import time, localtime, strftime
 
-from dashboard.models import Users, Projects, Dates, DailyOrgRunningTotal, StorageCosts
-from django.apps import apps
 from django.conf import settings
 
 
@@ -588,9 +583,11 @@ def add_missing_states_projects_file_types(
             }
         )
 
+    empty_proj_df = pd.DataFrame([empty_project_rows])
     # Add the rows to the df for those projects
-    aggregated_file_type_all_projs = states_filled_in.append(
-        empty_project_rows, ignore_index=True, sort=False
+    aggregated_file_type_all_projs = pd.concat(
+        [states_filled_in, empty_proj_df],
+        ignore_index=True, sort=False
     )
 
     return aggregated_file_type_all_projs
@@ -838,8 +835,12 @@ def add_empty_projs_back_in(empty_projs, total_merged_df):
             {'project': proj, 'state': 'unique_archived', 'cost': 0, 'size': 0})
 
     # Append the projects with no files to the final merged dataframe
-    final_all_projs_df = total_merged_df.append(
-        empty_project_rows, ignore_index=True, sort=False)
+    empty_proj_df = pd.DataFrame([empty_project_rows])
+    final_all_projs_df = pd.concat(
+        [total_merged_df, empty_proj_df],
+        ignore_index=True,
+        sort=False
+    )
 
     return final_all_projs_df
 
