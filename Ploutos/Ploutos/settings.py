@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'bootstrap4',
     'crispy_forms',
+    'django_crontab',
 ]
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
@@ -147,6 +148,10 @@ TIME_ZONE = 'GMT'
 USE_I18N = True
 
 USE_TZ = True
+
+CRONJOBS = [
+    ('0 10 * * *', 'scripts.populate_db.run')
+]
 
 # Settings for logging
 with open('ploutos-error.log', 'a'):

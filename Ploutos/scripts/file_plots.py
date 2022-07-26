@@ -1,5 +1,3 @@
-from datetime import date
-import numpy as np
 import pandas as pd
 import plotly.express as px
 
@@ -21,10 +19,10 @@ class FilePlotFunctions():
         ).project_colours.copy()
         self.assay_colours = sp.StoragePlotFunctions(
         ).assay_colours.copy()
+        self.my_chart_data = sp.StoragePlotFunctions().chart_data.copy()
 
         # Get new colour palette for BAM, FASTQ and VCF
         self.file_type_colours = px.colors.qualitative.Pastel
-        self.my_chart_data = sp.StoragePlotFunctions().chart_data.copy()
 
     def convert_to_df(self, category_chart_data, size_or_count, multi_or_all):
         """
