@@ -10,7 +10,7 @@ Ploutos is a Django based web interface to track an organisation's spending on D
 Built with:
 - [Django](https://docs.djangoproject.com/en/4.0/ "Django documentation website")
 - [MariaDB](https://mariadb.org/, "MariaDB website")
-- [Plotly](https://plotly.com/, "Plotly website")
+- [Plotly](https://plotly.com/ "Plotly website")
 - [Highcharts](https://www.highcharts.com/, "Highcharts website")
 
 ## Installation
